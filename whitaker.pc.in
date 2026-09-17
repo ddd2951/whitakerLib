@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/@WHITAKER_PC_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: whitaker
+Description: Latin morphological analysis from Whitaker's WORDS
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lwhitaker
+Cflags: -I${includedir}

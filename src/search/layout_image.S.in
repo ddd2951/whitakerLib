@@ -1,0 +1,12 @@
+// NOTE: The link folds .rodata.* into .rodata, so only the two symbols survive;
+//  they are what the reader and test/build_boundary.cmake use.
+.section .rodata.whitaker_layout,"a",@progbits
+.balign 8
+.hidden whitaker_layout_image_start
+.hidden whitaker_layout_image_end
+.global whitaker_layout_image_start
+.global whitaker_layout_image_end
+whitaker_layout_image_start:
+.incbin "@WHITAKER_DATA_IMAGE@"
+whitaker_layout_image_end:
+.section .note.GNU-stack,"",@progbits

@@ -1,0 +1,8 @@
+WHITAKER_0.1 {
+    global:
+        whitaker_init;
+        whitaker_analyze;
+        whitaker_result_copy;
+    local:
+        *;
+};

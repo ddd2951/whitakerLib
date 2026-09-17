@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.compiler }} ${{ matrix.sanitize == 'ON' && 'sanitizers' || 'release' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+            sanitize: "OFF"
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+            sanitize: "OFF"
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+            sanitize: "ON"
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the vendored sources
+        run: sha256sum -c MANIFEST.sha256
+        working-directory: data/source
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DWHITAKER_BUILD_TOOLS=ON
+          -DWHITAKER_SANITIZE=${{ matrix.sanitize }}
+
+      - name: Build
+        run: cmake --build build -j2
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Install
+        run: cmake --install build --prefix "$PWD/prefix"
+
+      - name: Build the examples against the install
+        if: matrix.sanitize == 'OFF'
+        run: |
+          cmake -S examples -B build-examples -DCMAKE_PREFIX_PATH="$PWD/prefix"
+          cmake --build build-examples
+          LD_LIBRARY_PATH="$PWD/prefix/lib" ./build-examples/whitaker-c-example
+          LD_LIBRARY_PATH="$PWD/prefix/lib" ./build-examples/whitaker-cpp-example
+
+      - name: Exported symbols
+        if: matrix.sanitize == 'OFF'
+        run: |
+          nm -D --defined-only prefix/lib/libwhitaker.so | awk '$2 == "T" {print $3}' | sed 's/@@.*//' | sort > exported.txt
+          printf 'whitaker_analyze\nwhitaker_init\nwhitaker_result_copy\n' | diff - exported.txt

@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+SortIncludes: Never
+PointerAlignment: Left
+ReferenceAlignment: Pointer

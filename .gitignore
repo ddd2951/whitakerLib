@@ -1,0 +1,18 @@
+# Out-of-tree builds are recommended; ignore common in-tree build products.
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+Makefile
+cmake_install.cmake
+compile_commands.json
+*.o
+*.a
+*.so
+*.so.*
+
+# Tool caches.
+__pycache__/
+*.py[cod]
