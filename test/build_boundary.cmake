@@ -1,4 +1,5 @@
 # Check that the library embeds the checked-in image and has no data-file I/O.
+cmake_minimum_required(VERSION 3.20)
 
 if(NOT EXISTS "${LIBRARY}")
     message(FATAL_ERROR "no library to inspect: ${LIBRARY}")

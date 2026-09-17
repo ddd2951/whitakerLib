@@ -393,7 +393,7 @@ bool Image::validateWalk(std::string& failure) const {
     return fail(failure, "relationship terminal counts differ from header");
   std::ranges::sort(programs);
   std::uint32_t next = 0;
-  for (const auto [begin, end] : programs) {
+  for (const auto& [begin, end] : programs) {
     if (begin != next || end < begin)
       return fail(failure, "relationship programs overlap or leave a gap");
     next = end;
