@@ -28,16 +28,17 @@ public:
   struct Result {
     const char* orth{};
     const char* meaning{};
-    const char* pos{};
-    const char* inflection{};
+    latin::Analysis grammar{};
+    std::uint16_t dictionary{};
   };
   struct Addon {
+    std::uint16_t id{};
     const char* fix{};
     const char* meaning{};
     std::array<std::uint16_t, 4> target{};
-    AddonKind kind{};
-    Part root{};
-    Part targetPart{};
+    latin::AddonKind kind{};
+    latin::Part root{};
+    latin::Part targetPart{};
     std::uint8_t rootKey{};
     std::uint8_t targetKey{};
     char connect{};
@@ -58,23 +59,19 @@ public:
   struct Inflection {
     const char* ending{};
     std::uint8_t key{};
-    std::uint8_t allow{};
-    std::uint8_t age{};
-    std::uint8_t frequency{};
-  };
-  struct Description {
-    const char* pos{};
-    const char* inflection{};
+    latin::AllowSet allow{};
+    latin::Age age{};
+    latin::Frequency frequency{};
   };
   struct FallbackStem {
     const char* text{};
     std::uint16_t dictionary{};
     std::uint8_t key{};
-    Part part{};
+    latin::Part part{};
   };
   struct DictionaryMetadata {
-    std::uint8_t age{};
-    std::uint8_t frequency{};
+    latin::Age age{};
+    latin::Frequency frequency{};
     std::uint16_t classId{};
   };
 
@@ -90,20 +87,21 @@ public:
   [[nodiscard]] Program lookup(std::string_view word) const noexcept;
   [[nodiscard]] Result next(std::uint32_t& cursor,
                             std::uint16_t& denseLexeme) const noexcept;
-  [[nodiscard]] std::uint32_t addonCount() const noexcept;
-  [[nodiscard]] Addon addon(std::uint32_t index) const noexcept;
+  [[nodiscard]] std::uint16_t addonCount() const noexcept;
+  [[nodiscard]] Addon addon(std::uint16_t index) const noexcept;
   [[nodiscard]] std::uint32_t fallbackStemCount() const noexcept;
   [[nodiscard]] FallbackStem fallbackStem(std::uint32_t index) const noexcept;
   [[nodiscard]] std::pair<std::uint32_t, std::uint32_t>
   fallbackStemRange(std::string_view text) const noexcept;
   [[nodiscard]] DictionaryMetadata
   dictionaryMetadata(std::uint16_t index) const noexcept;
+  [[nodiscard]] Entry entry(std::uint32_t index) const noexcept;
   [[nodiscard]] FallbackRow fallbackRow(std::uint32_t index) const noexcept;
   [[nodiscard]] Class dictionaryClass(std::uint16_t index) const noexcept;
   [[nodiscard]] const char*
   dictionaryMeaning(std::uint16_t index) const noexcept;
   [[nodiscard]] Inflection inflection(std::uint16_t index) const noexcept;
-  [[nodiscard]] Description description(std::uint16_t index) const noexcept;
+  [[nodiscard]] latin::Analysis grammar(std::uint16_t index) const noexcept;
   [[nodiscard]] std::pair<std::uint16_t, std::uint16_t>
   endingRun(std::string_view text) const noexcept;
 #ifndef WHITAKER_EMBEDDED_ONLY

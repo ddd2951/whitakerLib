@@ -1,8 +1,12 @@
-WHITAKER_0.1 {
+WHITAKER_0.2 {
     global:
         whitaker_init;
         whitaker_analyze;
         whitaker_result_copy;
+        whitaker_name;
+        whitaker_describe;
+        whitaker_addon_spelling;
+        whitaker_addon_meaning;
     local:
         *;
 };

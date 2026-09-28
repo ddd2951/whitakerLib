@@ -13,9 +13,15 @@ static const WhitakerResult* look(const char* word) {
 
 static bool same(const char* a, const char* b) { return strcmp(a, b) == 0; }
 
+static const char* describe(const WhitakerMatch* m) {
+  static char line[64];
+  whitaker_describe(&m->grammar, line, sizeof line);
+  return line;
+}
+
 static bool hasInflection(const WhitakerResult* w, const char* inflection) {
   for (int i = 0; i < w->count; ++i)
-    if (same(w->matches[i].inflection, inflection))
+    if (same(describe(&w->matches[i]), inflection))
       return true;
   return false;
 }
@@ -49,7 +55,11 @@ int main(void) {
     assert(w->count == 1);
     assert(same(w->matches[0].orth, "am"));
     assert(same(w->matches[0].pos, "V"));
-    assert(same(w->matches[0].inflection, "V C1 V1 PRES ACTIVE IND 1 S"));
+    assert(same(describe(&w->matches[0]), "V C1 V1 PRES ACTIVE IND 1 S"));
+    assert(w->matches[0].entry.part == WHITAKER_PART_V);
+    assert(w->matches[0].entry.which == 1);
+    assert(w->matches[0].entry.variant == 1);
+    assert(w->matches[0].entry.kind == WHITAKER_VERB_KIND_X);
     assert(w->matches[0].addon_count == 0);
   }
   assert(look("ama")->count == 4);
@@ -60,9 +70,33 @@ int main(void) {
     assert(w->count == 1);
     assert(same(w->matches[0].orth, "cereal"));
     assert(same(w->matches[0].pos, "N"));
+    assert(w->matches[0].entry.part == WHITAKER_PART_N);
+    assert(w->matches[0].entry.gender <= WHITAKER_GENDER_C);
+    assert(w->matches[0].entry.kind <= WHITAKER_NOUN_KIND_x);
     assert(w->matches[0].addon_count == 1);
     assert(w->matches[0].addons[0].kind == WHITAKER_ADDON_PREFIX);
-    assert(same(w->matches[0].addons[0].spelling, "suc"));
+    assert(same(whitaker_addon_spelling(w->matches[0].addons[0].id), "suc"));
+  }
+
+  {
+    const WhitakerResult* w = look("amor");
+    bool found = false;
+    assert(w->count > 0);
+    for (int i = 0; i < w->count; ++i)
+      if (w->matches[i].entry.part == WHITAKER_PART_N &&
+          w->matches[i].entry.gender == WHITAKER_GENDER_M &&
+          w->matches[i].entry.kind == WHITAKER_NOUN_KIND_T)
+        found = true;
+    assert(found);
+  }
+  {
+    const WhitakerResult* w = look("centum");
+    bool found = false;
+    for (int i = 0; i < w->count; ++i)
+      if (w->matches[i].entry.part == WHITAKER_PART_NUM &&
+          w->matches[i].entry.numeral_value == 100)
+        found = true;
+    assert(found);
   }
 
   /* A suffix replaces the grammar, and its stem keeps the fix on. */
@@ -74,7 +108,7 @@ int main(void) {
       assert(same(w->matches[i].pos, "ADJ"));
       assert(w->matches[i].addon_count == 1);
       assert(w->matches[i].addons[0].kind == WHITAKER_ADDON_SUFFIX);
-      assert(same(w->matches[i].addons[0].spelling, "al"));
+      assert(same(whitaker_addon_spelling(w->matches[i].addons[0].id), "al"));
     }
   }
 
@@ -101,8 +135,11 @@ int main(void) {
     assert(same(w->matches[0].pos, "V"));
     assert(w->matches[0].addon_count == 1);
     assert(w->matches[0].addons[0].kind == WHITAKER_ADDON_TACKON);
-    assert(same(w->matches[0].addons[0].spelling, "que"));
-    assert(strstr(w->matches[0].addons[0].meaning, "enclitic") != NULL);
+    assert(w->matches[0].entry.part == WHITAKER_PART_V);
+    assert(w->matches[0].entry.which == 1);
+    assert(same(whitaker_addon_spelling(w->matches[0].addons[0].id), "que"));
+    assert(strstr(whitaker_addon_meaning(w->matches[0].addons[0].id),
+                  "enclitic") != NULL);
   }
   {
     const WhitakerResult* w = look("mecum");
@@ -128,7 +165,7 @@ int main(void) {
     const WhitakerResult* w = look("classemve");
     assert(w->count == 1);
     assert(same(w->matches[0].orth, "class"));
-    assert(same(w->matches[0].inflection, "N D3 V3 ACC S F"));
+    assert(same(describe(&w->matches[0]), "N D3 V3 ACC S F"));
   }
   {
     const WhitakerResult* w = look("sine");
@@ -146,7 +183,10 @@ int main(void) {
     for (int i = 0; i < w->count; ++i)
       if (w->matches[i].addon_count == 1 &&
           w->matches[i].addons[0].kind == WHITAKER_ADDON_PACKON) {
-        assert(same(w->matches[i].addons[0].spelling, "cumque"));
+        assert(same(whitaker_addon_spelling(w->matches[i].addons[0].id),
+                    "cumque"));
+        assert(w->matches[i].entry.part == WHITAKER_PART_PACK);
+        assert(w->matches[i].entry.kind <= WHITAKER_PACKON_KIND_ADJECT);
         found = true;
       }
     assert(found);
@@ -161,14 +201,15 @@ int main(void) {
     for (int i = 0; i < w->count; ++i) {
       assert(same(w->matches[i].pos, "PRON"));
       assert(w->matches[i].addons[0].kind == WHITAKER_ADDON_TICKON);
-      assert(same(w->matches[i].addons[0].spelling, "ec"));
-      nomPM |= same(w->matches[i].inflection, "PRON D1 V0 NOM P M");
-      nomSM |= same(w->matches[i].inflection, "PRON D1 V1 NOM S M");
+      assert(w->matches[i].entry.part == WHITAKER_PART_PRON);
+      assert(same(whitaker_addon_spelling(w->matches[i].addons[0].id), "ec"));
+      nomPM |= same(describe(&w->matches[i]), "PRON D1 V0 NOM P M");
+      nomSM |= same(describe(&w->matches[i]), "PRON D1 V1 NOM S M");
     }
     assert(nomPM && nomSM);
     w = look("nescioquis");
     assert(w->count > 0);
-    assert(same(w->matches[0].addons[0].spelling, "nescio"));
+    assert(same(whitaker_addon_spelling(w->matches[0].addons[0].id), "nescio"));
     w = look("necubi");
     for (int i = 0; i < w->count; ++i)
       assert(!hasAddon(&w->matches[i], WHITAKER_ADDON_TICKON));
@@ -178,7 +219,7 @@ int main(void) {
   {
     const WhitakerResult* w = look("amavi");
     assert(w->count == 1);
-    assert(same(w->matches[0].inflection, "V C1 V1 PERF ACTIVE IND 1 S"));
+    assert(same(describe(&w->matches[0]), "V C1 V1 PERF ACTIVE IND 1 S"));
     assert(same(w->matches[0].orth, "amav"));
   }
 
@@ -189,7 +230,7 @@ int main(void) {
     int adj = 0, vpar = 0;
     for (int i = 0; i < w->count; ++i) {
       assert(w->matches[i].orth && w->matches[i].meaning);
-      assert(w->matches[i].pos && w->matches[i].inflection);
+      assert(w->matches[i].pos);
       assert(same(w->matches[i].orth, "abact"));
       if (same(w->matches[i].pos, "ADJ"))
         ++adj;
@@ -197,6 +238,69 @@ int main(void) {
         ++vpar;
     }
     assert(adj == 6 && vpar == 24);
+  }
+
+  /* A fallback reading's pos is its inflection's part, as in the image. */
+  {
+    const WhitakerResult* w = look("ababacti");
+    assert(w->count > 0);
+    for (int i = 0; i < w->count; ++i) {
+      assert(w->matches[i].addon_count == 1);
+      assert(same(w->matches[i].pos, "VPAR"));
+      assert(w->matches[i].grammar.part == WHITAKER_PART_VPAR);
+    }
+    w = look("abaccensu");
+    assert(w->count == 2);
+    for (int i = 0; i < w->count; ++i) {
+      assert(same(w->matches[i].pos, "SUPINE"));
+      assert(w->matches[i].grammar.part == WHITAKER_PART_SUPINE);
+    }
+  }
+
+  /* Four stacked steps: enclitic, tackon, tickon, packon. */
+  {
+    const WhitakerResult* w = look("nequaquamcumque");
+    assert(w->count == 2);
+    for (int i = 0; i < w->count; ++i) {
+      const WhitakerMatch* m = &w->matches[i];
+      assert(m->orth && m->meaning && m->pos);
+      assert(m->addon_count == 4);
+      assert(same(whitaker_addon_spelling(m->addons[0].id), "que"));
+      assert(same(whitaker_addon_spelling(m->addons[1].id), "cum"));
+      assert(same(whitaker_addon_spelling(m->addons[2].id), "ne"));
+      assert(m->addons[2].kind == WHITAKER_ADDON_TICKON);
+      assert(same(whitaker_addon_spelling(m->addons[3].id), "quam"));
+      assert(m->addons[3].kind == WHITAKER_ADDON_PACKON);
+    }
+  }
+
+  /* The grammar renders back to pos, image and fallback. */
+  {
+    const char* words[] = {"amo", "abacta", "ababacti", "cuiusque", "XIV"};
+    char line[64];
+    for (size_t k = 0; k < sizeof words / sizeof *words; ++k) {
+      const WhitakerResult* w = look(words[k]);
+      assert(w->count > 0);
+      for (int i = 0; i < w->count; ++i) {
+        const WhitakerMatch* m = &w->matches[i];
+        assert(
+            same(whitaker_name(WHITAKER_FIELD_PART, m->grammar.part), m->pos));
+      }
+    }
+    const WhitakerGrammar* g = &look("abacta")->matches[0].grammar;
+    char small[4];
+    assert(whitaker_describe(g, small, sizeof small) > 3);
+    assert(strlen(small) == 3);
+    assert(whitaker_describe(g, NULL, 0) ==
+           strlen(describe(&look("abacta")->matches[0])));
+    assert(whitaker_describe(NULL, line, sizeof line) == 0);
+    assert(same(whitaker_name(WHITAKER_FIELD_CASE, WHITAKER_CASE_NOM), "NOM"));
+    assert(same(whitaker_name(WHITAKER_FIELD_NOUN_KIND, WHITAKER_NOUN_KIND_T),
+                "T"));
+    assert(same(whitaker_name(WHITAKER_FIELD_SOURCE, WHITAKER_SOURCE_O), "O"));
+    assert(whitaker_name(WHITAKER_FIELD_CASE, 200) == NULL);
+    assert(whitaker_addon_spelling(UINT16_MAX) == NULL);
+    assert(whitaker_addon_meaning(UINT16_MAX) == NULL);
   }
 
   /* Lookup is case-insensitive; orth keeps the dictionary's spelling. */
@@ -213,7 +317,7 @@ int main(void) {
     const WhitakerResult* w = look("adfare");
     assert(w->count == 2);
     for (int i = 0; i < w->count; ++i)
-      assert(strstr(w->matches[i].inflection, "ACTIVE") == NULL);
+      assert(strstr(describe(&w->matches[i]), "ACTIVE") == NULL);
   }
 
   /* Only dic/duc/fac/fer stems accept the shortened imperative. */
@@ -249,7 +353,7 @@ int main(void) {
     const WhitakerResult* w = look("est");
     int toBe = -1;
     for (int i = 0; i < w->count; ++i)
-      if (same(w->matches[i].inflection, "V C5 V1 PRES ACTIVE IND 3 S"))
+      if (same(describe(&w->matches[i]), "V C5 V1 PRES ACTIVE IND 3 S"))
         toBe = i;
     assert(toBe >= 0);
     assert(same(w->matches[toBe].orth, ""));
@@ -266,11 +370,11 @@ int main(void) {
     const WhitakerResult* w = look("deus");
     assert(w->count == 2);
     assert(same(w->matches[0].orth, "deus"));
-    assert(same(w->matches[0].inflection, "N D2 V1 VOC S M"));
+    assert(same(describe(&w->matches[0]), "N D2 V1 VOC S M"));
     assert(same(w->matches[1].orth, "De"));
     w = look("vult");
     assert(w->count == 1);
-    assert(same(w->matches[0].inflection, "V C6 V2 PRES ACTIVE IND 3 S"));
+    assert(same(describe(&w->matches[0]), "V C6 V2 PRES ACTIVE IND 3 S"));
     w = look("mare");
     assert(same(w->matches[0].orth, "mare"));
     assert(same(w->matches[0].pos, "ADJ"));
@@ -283,7 +387,7 @@ int main(void) {
     for (int i = 0; i < w->count; ++i) {
       if (same(w->matches[i].pos, "ADV")) {
         ++adv;
-        assert(same(w->matches[i].inflection, "ADV POS"));
+        assert(same(describe(&w->matches[i]), "ADV POS"));
         assert(same(w->matches[i].orth, "cord"));
       }
       if (same(w->matches[i].pos, "ADJ"))
@@ -306,7 +410,7 @@ int main(void) {
     const WhitakerResult* w = look("i");
     assert(w->count > 1);
     assert(same(w->matches[0].pos, "NUM"));
-    assert(same(w->matches[0].inflection, "NUM D2 V0 X X X CARD"));
+    assert(same(describe(&w->matches[0]), "NUM D2 V0 X X X CARD"));
     assert(same(w->matches[0].orth, "i"));
     assert(same(w->matches[0].meaning, " 1  as a ROMAN NUMERAL;"));
     assert(w->matches[0].orth >= w->text &&
@@ -314,6 +418,10 @@ int main(void) {
     w = look("mcmlxxxiv");
     assert(w->count == 1);
     assert(same(w->matches[0].meaning, " 1984  as a ROMAN NUMERAL;"));
+    assert(w->matches[0].entry.part == WHITAKER_PART_NUM);
+    assert(w->matches[0].entry.numeral_sort == WHITAKER_NUMERAL_SORT_CARD);
+    assert(w->matches[0].entry.numeral_value == 1984);
+    assert(w->matches[0].entry.age == WHITAKER_AGE_X);
     assert(same(look("vi")->matches[0].pos, "NUM"));
     w = look("ui");
     assert(w->count > 0);
@@ -338,16 +446,16 @@ int main(void) {
     const WhitakerResult* w = look("quoque");
     assert(w->count == 87);
     assert(same(w->matches[0].orth, "quoque"));
-    assert(same(w->matches[0].inflection, "ADV POS"));
+    assert(same(describe(&w->matches[0]), "ADV POS"));
     assert(w->matches[0].addon_count == 0);
     assert(same(w->matches[86].orth, "quo"));
     assert(same(w->matches[86].pos, "CONJ"));
     assert(w->matches[86].addons[0].kind == WHITAKER_ADDON_TACKON);
     int ablSN = 0;
     for (int i = 0; i < w->count; ++i)
-      if (same(w->matches[i].inflection, "PRON D1 V0 ABL S N")) {
+      if (same(describe(&w->matches[i]), "PRON D1 V0 ABL S N")) {
         for (int j = 0; j < i; ++j)
-          if (same(w->matches[j].inflection, "PRON D1 V0 ABL S N"))
+          if (same(describe(&w->matches[j]), "PRON D1 V0 ABL S N"))
             assert(!same(w->matches[j].meaning, w->matches[i].meaning));
         ++ablSN;
       }
@@ -355,17 +463,17 @@ int main(void) {
 
     w = look("quicumque");
     assert(w->count == 13);
-    assert(same(w->matches[0].inflection, "PRON D1 V0 DAT S X"));
-    assert(same(w->matches[12].inflection, "PRON D1 V0 NOM P M"));
+    assert(same(describe(&w->matches[0]), "PRON D1 V0 DAT S X"));
+    assert(same(describe(&w->matches[12]), "PRON D1 V0 NOM P M"));
 
     /* quae + cum + que: the enclitic over the packon, both steps kept. */
     w = look("quaecumque");
     assert(w->count == 7);
     assert(w->matches[6].addon_count == 2);
     assert(w->matches[6].addons[0].kind == WHITAKER_ADDON_TACKON);
-    assert(same(w->matches[6].addons[0].spelling, "que"));
+    assert(same(whitaker_addon_spelling(w->matches[6].addons[0].id), "que"));
     assert(w->matches[6].addons[1].kind == WHITAKER_ADDON_PACKON);
-    assert(same(w->matches[6].addons[1].spelling, "cum"));
+    assert(same(whitaker_addon_spelling(w->matches[6].addons[1].id), "cum"));
   }
 
   /* whitaker_result_copy rebases the strings a result owns; `=` would not. */
@@ -385,7 +493,7 @@ int main(void) {
     assert(same(copy.matches[0].orth, "cereal"));
     assert(copy.matches[0].orth >= copy.text &&
            copy.matches[0].orth < copy.text + WHITAKER_TEXT_BYTES);
-    assert(same(copy.matches[0].addons[0].spelling, "suc"));
+    assert(same(whitaker_addon_spelling(copy.matches[0].addons[0].id), "suc"));
     whitaker_result_copy(&copy, &copy);
     whitaker_result_copy(NULL, &copy);
     whitaker_result_copy(&copy, NULL);

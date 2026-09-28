@@ -24,6 +24,42 @@ namespace {
   return false;
 }
 
+[[nodiscard]] latin::Analysis grammarAt(const std::byte* record) noexcept {
+  const auto byte = [record](std::size_t i) {
+    return std::to_integer<std::uint8_t>(record[i]);
+  };
+  return {.part = latin::Part{byte(0)},
+          .which = byte(1),
+          .variant = {byte(2)},
+          .caseOf = latin::Case{byte(3)},
+          .number = latin::Number{byte(4)},
+          .gender = latin::Gender{byte(5)},
+          .comparison = latin::Comparison{byte(6)},
+          .numeralSort = latin::NumeralSort{byte(7)},
+          .tense = latin::Tense{byte(8)},
+          .voice = latin::Voice{byte(9)},
+          .mood = latin::Mood{byte(10)},
+          .person = {byte(11)}};
+}
+
+[[nodiscard]] whitaker::relationship::Entry
+entryAt(const std::byte* record) noexcept {
+  const auto byte = [record](std::size_t i) {
+    return std::to_integer<std::uint8_t>(record[i]);
+  };
+  return {.part = latin::Part{byte(0)},
+          .which = byte(1),
+          .variant = byte(2),
+          .gender = latin::Gender{byte(3)},
+          .kind = byte(4),
+          .comparison = latin::Comparison{byte(5)},
+          .numeralSort = latin::NumeralSort{byte(6)},
+          .area = latin::Area{byte(7)},
+          .geography = latin::Geography{byte(8)},
+          .source = latin::Source{byte(9)},
+          .numeralValue = {whitaker::relationship::read16(record + 10)}};
+}
+
 } // namespace
 
 namespace whitaker::relationship {
@@ -168,8 +204,12 @@ bool Image::validateDirectory(std::string& failure) {
       !exactWidth(Section::Paradigms, kParadigmBytes) ||
       !exactWidth(Section::Targets, kTargetBytes) ||
       !exactWidth(Section::Dictionaries, kDictionaryBytes) ||
-      !exactWidth(Section::Descriptions, kDescriptionBytes) ||
+      !exactWidth(Section::Grammars, kGrammarBytes) ||
+      !exactWidth(Section::Entries, kEntryBytes) ||
+      section(Section::Entries).count != section(Section::Dictionaries).count ||
       !exactWidth(Section::Addons, kAddonBytes) ||
+      section(Section::Addons).count >
+          std::numeric_limits<std::uint16_t>::max() ||
       !exactWidth(Section::Classes, kClassBytes) ||
       !exactWidth(Section::FallbackRows, kFallbackRowBytes) ||
       !exactWidth(Section::Inflections, kInflectionBytes) ||
@@ -245,7 +285,7 @@ bool Image::validateParadigms(std::string& failure) const {
     for (std::uint32_t local = 0; local < count; ++local) {
       const std::uint16_t target =
           read16(at(Section::Targets, first + local, kTargetBytes));
-      if (target >= section(Section::Descriptions).count ||
+      if (target >= section(Section::Grammars).count ||
           (local != 0 && target <= previous))
         return fail(failure, "invalid paradigm description target");
       previous = target;
@@ -265,35 +305,103 @@ bool Image::validateRecords(std::string& failure) const {
     for (unsigned field = 0; field < 5; ++field)
       if (!validateString(read32(record + field * 4), failure))
         return false;
+    const Entry entry = entryAt(at(Section::Entries, dictionary, kEntryBytes));
+    if (entry.gender > latin::Gender::C ||
+        entry.comparison > latin::Comparison::SUPER ||
+        entry.numeralSort > latin::NumeralSort::ADVERB ||
+        entry.area > latin::Area::Y || entry.geography > latin::Geography::U ||
+        entry.source > latin::Source::Z || !latin::isValid(entry.numeralValue))
+      return fail(failure, "invalid dictionary entry field");
+    switch (entry.part) {
+    case latin::Part::N:
+      if (!latin::isValid(latin::Declension{entry.which}) ||
+          !latin::isValid(latin::Variant{entry.variant}) ||
+          latin::name(latin::NounKind{entry.kind}) == nullptr)
+        return fail(failure, "invalid noun entry");
+      break;
+    case latin::Part::PRON:
+    case latin::Part::PACK:
+      if (!latin::isValid(latin::Declension{entry.which}) ||
+          !latin::isValid(latin::Variant{entry.variant}) ||
+          (entry.part == latin::Part::PRON
+               ? latin::name(latin::PronounKind{entry.kind})
+               : latin::name(latin::PackonKind{entry.kind})) == nullptr)
+        return fail(failure, "invalid pronoun or packon entry");
+      break;
+    case latin::Part::V:
+      if (!latin::isValid(latin::Conjugation{entry.which}) ||
+          !latin::isValid(latin::Variant{entry.variant}) ||
+          latin::name(latin::VerbKind{entry.kind}) == nullptr)
+        return fail(failure, "invalid verb entry");
+      break;
+    case latin::Part::ADJ:
+    case latin::Part::NUM:
+      if (!latin::isValid(latin::Declension{entry.which}) ||
+          !latin::isValid(latin::Variant{entry.variant}))
+        return fail(failure, "invalid adjective or numeral entry");
+      break;
+    case latin::Part::ADV:
+    case latin::Part::PREP:
+    case latin::Part::CONJ:
+    case latin::Part::INTERJ:
+      if (entry.which != 0 || entry.variant != 0)
+        return fail(failure, "invalid uninflected entry");
+      break;
+    default:
+      return fail(failure, "invalid dictionary entry part");
+    }
+    if ((entry.part != latin::Part::N && entry.gender != latin::Gender::X) ||
+        (entry.part != latin::Part::ADJ && entry.part != latin::Part::ADV &&
+         entry.comparison != latin::Comparison::X) ||
+        (entry.part != latin::Part::NUM &&
+         (entry.numeralSort != latin::NumeralSort::X ||
+          entry.numeralValue.value != 0)) ||
+        (entry.part != latin::Part::N && entry.part != latin::Part::PRON &&
+         entry.part != latin::Part::PACK && entry.part != latin::Part::V &&
+         entry.kind != 0))
+      return fail(failure, "invalid unused dictionary entry field");
   }
   for (std::uint32_t description = 0;
-       description < section(Section::Descriptions).count; ++description) {
-    const std::byte* record =
-        at(Section::Descriptions, description, kDescriptionBytes);
-    if (!validateString(read32(record), failure) ||
-        !validateString(read32(record + 4), failure))
-      return false;
+       description < section(Section::Grammars).count; ++description) {
+    const std::byte* grammarRecord =
+        at(Section::Grammars, description, kGrammarBytes);
+    const latin::Analysis grammar = grammarAt(grammarRecord);
+    if (!latin::isPart(std::to_integer<std::uint8_t>(grammarRecord[0])) ||
+        grammar.which > 9 || !latin::isValid(grammar.variant) ||
+        grammar.caseOf > latin::Case::ACC ||
+        grammar.number > latin::Number::P ||
+        grammar.gender > latin::Gender::C ||
+        grammar.comparison > latin::Comparison::SUPER ||
+        grammar.numeralSort > latin::NumeralSort::ADVERB ||
+        grammar.tense > latin::Tense::FUTP ||
+        grammar.voice > latin::Voice::PASSIVE ||
+        grammar.mood > latin::Mood::PPL || !latin::isValid(grammar.person))
+      return fail(failure, "invalid description grammar");
   }
   for (std::uint32_t addon = 0; addon < section(Section::Addons).count;
        ++addon) {
     const std::byte* record = at(Section::Addons, addon, kAddonBytes);
     if (!validateString(read32(record), failure) ||
         !validateString(read32(record + 4), failure) ||
-        !isAddonKind(std::to_integer<std::uint8_t>(record[16])) ||
-        !isPart(std::to_integer<std::uint8_t>(record[17])) ||
-        !isPart(std::to_integer<std::uint8_t>(record[18])) ||
+        !latin::isAddonKind(std::to_integer<std::uint8_t>(record[16])) ||
+        !latin::isPart(std::to_integer<std::uint8_t>(record[17])) ||
+        !latin::isPart(std::to_integer<std::uint8_t>(record[18])) ||
         std::to_integer<std::uint8_t>(record[19]) > 9 ||
         std::to_integer<std::uint8_t>(record[20]) > 9 ||
         std::uint64_t{read32(record + 23)} + read16(record + 27) >
             section(Section::FallbackRows).count ||
         read16(record + 30) != 0)
       return fail(failure, "invalid ADDONS record");
+    const latin::AddonKind kind{std::to_integer<std::uint8_t>(record[16])};
+    if (kind != latin::AddonKind::Prefix && kind != latin::AddonKind::Suffix &&
+        std::strlen(stringAt(read32(record))) < 2)
+      return fail(failure, "ADDONS fix too short for the step bound");
   }
   for (std::uint32_t row = 0; row < section(Section::FallbackRows).count;
        ++row) {
     const std::byte* record = at(Section::FallbackRows, row, kFallbackRowBytes);
     if (read16(record) >= section(Section::Inflections).count ||
-        read16(record + 2) >= section(Section::Descriptions).count)
+        read16(record + 2) >= section(Section::Grammars).count)
       return fail(failure, "invalid fallback row");
   }
   for (std::uint32_t id = 0; id < section(Section::Classes).count; ++id) {
@@ -330,8 +438,8 @@ bool Image::validateRecords(std::string& failure) const {
     if (!validateString(read32(record), failure) ||
         read16(record + 4) >= section(Section::Dictionaries).count ||
         std::to_integer<std::uint8_t>(record[6]) > 9 ||
-        std::to_integer<std::uint8_t>(record[7]) >
-            static_cast<std::uint8_t>(Part::NONE))
+        !latin::isPart(std::to_integer<std::uint8_t>(record[7])) ||
+        latin::Part{std::to_integer<std::uint8_t>(record[7])} == latin::Part::X)
       return fail(failure, "invalid ADDONS fallback stem");
   }
   return true;
@@ -454,31 +562,30 @@ Image::Result Image::next(std::uint32_t& cursor,
          kTargetBytes));
   const std::byte* dictionary =
       at(Section::Dictionaries, read16(lexeme), kDictionaryBytes);
-  const std::byte* rendered =
-      at(Section::Descriptions, description, kDescriptionBytes);
   const std::uint8_t stem = std::to_integer<std::uint8_t>(lexeme[2]);
   return {stringAt(read32(dictionary + stem * 4)),
-          stringAt(read32(dictionary + 16)), stringAt(read32(rendered)),
-          stringAt(read32(rendered + 4))};
+          stringAt(read32(dictionary + 16)),
+          grammarAt(at(Section::Grammars, description, kGrammarBytes)),
+          read16(lexeme)};
 }
 
-std::uint32_t Image::addonCount() const noexcept {
-  return static_cast<std::uint32_t>(section(Section::Addons).count);
+std::uint16_t Image::addonCount() const noexcept {
+  return static_cast<std::uint16_t>(section(Section::Addons).count);
 }
 
-Image::Addon Image::addon(std::uint32_t index) const noexcept {
+Image::Addon Image::addon(std::uint16_t index) const noexcept {
   if (!m_valid || index >= addonCount())
     return {};
   const std::byte* record = at(Section::Addons, index, kAddonBytes);
   return {
+      .id = index,
       .fix = stringAt(read32(record)),
       .meaning = stringAt(read32(record + 4)),
       .target = {read16(record + 8), read16(record + 10), read16(record + 12),
                  read16(record + 14)},
-      .kind = static_cast<AddonKind>(std::to_integer<std::uint8_t>(record[16])),
-      .root = static_cast<Part>(std::to_integer<std::uint8_t>(record[17])),
-      .targetPart =
-          static_cast<Part>(std::to_integer<std::uint8_t>(record[18])),
+      .kind = latin::AddonKind{std::to_integer<std::uint8_t>(record[16])},
+      .root = latin::Part{std::to_integer<std::uint8_t>(record[17])},
+      .targetPart = latin::Part{std::to_integer<std::uint8_t>(record[18])},
       .rootKey = std::to_integer<std::uint8_t>(record[19]),
       .targetKey = std::to_integer<std::uint8_t>(record[20]),
       .connect = static_cast<char>(std::to_integer<std::uint8_t>(record[21])),
@@ -518,17 +625,16 @@ Image::Inflection Image::inflection(std::uint16_t index) const noexcept {
   const std::byte* record = at(Section::Inflections, index, kInflectionBytes);
   return {.ending = stringAt(read32(record)),
           .key = std::to_integer<std::uint8_t>(record[4]),
-          .allow = std::to_integer<std::uint8_t>(record[5]),
-          .age = std::to_integer<std::uint8_t>(record[6]),
-          .frequency = std::to_integer<std::uint8_t>(record[7])};
+          .allow = {std::to_integer<std::uint8_t>(record[5])},
+          .age = latin::Age{std::to_integer<std::uint8_t>(record[6])},
+          .frequency =
+              latin::Frequency{std::to_integer<std::uint8_t>(record[7])}};
 }
 
-Image::Description Image::description(std::uint16_t index) const noexcept {
-  if (!m_valid || index >= section(Section::Descriptions).count)
+latin::Analysis Image::grammar(std::uint16_t index) const noexcept {
+  if (!m_valid || index >= section(Section::Grammars).count)
     return {};
-  const std::byte* record = at(Section::Descriptions, index, kDescriptionBytes);
-  return {.pos = stringAt(read32(record)),
-          .inflection = stringAt(read32(record + 4))};
+  return grammarAt(at(Section::Grammars, index, kGrammarBytes));
 }
 
 std::pair<std::uint16_t, std::uint16_t>
@@ -564,7 +670,7 @@ Image::FallbackStem Image::fallbackStem(std::uint32_t index) const noexcept {
   return {.text = stringAt(read32(record)),
           .dictionary = read16(record + 4),
           .key = std::to_integer<std::uint8_t>(record[6]),
-          .part = static_cast<Part>(std::to_integer<std::uint8_t>(record[7]))};
+          .part = latin::Part{std::to_integer<std::uint8_t>(record[7])}};
 }
 
 std::pair<std::uint32_t, std::uint32_t>
@@ -597,9 +703,16 @@ Image::dictionaryMetadata(std::uint16_t index) const noexcept {
   if (!m_valid || index >= section(Section::Dictionaries).count)
     return {};
   const std::byte* record = at(Section::Dictionaries, index, kDictionaryBytes);
-  return {.age = std::to_integer<std::uint8_t>(record[20]),
-          .frequency = std::to_integer<std::uint8_t>(record[21]),
+  return {.age = latin::Age{std::to_integer<std::uint8_t>(record[20])},
+          .frequency =
+              latin::Frequency{std::to_integer<std::uint8_t>(record[21])},
           .classId = read16(record + 22)};
+}
+
+Entry Image::entry(std::uint32_t index) const noexcept {
+  if (!m_valid || index >= section(Section::Entries).count)
+    return {};
+  return entryAt(at(Section::Entries, index, kEntryBytes));
 }
 
 #ifndef WHITAKER_EMBEDDED_ONLY

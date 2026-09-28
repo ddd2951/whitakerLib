@@ -30,7 +30,9 @@ int main(void) {
 
   for (int i = 0; i < result.count; ++i) {
     const WhitakerMatch *match = &result.matches[i];
-    printf("%s | %s | %s\n", match->orth, match->pos, match->inflection);
+    char line[64];
+    whitaker_describe(&match->grammar, line, sizeof line);
+    printf("%s | %s | %s\n", match->orth, match->pos, line);
     printf("  %s\n", match->meaning);
   }
 }
@@ -52,7 +54,7 @@ For `amo`, one result is the stem `am`, part of speech `V`, and inflection
   and needs no database or network service.
 
 The current image contains 1,184,036 spellings and 2,378,514 ordered analysis
-rows. Its size is 10,768,086 bytes.
+rows. Its size is 11,133,203 bytes.
 
 ## What it does not do
 
@@ -112,7 +114,6 @@ is not built or run as part of the library build.
 
 Useful options:
 
-- `-DWHITAKER_BUILD_TOOLS=ON` builds the `whitaker-lookup` command-line tool.
 - `-DWHITAKER_SANITIZE=ON` enables AddressSanitizer and
   UndefinedBehaviorSanitizer.
 - `-DWHITAKER_BUILD_TESTING=OFF` omits the tests.
@@ -122,20 +123,6 @@ Useful options:
 Tests, install rules, and fatal warnings default to on when whitakerLib is the
 top-level CMake project. They default to off when another project adds this
 directory with `add_subdirectory()`.
-
-## Command-line lookup
-
-The optional tool is useful for inspecting complete results:
-
-```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-  -DWHITAKER_BUILD_TOOLS=ON
-cmake --build build -j2
-./build/whitaker-lookup quicumque
-```
-
-It uses the public API; it is not a replacement for the interactive WORDS
-program.
 
 ## Install and use from CMake
 
@@ -166,13 +153,18 @@ cmake --build build-examples
 
 ## API contract
 
-The public API is declared in `include/whitaker.h` and consists of three
+The public API is declared in `include/whitaker.h` and consists of seven
 functions:
 
 ```c
 WhitakerStatus whitaker_init(void);
 WhitakerStatus whitaker_analyze(const char *word, WhitakerResult *out);
 void whitaker_result_copy(WhitakerResult *dst, const WhitakerResult *src);
+const char *whitaker_name(WhitakerField field, uint8_t value);
+size_t whitaker_describe(const WhitakerGrammar *grammar, char *out,
+                         size_t size);
+const char *whitaker_addon_spelling(uint16_t id);
+const char *whitaker_addon_meaning(uint16_t id);
 ```
 
 Call `whitaker_init()` before the first analysis. It validates the embedded
@@ -195,9 +187,28 @@ Each match contains:
 - `orth`: the matched stem, not necessarily the queried spelling or a lemma;
 - `meaning`: the English meaning stored with the dictionary record;
 - `pos`: the WORDS part-of-speech abbreviation;
-- `inflection`: the rendered morphological description; and
+- `grammar`: the morphological description as values, one byte a field,
+  each holding the `Whitaker*` enum it names (`part`, `which` for the
+  declension or conjugation, `variant`, `case_of`, `number`, `gender`,
+  `comparison`, `numeral_sort`, `tense`, `voice`, `mood`, `person`); a field
+  the reading has no use for is 0;
+- `entry`: the dictionary entry's part, declension or conjugation (`which`),
+  variant, gender, kind, comparison, numeral sort and value, area, geography,
+  source, age and frequency. `kind` is interpreted by `part`: noun, pronoun,
+  packon or verb kind. Unused fields are 0. Roman numerals have part NUM,
+  `which` 2, sort CARD, their numeric value, and X labels; and
 - `addons`: the derivation steps used for a prefixed, suffixed, or compounded
-  reading.
+  reading, each an addon `id` and its `WhitakerAddonKind`.
+
+`whitaker_name()` gives the name WORDS prints for a grammar or entry enum
+value (`"NOM"` for `WHITAKER_CASE_NOM`), or null for a value the field doesn't
+have. `whitaker_describe()` writes the whole line WORDS prints for a
+`grammar`, the way `snprintf` does: at most `size` bytes including the
+terminator, returning the length of the whole line.
+
+`whitaker_addon_spelling()` and `whitaker_addon_meaning()` give a step's text
+from its `id`, or null for an id the library doesn't have. An id is only
+meaningful to the library that returned it; don't store it.
 
 The strings are borrowed. They point either into the library's embedded image
 or into the `text` storage of the `WhitakerResult` that owns them. Do not free
@@ -210,9 +221,11 @@ copies the result and rebases those pointers into the destination's `text`
 array. Passing a null pointer or the same object as both arguments is harmless.
 
 A result holds at most `WHITAKER_MAX_MATCHES` (256) readings. A word with more
-is cut at that many; the largest count in the current corpus is 88. A result
-is about 36 KiB on a 64-bit build, so static or heap storage is often more
-suitable than a small thread stack.
+is cut at that many; the largest count in the current corpus is 88. A reading
+holds up to `WHITAKER_MAX_ADDON_STEPS` (12) addon steps, enough for any word:
+each tickon, tackon or packon removes at least two letters. A result is about
+34 KiB on a 64-bit build, so static or heap storage is often more suitable
+than a small thread stack.
 
 `whitaker_analyze()` is safe to call from several threads at once, each with
 its own `WhitakerResult`. The library holds no state but the validated image.
@@ -225,11 +238,12 @@ generator's spelling, row, and rendered-field inputs. Runtime tests cover
 lookup, add-ons, Roman numerals, spelling folding, errors, malformed images,
 and the no-file-I/O boundary.
 
-The library was also compared with the original Ada program over the 51,300
-words of Caesar's *De bello Gallico*. For 49,885 words (97.2%), both returned
-the same non-empty set of part-of-speech and inflection descriptions after
-documented display normalizations; both left another 373 unanswered. Stems,
-meanings, duplicate counts, and result order were not compared.
+Version 0.1 of the library was also compared with the original Ada program
+over the 51,300 words of Caesar's *De bello Gallico*. For 49,885 words
+(97.2%), both returned the same non-empty set of part-of-speech and inflection
+descriptions after documented display normalizations; both left another 373
+unanswered. Stems, meanings, duplicate counts, and result order were not
+compared.
 
 Most remaining differences come from three WORDS fallback rules that the
 library does not implement: syncope, two-word guesses, and internal letter
@@ -258,8 +272,8 @@ them.
 | `ADDONS.LAT` | prefixes, suffixes, tackons, and packons | 34,697 |
 | `LICENCE.txt` | Whitaker's notice | 696 |
 
-`data/whitaker.dat` is the generated lookup image: 10,768,086 bytes, SHA-256
-`72bd888df04fff026a5c817abc64f1d62914f89205cba683d982f19949e68820`. Its
+`data/whitaker.dat` is the generated lookup image: 11,133,203 bytes, SHA-256
+`7376d2f43b2f831aecc9d268af33b92f08fcf4684a2389314d95b33375c5c6da`. Its
 workflow is documented in `codegen/README.md`.
 
 ## Licence

@@ -7,8 +7,6 @@
 #include <span>
 #include <string_view>
 
-// INFO: WORDS runs fixes only for a word the plain search answered nothing
-//  for. Calling this for any other word is wrong, not wasteful.
 namespace whitaker {
 
 // NOTE: `orth` is a slice of the query, not an image string: a suffix reading
@@ -17,15 +15,15 @@ struct FallbackMatch {
   std::uint32_t orthOffset{};
   std::uint32_t orthLength{};
   const char* meaning{};
-  const char* pos{};
-  const char* inflection{};
-  std::array<const char*, 2> addonSpelling{};
-  std::array<const char*, 2> addonMeaning{};
-  std::array<relationship::AddonKind, 2> addonKind{};
+  latin::Analysis grammar{};
+  std::uint16_t dictionary{};
+  std::array<std::uint16_t, 2> addonId{};
+  std::array<latin::AddonKind, 2> addonKind{};
   std::uint8_t addonCount{};
 };
 
-// INFO: Prune_Stems' precedence: prefixes first, suffixes only if nothing.
+// INFO: WORDS calls this only for an unanswered word. Prune_Stems tries
+//  prefixes first, then suffixes only if prefixes find nothing.
 // NOTE: The span is thread-local and lives until the next call.
 [[nodiscard]] std::span<const FallbackMatch>
 addonFallback(const relationship::Image& image, std::string_view word) noexcept;

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#include "domain.hpp"
+#include "latin.hpp"
 #include "shared/semantic/value.hpp"
 
 namespace {
@@ -28,31 +28,20 @@ static_assert(A{1} != A{2});
 static_assert(!HasAddition<A, A>);
 static_assert(!HasLessThan<A, A>);
 
-static_assert(
-    !std::is_same_v<domain::DeclensionVariant, domain::ConjugationVariant>);
-static_assert(!std::is_same_v<domain::StemIndex, domain::CharacterCount>);
-static_assert(!std::is_same_v<domain::StemIndex, domain::Person>);
-static_assert(sizeof(domain::Declension) == sizeof(std::uint8_t));
-static_assert(sizeof(domain::NumeralValue) == sizeof(std::uint16_t));
+static_assert(sizeof(latin::Declension) == sizeof(std::uint8_t));
+static_assert(sizeof(latin::NumeralValue) == sizeof(std::uint16_t));
 
-static_assert(domain::Declension{}.value == 0);
+static_assert(latin::Declension{}.value == 0);
 
-// INFO:  Declension skips 7 and 8; the variants and conjugations do not.
-static_assert(domain::isValid(domain::Declension{6}));
-static_assert(!domain::isValid(domain::Declension{7}));
-static_assert(!domain::isValid(domain::Declension{8}));
-static_assert(domain::isValid(domain::Declension{9}));
-static_assert(!domain::isValid(domain::Declension{10}));
-static_assert(domain::isValid(domain::DeclensionVariant{9}));
-static_assert(!domain::isValid(domain::DeclensionVariant{10}));
-static_assert(domain::isValid(domain::Conjugation{9}));
-static_assert(!domain::isValid(domain::Conjugation{10}));
-
-static_assert(domain::name(domain::Declension{2}) == "D2");
-static_assert(domain::name(domain::Declension{9}) == "D9");
-static_assert(domain::name(domain::Declension{7}) == "?");
-static_assert(domain::name(domain::DeclensionVariant{1}) == "V1");
-static_assert(domain::name(domain::Conjugation{1}) == "C1");
-static_assert(domain::name(domain::ConjugationVariant{0}) == "V0");
+// INFO: Declension skips 7 and 8; the variants and conjugations do not.
+static_assert(latin::isValid(latin::Declension{6}));
+static_assert(!latin::isValid(latin::Declension{7}));
+static_assert(!latin::isValid(latin::Declension{8}));
+static_assert(latin::isValid(latin::Declension{9}));
+static_assert(!latin::isValid(latin::Declension{10}));
+static_assert(latin::isValid(latin::Variant{9}));
+static_assert(!latin::isValid(latin::Variant{10}));
+static_assert(latin::isValid(latin::Conjugation{9}));
+static_assert(!latin::isValid(latin::Conjugation{10}));
 
 } // namespace

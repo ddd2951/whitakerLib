@@ -31,7 +31,6 @@ option(WHITAKER_INSTALL "Generate the install and package rules"
     ${WHITAKER_TOP_LEVEL_DEFAULT})
 option(WHITAKER_WERROR "Treat warnings as errors"
     ${WHITAKER_TOP_LEVEL_DEFAULT})
-option(WHITAKER_BUILD_TOOLS "Build command-line tools" OFF)
 option(WHITAKER_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
 if(WHITAKER_BUILD_TESTING)
@@ -116,6 +115,7 @@ target_include_directories(whitaker
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/latin
 )
 
 target_compile_options(whitaker PRIVATE
@@ -141,20 +141,9 @@ set_property(TARGET whitaker APPEND PROPERTY LINK_DEPENDS
 )
 
 if(WHITAKER_SANITIZE)
-    target_compile_options(whitaker PRIVATE -fsanitize=address,undefined)
+    target_compile_options(whitaker PRIVATE -fsanitize=address,undefined
+        -fno-sanitize-recover=undefined)
     target_link_options(whitaker PRIVATE -fsanitize=address,undefined)
-endif()
-
-# --- Optional command-line tool ---
-
-if(WHITAKER_BUILD_TOOLS)
-    add_executable(whitaker-lookup tools/lookup/main.c)
-    target_link_libraries(whitaker-lookup PRIVATE
-        Whitaker::whitaker whitaker_warnings)
-    if(WHITAKER_SANITIZE)
-        target_compile_options(whitaker-lookup PRIVATE -fsanitize=address,undefined)
-        target_link_options(whitaker-lookup PRIVATE -fsanitize=address,undefined)
-    endif()
 endif()
 
 # --- Tests ---
@@ -164,10 +153,25 @@ if(WHITAKER_BUILD_TESTING)
     target_link_libraries(whitaker_test PRIVATE whitaker whitaker_warnings)
     target_compile_options(whitaker_test PRIVATE -UNDEBUG)
     if(WHITAKER_SANITIZE)
-        target_compile_options(whitaker_test PRIVATE -fsanitize=address,undefined)
+        target_compile_options(whitaker_test PRIVATE -fsanitize=address,undefined
+            -fno-sanitize-recover=undefined)
         target_link_options(whitaker_test PRIVATE -fsanitize=address,undefined)
     endif()
     add_test(NAME whitaker_test COMMAND whitaker_test)
+
+    # Every reading of every DICTLINE stem, bare and affixed, through the
+    # public API; it reaches the fallback paths the generator never sees.
+    add_executable(whitaker_sweep_test test/sweep_test.c)
+    target_link_libraries(whitaker_sweep_test PRIVATE whitaker whitaker_warnings)
+    if(WHITAKER_SANITIZE)
+        target_compile_options(whitaker_sweep_test PRIVATE
+            -fsanitize=address,undefined -fno-sanitize-recover=undefined)
+        target_link_options(whitaker_sweep_test PRIVATE -fsanitize=address,undefined)
+    endif()
+    add_test(NAME whitaker_sweep_test
+             COMMAND whitaker_sweep_test
+                     ${CMAKE_CURRENT_SOURCE_DIR}/data/source/DICTLINE.GEN)
+    set_tests_properties(whitaker_sweep_test PROPERTIES LABELS sweep)
 
     # Compiled against test/malformed_image.S instead of the image, so it never
     # links `whitaker`.
@@ -185,6 +189,7 @@ if(WHITAKER_BUILD_TESTING)
     target_include_directories(whitaker_malformed_image_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/latin
     )
     target_compile_options(whitaker_malformed_image_test PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions;-fno-rtti> -UNDEBUG
@@ -195,7 +200,7 @@ if(WHITAKER_BUILD_TESTING)
         WHITAKER_EMBEDDED_ONLY)
     if(WHITAKER_SANITIZE)
         target_compile_options(whitaker_malformed_image_test PRIVATE
-            -fsanitize=address,undefined)
+            -fsanitize=address,undefined -fno-sanitize-recover=undefined)
         target_link_options(whitaker_malformed_image_test PRIVATE
             -fsanitize=address,undefined)
     endif()
@@ -241,11 +246,6 @@ install(TARGETS whitaker
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-if(WHITAKER_BUILD_TOOLS)
-    install(TARGETS whitaker-lookup
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    )
-endif()
 install(FILES
     include/whitaker.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}

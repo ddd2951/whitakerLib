@@ -28,7 +28,7 @@ and writes:
 The paths and source formats are compiled in. The program works from any
 directory, but alternate inputs, outputs, or formats require a code change.
 Each source's line and record counts are stated in its scheme under
-`src/source/wl_stable/`, and a file that does not match them is refused:
+`src/source/`, and a file that does not match them is refused:
 `DICTLINE.GEN` 39,335 lines, `INFLECTS.LAT` 3,228 lines with 1,797 records,
 `UNIQUES.LAT` 237 lines with 79 records, `ADDONS.LAT` 1,200 lines with 343
 records.
@@ -43,18 +43,17 @@ The generator currently requires:
 
 This toolchain is needed only to regenerate the image.
 
-## Build and test
+## Build
 
 Run these commands from the parent `whitakerLib` directory:
 
 ```sh
 cmake -S codegen -B build-codegen -DCMAKE_BUILD_TYPE=Release
 cmake --build build-codegen -j2
-ctest --test-dir build-codegen --output-on-failure
 ```
 
-The two CTest executables check the compile-time stage roster. Corpus
-validation runs in `gen`, where the complete data is available.
+Expansion's compile-time fact checks run during the build. Corpus validation
+runs in `gen`, where the complete data is available.
 
 ## Generate the image
 
@@ -74,8 +73,8 @@ git diff --stat -- data/whitaker.dat
 For the image currently checked in:
 
 ```text
-size:    10,768,086 bytes
-SHA-256: 72bd888df04fff026a5c817abc64f1d62914f89205cba683d982f19949e68820
+size:    11,133,203 bytes
+SHA-256: 7376d2f43b2f831aecc9d268af33b92f08fcf4684a2389314d95b33375c5c6da
 ```
 
 An unchanged source and unchanged generator are expected to produce the same
@@ -83,8 +82,8 @@ image byte for byte.
 
 ## Measured generation time
 
-A warmed Release run took a median 3.84 seconds on an AMD Ryzen 5 5600X with
-GCC 16.2.1. This includes parsing, construction, publication, structural
+A warmed Release run took a median 4.12 seconds on an AMD Ryzen 5 5600X with
+GCC 16.2.1. This includes parsing, expansion, publication, structural
 validation, and exhaustive post-write comparison, but not compilation. It is
 a single-machine baseline, not a guarantee.
 
@@ -92,16 +91,21 @@ a single-machine baseline, not a guarantee.
 
 One run has four phases:
 
-1. Construction reads the fixed-width source files into validated records.
-2. Tokenization converts source fields into typed values and shared strings.
+1. `source::init()` reads the four source files into entries, and proves them
+   against the files byte for byte.
+2. `word::init()` parses every entry once into words: typed values, and text
+   as views into the source.
 3. Expansion applies the WORDS morphology rules and decides which generated
    forms and readings are retained.
 4. Emission builds the lookup state machine and relationship tables, then
    serializes them as `whitaker.dat`.
 
-The phases use one in-memory board. Each value has one writer; later phases
-receive it read-only. Compile-time checks require a complete, unique stage and
-hook set.
+`main()` calls the four steps in order. Source, word, and expansion each own
+their data; the emitter reads their doors and builds the fixed output image.
+
+A door is valid only after its island's `init()` has run, and only for an
+index inside what the island holds. This is a contract, not a check: no door
+verifies it, and none should. Using a door any other way is not valid.
 
 ## Publication and validation
 
@@ -116,7 +120,8 @@ After publication, the generator reopens the image and checks:
   pool, and complete graph walk;
 - every spelling retained by expansion;
 - every ordered analysis row for each spelling;
-- all four rendered fields: stem, meaning, part of speech, and inflection;
+- each row's stem, meaning, and grammar;
+- all 39,415 stored entries match the parsed dictionary and UNIQUES words;
 - the stated word-length and row counts; and
 - rejection of representative corruptions to the image format.
 

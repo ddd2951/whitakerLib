@@ -15,7 +15,7 @@ namespace {
 namespace rel = whitaker::relationship;
 
 using Image = rel::Image;
-using Part = rel::Part;
+using Part = latin::Part;
 
 // INFO: Lower_Case(Raw_Word). A prefix's first character and CONNECT are
 //  compared against this, not against the folded query.
@@ -41,10 +41,10 @@ struct Split {
 //  List_Sweep's evidence.
 struct Hit {
   FallbackMatch match;
-  std::uint8_t entryAge{};
-  std::uint8_t entryFrequency{};
-  std::uint8_t inflectAge{};
-  std::uint8_t inflectFrequency{};
+  latin::Age entryAge{};
+  latin::Frequency entryFrequency{};
+  latin::Age inflectAge{};
+  latin::Frequency inflectFrequency{};
   bool allowed{};
 };
 
@@ -53,15 +53,6 @@ thread_local std::vector<FallbackMatch> sMatches;
 thread_local std::vector<Split> sSplits;
 thread_local std::vector<Split> sSsa;
 thread_local std::vector<bool> sFound;
-
-// INFO: word_package.adb:882-888; the asymmetry is Whitaker's.
-[[nodiscard]] bool stemKeyAdmits(std::uint8_t dictKey, std::uint8_t wanted,
-                                 Part part) noexcept {
-  if (dictKey == wanted)
-    return true;
-  return dictKey == 0 && wanted >= 1 && wanted <= 2 &&
-         (part == Part::N || part == Part::ADJ || part == Part::V);
-}
 
 [[nodiscard]] bool noFix(std::uint16_t gate) noexcept {
   return (gate & rel::kGateAbbreviation) != 0;
@@ -80,34 +71,11 @@ thread_local std::vector<bool> sFound;
 
 // INFO: Allowed_Stem. The inflection's share is in the image; the rest comes
 //  off the entry and the stem the reading prints.
-[[nodiscard]] bool allowedStem(std::uint8_t allow, std::uint16_t gate,
-                               std::uint8_t verbKind,
+[[nodiscard]] bool allowedStem(latin::AllowSet allow, std::uint16_t gate,
+                               latin::VerbKind kind,
                                std::string_view stem) noexcept {
-  if ((allow & rel::kAllowIsVerb) == 0)
-    return true;
-
-  bool allowed = true;
-  if ((allow & rel::kAllowShortImp) != 0 &&
-      (gate & rel::kGateConjThreeOne) != 0) {
-    const std::string_view tail =
-        stem.size() >= 3 ? stem.substr(stem.size() - 3) : stem;
-    allowed = tail == "dic" || tail == "duc" || tail == "fac" || tail == "fer";
-  }
-  if ((allow & rel::kAllowImpNoPerson) != 0)
-    allowed = false;
-  if (verbKind == rel::kVerbKindImpers && (allow & rel::kAllowNotThird) != 0)
-    allowed = false;
-  // INFO: Whitaker's order: the future active infinitive restores a reading.
-  if (verbKind == rel::kVerbKindDep) {
-    if ((allow & rel::kAllowDepKeep) != 0)
-      allowed = true;
-    else if ((allow & rel::kAllowDepDrop) != 0)
-      allowed = false;
-  }
-  if (verbKind == rel::kVerbKindSemidep &&
-      (allow & rel::kAllowSemidepDrop) != 0)
-    allowed = false;
-  return allowed;
+  return latin::allowedStem(allow, kind, (gate & rel::kGateConjThreeOne) != 0,
+                            stem);
 }
 
 struct Rows {
@@ -142,10 +110,10 @@ struct Slot {
   std::uint8_t key{};
   Part part{};
   std::uint16_t classId{};
-  std::uint8_t verbKind{};
+  latin::VerbKind verbKind{};
   std::uint16_t gate{};
-  std::uint8_t age{};
-  std::uint8_t frequency{};
+  latin::Age age{};
+  latin::Frequency frequency{};
   Rows rows;
 };
 
@@ -159,9 +127,9 @@ struct Slot {
               .key = stem.key,
               .part = stem.part,
               .classId = id,
-              .verbKind = static_cast<std::uint8_t>(
+              .verbKind = latin::VerbKind{static_cast<std::uint8_t>(
                   (entry.classId >> rel::kClassVerbKindShift) &
-                  rel::kClassVerbKindMask),
+                  rel::kClassVerbKindMask)},
               .gate = grammar.gate,
               .age = entry.age,
               .frequency = entry.frequency,
@@ -169,23 +137,20 @@ struct Slot {
 }
 
 void record(const Image& image, const Image::FallbackRow& row, const Slot& slot,
-            std::uint16_t gate, const char* pos, std::uint32_t orthOffset,
+            std::uint16_t gate, std::uint32_t orthOffset,
             std::string_view shown, const Image::Addon& addon,
             const Image::Addon* secondAddon = nullptr) {
   const Image::Inflection inflection = image.inflection(row.inflect);
-  const Image::Description description = image.description(row.description);
   sHits.push_back(Hit{
       .match = {.orthOffset = orthOffset,
                 .orthLength = static_cast<std::uint32_t>(shown.size()),
                 .meaning = image.dictionaryMeaning(slot.dictionary),
-                .pos = pos,
-                .inflection = description.inflection,
-                .addonSpelling = {addon.fix,
-                                  secondAddon ? secondAddon->fix : nullptr},
-                .addonMeaning = {addon.meaning,
-                                 secondAddon ? secondAddon->meaning : nullptr},
+                .grammar = image.grammar(row.description),
+                .dictionary = slot.dictionary,
+                .addonId = {addon.id,
+                            secondAddon ? secondAddon->id : std::uint16_t{}},
                 .addonKind = {addon.kind, secondAddon ? secondAddon->kind
-                                                      : rel::AddonKind{}},
+                                                      : latin::AddonKind{}},
                 .addonCount = static_cast<std::uint8_t>(secondAddon ? 2 : 1)},
       .entryAge = slot.age,
       .entryFrequency = slot.frequency,
@@ -199,7 +164,7 @@ void record(const Image& image, const Image::FallbackRow& row, const Slot& slot,
 // NOTE: `combined` is Apply_Suffix's else arm; the gates then read the
 //  suffix's target, not the entry.
 void applyPrefix(const Image& image, const Query& query,
-                 std::span<const Split> splits, std::uint32_t suffix,
+                 std::span<const Split> splits, std::uint16_t suffix,
                  bool combined) {
   Image::Addon suffixRecord{};
   std::size_t suffixLength = 0;
@@ -211,9 +176,9 @@ void applyPrefix(const Image& image, const Query& query,
     suffixLength = std::string_view{suffixRecord.fix}.size();
   }
 
-  for (std::uint32_t index = 0; index < image.addonCount(); ++index) {
+  for (std::uint16_t index = 0; index < image.addonCount(); ++index) {
     const Image::Addon addon = image.addon(index);
-    if (addon.kind != rel::AddonKind::Prefix)
+    if (addon.kind != latin::AddonKind::Prefix)
       continue;
     const std::string_view fix{addon.fix};
     if (fix.empty())
@@ -253,22 +218,21 @@ void applyPrefix(const Image& image, const Query& query,
         if (combined) {
           if (noFix(slot.gate))
             continue;
-          if (suffixRecord.root != Part::Any && slot.part != suffixRecord.root)
+          if (!latin::suffixRootAdmits(suffixRecord.root, slot.part))
             continue;
-          if (!stemKeyAdmits(slot.key, suffixRecord.rootKey, slot.part))
+          if (!latin::stemKeyAdmits(slot.key, suffixRecord.rootKey, slot.part))
             continue;
         }
 
         const Part part = combined ? suffixRecord.targetPart : slot.part;
         const std::uint16_t gate =
             combined ? suffixRecord.targetGate : slot.gate;
-        const char* const pos = rel::partName(part);
         const Rows rows =
             combined ? Rows{suffixRecord.rowStart, suffixRecord.rowCount}
                      : slot.rows;
 
         // A prefix has no Root_Key; its gate is the part alone.
-        if (addon.root != Part::Any && part != addon.root)
+        if (!latin::rootAdmits(addon.root, part))
           continue;
         if (noPrefix(gate))
           continue;
@@ -277,12 +241,11 @@ void applyPrefix(const Image& image, const Query& query,
           // NOTE: A suffix's rows carry Target_Key; a class's rows do not,
           //  so the key is asked here.
           if (!combined &&
-              !stemKeyAdmits(slot.key, image.inflection(row.inflect).key,
-                             slot.part))
+              !latin::stemKeyAdmits(slot.key, image.inflection(row.inflect).key,
+                                    slot.part))
             return;
-          record(image, row, slot, gate, pos,
-                 static_cast<std::uint32_t>(fix.size()), shown, addon,
-                 combined ? &suffixRecord : nullptr);
+          record(image, row, slot, gate, static_cast<std::uint32_t>(fix.size()),
+                 shown, addon, combined ? &suffixRecord : nullptr);
         });
       }
     }
@@ -299,9 +262,9 @@ void applyPrefix(const Image& image, const Query& query,
 //  the record.
 void applySuffix(const Image& image, const Query& query,
                  std::span<const Split> splits) {
-  for (std::uint32_t index = 0; index < image.addonCount(); ++index) {
+  for (std::uint16_t index = 0; index < image.addonCount(); ++index) {
     const Image::Addon addon = image.addon(index);
-    if (addon.kind != rel::AddonKind::Suffix)
+    if (addon.kind != latin::AddonKind::Suffix)
       continue;
     const std::string_view fix{addon.fix};
     if (fix.empty())
@@ -356,9 +319,9 @@ void applySuffix(const Image& image, const Query& query,
           image.fallbackStemRange(query.folded.substr(0, split.stemLength));
       for (std::uint32_t s = first; s < last; ++s) {
         const Slot slot = slotOf(image, image.fallbackStem(s));
-        if (addon.root != Part::Any && slot.part != addon.root)
+        if (!latin::suffixRootAdmits(addon.root, slot.part))
           continue;
-        if (!stemKeyAdmits(slot.key, addon.rootKey, slot.part))
+        if (!latin::stemKeyAdmits(slot.key, addon.rootKey, slot.part))
           continue;
         // NOTE: On the class the entry has, not the one the suffix gives it.
         if (noFix(slot.gate))
@@ -366,8 +329,7 @@ void applySuffix(const Image& image, const Query& query,
 
         visitRows(image, Rows{addon.rowStart, addon.rowCount}, split,
                   [&](const Image::FallbackRow& row) {
-                    record(image, row, slot, addon.targetGate,
-                           rel::partName(addon.targetPart), 0, shown, addon);
+                    record(image, row, slot, addon.targetGate, 0, shown, addon);
                   });
       }
     }
@@ -380,9 +342,9 @@ void applySuffix(const Image& image, const Query& query,
 //  tack against an ADJECT entry.
 void applyPackon(const Image& image, const Query& query) {
   std::uint16_t ordinal = 0;
-  for (std::uint32_t index = 0; index < image.addonCount(); ++index) {
+  for (std::uint16_t index = 0; index < image.addonCount(); ++index) {
     const Image::Addon addon = image.addon(index);
-    if (addon.kind != rel::AddonKind::Packon)
+    if (addon.kind != latin::AddonKind::Packon)
       continue;
     ++ordinal;
     const std::string_view fix{addon.fix};
@@ -410,8 +372,7 @@ void applyPackon(const Image& image, const Query& query) {
         visitRows(image, slot.rows, split, [&](const Image::FallbackRow& row) {
           // INFO: No stem-key gate: WORDS prints cui.que as DAT S X and
           //  NOM P M off different columns. Prints as PRON, base alone.
-          record(image, row, slot, slot.gate, rel::partName(Part::PRON), 0,
-                 stem, addon);
+          record(image, row, slot, slot.gate, 0, stem, addon);
         });
       }
     }
@@ -425,21 +386,18 @@ void trim() {
   bool notOnlyMedieval = false;
   bool notOnlyUncommon = false;
   for (const Hit& hit : sHits) {
-    if ((hit.inflectAge == rel::kAgeX || hit.inflectAge > rel::kAgeA) &&
-        (hit.entryAge == rel::kAgeX || hit.entryAge > rel::kAgeA))
+    if (!latin::archaic(hit.inflectAge) && !latin::archaic(hit.entryAge))
       notOnlyArchaic = true;
-    if ((hit.inflectAge == rel::kAgeX || hit.inflectAge < rel::kAgeF) &&
-        (hit.entryAge == rel::kAgeX || hit.entryAge < rel::kAgeF))
+    if (!latin::medieval(hit.inflectAge) && !latin::medieval(hit.entryAge))
       notOnlyMedieval = true;
-    if ((hit.inflectFrequency == rel::kFreqX ||
-         hit.inflectFrequency < rel::kFreqC) &&
-        (hit.entryFrequency == rel::kFreqX || hit.entryFrequency < rel::kFreqD))
+    if (!latin::uncommonInflection(hit.inflectFrequency) &&
+        !latin::uncommonEntry(hit.entryFrequency))
       notOnlyUncommon = true;
   }
   std::erase_if(sHits, [=](const Hit& hit) {
-    return !hit.allowed || (notOnlyArchaic && hit.inflectAge == rel::kAgeA) ||
-           (notOnlyMedieval && hit.inflectAge >= rel::kAgeF) ||
-           (notOnlyUncommon && hit.inflectFrequency >= rel::kFreqC);
+    return !hit.allowed || (notOnlyArchaic && latin::archaic(hit.inflectAge)) ||
+           (notOnlyMedieval && latin::medieval(hit.inflectAge)) ||
+           (notOnlyUncommon && latin::uncommonInflection(hit.inflectFrequency));
   });
 }
 

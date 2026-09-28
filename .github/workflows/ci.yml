@@ -37,7 +37,6 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-          -DWHITAKER_BUILD_TOOLS=ON
           -DWHITAKER_SANITIZE=${{ matrix.sanitize }}
 
       - name: Build
@@ -61,4 +60,4 @@ jobs:
         if: matrix.sanitize == 'OFF'
         run: |
           nm -D --defined-only prefix/lib/libwhitaker.so | awk '$2 == "T" {print $3}' | sed 's/@@.*//' | sort > exported.txt
-          printf 'whitaker_analyze\nwhitaker_init\nwhitaker_result_copy\n' | diff - exported.txt
+          printf 'whitaker_addon_meaning\nwhitaker_addon_spelling\nwhitaker_analyze\nwhitaker_describe\nwhitaker_init\nwhitaker_name\nwhitaker_result_copy\n' | diff - exported.txt

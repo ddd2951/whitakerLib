@@ -1,6 +1,7 @@
 #pragma once
 
 #include "facts.hpp"
+#include "latin.hpp"
 
 #include <array>
 #include <bit>
@@ -17,7 +18,6 @@ enum class Section : std::uint32_t {
   Targets,
   Instructions,
   Dictionaries,
-  Descriptions,
   Addons,
   Classes,
   FallbackRows,
@@ -25,78 +25,14 @@ enum class Section : std::uint32_t {
   Endings,
   FallbackStems,
   Strings,
+  Grammars,
+  Entries,
   count,
 };
 
-// INFO: DICTLINE and ADDONS.LAT number the parts differently. Both are
-//  converted to this one ordinal, so the image compares like with like.
-enum class Part : std::uint8_t {
-  N,
-  PRON,
-  V,
-  ADJ,
-  ADV,
-  PREP,
-  NUM,
-  CONJ,
-  INTERJ,
-  PACK,
-  SUPINE,
-  VPAR,
-  NONE,
-  // ADDONS.LAT's X: the record accepts any part.
-  Any = 0xff,
-};
-
-// ADDONS.LAT's record kinds, in the order the addon table stores them.
-enum class AddonKind : std::uint8_t { Tickon, Prefix, Suffix, Tackon, Packon };
-
-[[nodiscard]] constexpr bool isAddonKind(std::uint8_t value) noexcept {
-  return value <= static_cast<std::uint8_t>(AddonKind::Packon);
-}
-
-[[nodiscard]] constexpr bool isPart(std::uint8_t value) noexcept {
-  return value <= static_cast<std::uint8_t>(Part::NONE) ||
-         value == static_cast<std::uint8_t>(Part::Any);
-}
-
-// Null for NONE and Any.
-[[nodiscard]] constexpr const char* partName(Part part) noexcept {
-  switch (part) {
-  case Part::N:
-    return "N";
-  case Part::PRON:
-    return "PRON";
-  case Part::V:
-    return "V";
-  case Part::ADJ:
-    return "ADJ";
-  case Part::ADV:
-    return "ADV";
-  case Part::PREP:
-    return "PREP";
-  case Part::NUM:
-    return "NUM";
-  case Part::CONJ:
-    return "CONJ";
-  case Part::INTERJ:
-    return "INTERJ";
-  case Part::PACK:
-    return "PACK";
-  case Part::SUPINE:
-    return "SUPINE";
-  case Part::VPAR:
-    return "VPAR";
-  case Part::NONE:
-  case Part::Any:
-    return nullptr;
-  }
-  return nullptr;
-}
-
 inline constexpr std::array<char, 8> kMagic{'W', 'H', 'I', 'T',
                                             'R', 'E', 'L', '\0'};
-inline constexpr std::uint32_t kVersion = 4;
+inline constexpr std::uint32_t kVersion = 5;
 inline constexpr std::uint32_t kSectionCount =
     static_cast<std::uint32_t>(Section::count);
 inline constexpr std::size_t kHeaderBytes = 48;
@@ -118,32 +54,12 @@ inline constexpr std::uint16_t kGatePackonShift = 8;
 inline constexpr std::uint16_t kGatePackonMask = 0xfu;
 // The verb kind rides on the entry, not the class: two verbs of one
 // conjugation share a class and can still differ here.
-inline constexpr std::uint16_t kClassIdMask = 0x1fffu;
-inline constexpr std::uint16_t kClassVerbKindShift = 13;
-inline constexpr std::uint16_t kClassVerbKindMask = 0x7u;
-inline constexpr std::uint8_t kVerbKindOther = 0;
-inline constexpr std::uint8_t kVerbKindImpers = 1;
-inline constexpr std::uint8_t kVerbKindDep = 2;
-inline constexpr std::uint8_t kVerbKindSemidep = 3;
-// INFO: Age and frequency are ordinals because WORDS compares them by
-//  declaration order. These are the thresholds List_Sweep names.
-inline constexpr std::uint8_t kAgeX = 0;
-inline constexpr std::uint8_t kAgeA = 1;
-inline constexpr std::uint8_t kAgeF = 6;
-inline constexpr std::uint8_t kFreqX = 0;
-inline constexpr std::uint8_t kFreqC = 3;
-inline constexpr std::uint8_t kFreqD = 4;
-
-// An inflection row's share of Allowed_Stem; the entry's share is its verb
-// kind and the stem the reading prints.
-inline constexpr std::uint8_t kAllowIsVerb = 1u << 0;
-inline constexpr std::uint8_t kAllowShortImp = 1u << 1;
-inline constexpr std::uint8_t kAllowImpNoPerson = 1u << 2;
-inline constexpr std::uint8_t kAllowNotThird = 1u << 3;
-inline constexpr std::uint8_t kAllowDepKeep = 1u << 4;
-inline constexpr std::uint8_t kAllowDepDrop = 1u << 5;
-inline constexpr std::uint8_t kAllowSemidepDrop = 1u << 6;
-inline constexpr std::size_t kDescriptionBytes = 8;
+inline constexpr std::uint16_t kClassIdMask = 0x0fffu;
+inline constexpr std::uint16_t kClassVerbKindShift = 12;
+inline constexpr std::uint16_t kClassVerbKindMask = 0xfu;
+// One description's grammar, by description id, one byte a field.
+inline constexpr std::size_t kGrammarBytes = 12;
+inline constexpr std::size_t kEntryBytes = 12;
 // One ADDONS.LAT record. The fix is stored folded; `firstRaw` is its first
 // character as spelled, which Apply_Prefix compares unfolded.
 inline constexpr std::size_t kAddonBytes = 32;
@@ -171,6 +87,21 @@ struct DirectoryEntry {
   std::uint64_t offset{};
   std::uint64_t bytes{};
   std::uint64_t count{};
+};
+
+struct Entry {
+  latin::Part part{};
+  std::uint8_t which{};
+  std::uint8_t variant{};
+  latin::Gender gender{};
+  std::uint8_t kind{};
+  latin::Comparison comparison{};
+  latin::NumeralSort numeralSort{};
+  latin::Area area{};
+  latin::Geography geography{};
+  latin::Source source{};
+  latin::NumeralValue numeralValue{};
+  friend constexpr bool operator==(Entry, Entry) = default;
 };
 
 [[nodiscard]] constexpr std::uint16_t read16(const std::byte* p) noexcept {

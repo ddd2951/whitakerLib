@@ -37,10 +37,15 @@ target_compile_options(gen_policy INTERFACE
 
 # --- What every generator target compiles against ---
 
-# Generator headers are spelled from src/: "types/types.hpp",
-# "gen/roster_tag.hpp".
+# latin.hpp: the vocabulary the generator and the library share.
+add_library(gen_latin INTERFACE)
+target_include_directories(gen_latin INTERFACE ${WHITAKER_SUBTREE}/latin)
+
+# Generator headers are spelled from src/: "types/grammar.hpp",
+# "source/source.hpp".
 add_library(gen_headers INTERFACE)
 target_include_directories(gen_headers INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(gen_headers INTERFACE gen_latin)
 # The headers use C++26 reflection.
 target_compile_features(gen_headers INTERFACE cxx_std_26)
 target_compile_options(gen_headers INTERFACE -freflection)
@@ -60,8 +65,11 @@ add_library(gen_runtime_relationship STATIC
     ${WHITAKER_SUBTREE}/src/search/relationship_image.cpp)
 target_include_directories(gen_runtime_relationship PUBLIC ${WHITAKER_SUBTREE})
 target_link_libraries(gen_runtime_relationship
-    PUBLIC gen_runtime_facts
+    PUBLIC gen_runtime_facts gen_latin
     PRIVATE gen_policy)
+# The library builds its reader as C++23; so does this copy.
+target_compile_features(gen_runtime_relationship PRIVATE cxx_std_23)
+set_target_properties(gen_runtime_relationship PROPERTIES CXX_EXTENSIONS OFF)
 
 # main_config.hpp: corpus and output paths, and the version the run reports.
 add_library(gen_config INTERFACE)
@@ -69,46 +77,25 @@ target_compile_definitions(gen_config INTERFACE
     GEN_DATA_DIR="${WHITAKER_SUBTREE}/data"
     GEN_VERSION="${WHITAKER_VERSION}")
 
-include(CTest)
-
 add_subdirectory(src/error)
 add_subdirectory(src/util)
 add_subdirectory(src/types)
 add_subdirectory(src/publish)
-add_subdirectory(src/gen/construction)
-add_subdirectory(src/gen/tokenize)
-add_subdirectory(src/gen/expand)
-add_subdirectory(src/gen/emitter)
+add_subdirectory(src/source)
+add_subdirectory(src/word)
+add_subdirectory(src/expand)
+add_subdirectory(src/emitter)
 
-add_executable(gen
-    src/main.cpp
-    src/gen/gen.cpp
-)
+add_executable(gen src/main.cpp)
 
 target_link_libraries(gen PRIVATE
     gen_types
     gen_error
     gen_publish
-    gen_construction_wl_stable
-    gen_tokenize_wl_stable
-    gen_expand_wl_stable
-    gen_emitter_wl_stable
+    gen_source
+    gen_word
+    gen_expand
+    gen_emitter
 )
 
-target_link_libraries(gen PRIVATE gen_policy gen_config)
-
-# Separate executables so each check can be run alone.
-if(BUILD_TESTING)
-    add_executable(gen_roster_tag_test src/gen/roster_tag_test.cpp)
-    target_link_libraries(gen_roster_tag_test PRIVATE gen_headers gen_policy)
-    add_test(NAME gen_roster_tag_test COMMAND gen_roster_tag_test)
-
-    add_executable(gen_roster_test src/gen/roster_test.cpp)
-    target_link_libraries(gen_roster_test PRIVATE
-        gen_headers
-        gen_config
-        gen_runtime_facts
-        gen_policy)
-    add_test(NAME gen_roster_test COMMAND gen_roster_test)
-
-endif()
+target_link_libraries(gen PRIVATE gen_policy)
