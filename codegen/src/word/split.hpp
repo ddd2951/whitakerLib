@@ -15,14 +15,12 @@ template <std::size_t max> struct Fields {
 };
 
 template <std::size_t max>
-Fields<max> split(std::string_view text, std::string_view separators,
-                  std::string_view where) {
+Fields<max> split(std::string_view text, std::string_view separators, std::string_view where) {
   Fields<max> fields;
   std::size_t begin = text.find_first_not_of(separators);
   while (begin != std::string_view::npos) {
     if (fields.count == max)
-      error::fatal(std::string{where} + ": more than " + std::to_string(max) +
-                   " fields");
+      error::invalid("more than " + std::to_string(max) + " fields", where);
     const std::size_t end = text.find_first_of(separators, begin);
     fields.at[fields.count++] = text.substr(begin, end - begin);
     begin = text.find_first_not_of(separators, end);

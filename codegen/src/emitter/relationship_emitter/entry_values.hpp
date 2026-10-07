@@ -11,13 +11,11 @@
 
 namespace emitter {
 
-[[nodiscard]] inline whitaker::relationship::Entry
-entryValues(const latin::Entry& grammar, latin::Area area,
-            latin::Geography geography, latin::Source source) {
-  whitaker::relationship::Entry entry{.part = partOf(grammar),
-                                      .area = area,
-                                      .geography = geography,
-                                      .source = source};
+template <typename Parsed> [[nodiscard]] whitaker::relationship::Entry entryValues(const Parsed& parsed) {
+  whitaker::relationship::Entry entry{.part = partOf(parsed.grammar),
+                                      .area = parsed.labels.area,
+                                      .geography = parsed.labels.geography,
+                                      .source = parsed.labels.source};
   std::visit(
       [&entry]<typename T>(const T& value) {
         if constexpr (requires { value.declension; }) {
@@ -44,7 +42,7 @@ entryValues(const latin::Entry& grammar, latin::Area area,
         else if constexpr (std::is_same_v<T, latin::Verb>)
           entry.kind = std::to_underlying(value.verbKind);
       },
-      grammar);
+      parsed.grammar);
   return entry;
 }
 

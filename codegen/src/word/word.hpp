@@ -4,35 +4,27 @@
 #include "types/grammar.hpp"
 #include "latin.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <meta>
+#include <optional>
 #include <string_view>
 
 namespace word {
 
-// NOTE: A stem is text, absent (`zzz`) or present and empty (all blanks).
-using Stem = std::string_view;
+using Stem = std::optional<std::string_view>;
 
-inline constexpr std::string_view kAbsentStem{"zzz"};
+template <std::meta::info file> struct Row {
+  std::uint32_t value{};
+  friend constexpr bool operator==(Row, Row) = default;
+};
 
-enum class StemState : std::uint8_t { text, absent, empty };
-
-[[nodiscard]] constexpr StemState stemState(Stem stem) {
-  if (stem.empty())
-    return StemState::empty;
-  if (stem == kAbsentStem)
-    return StemState::absent;
-  return StemState::text;
-}
-
-struct DictlineRowTag;
-struct InflectsRowTag;
-
-using DictlineRow = semantic::Value<DictlineRowTag, std::uint32_t>;
-using InflectsRow = semantic::Value<InflectsRowTag, std::uint32_t>;
+using DictlineRow = Row<^^source::scheme::dictline>;
+using InflectsRow = Row<^^source::scheme::inflects>;
+using UniquesRow = Row<^^source::scheme::uniques>;
 
 inline constexpr DictlineRow kEsse{source::scheme::dictline::kEntriesPerFile};
-inline constexpr InflectsRow kAdverbPositive{
-    source::scheme::inflects::kEntriesPerFile};
+inline constexpr InflectsRow kAdverbPositive{source::scheme::inflects::kEntriesPerFile};
 inline constexpr InflectsRow kAdverbSuperlative{kAdverbPositive.value + 1};
 
 inline constexpr std::uint32_t kDictlineWords{kEsse.value + 1};
@@ -40,70 +32,69 @@ inline constexpr std::uint32_t kInflectsWords{kAdverbSuperlative.value + 1};
 
 void init();
 
-class Dictline {
-public:
-  explicit constexpr Dictline(DictlineRow entry) : entry{entry} {}
-
-  [[nodiscard]] word::Stem stem1() const;
-  [[nodiscard]] word::Stem stem2() const;
-  [[nodiscard]] word::Stem stem3() const;
-  [[nodiscard]] word::Stem stem4() const;
-  [[nodiscard]] latin::Entry grammar() const;
-  [[nodiscard]] latin::Age age() const;
-  [[nodiscard]] latin::Area area() const;
-  [[nodiscard]] latin::Geography geography() const;
-  [[nodiscard]] latin::Frequency frequency() const;
-  [[nodiscard]] latin::Source source() const;
-  [[nodiscard]] std::string_view senses() const;
-  [[nodiscard]] std::string_view packon() const;
-
-private:
-  DictlineRow entry;
+struct Column {
+  std::size_t at;
+  std::size_t width;
 };
 
-class Inflects {
-public:
-  explicit constexpr Inflects(InflectsRow entry) : entry{entry} {}
-
-  [[nodiscard]] latin::Inflection grammar() const;
-  [[nodiscard]] latin::StemKey stemKey() const;
-  [[nodiscard]] latin::CharacterCount characterCount() const;
-  [[nodiscard]] std::string_view ending() const;
-  [[nodiscard]] latin::Age age() const;
-  [[nodiscard]] latin::Frequency frequency() const;
-
-private:
-  InflectsRow entry;
+struct PartColumn {
+  std::size_t at;
+  std::size_t width;
 };
 
-class Uniques {
-public:
-  explicit constexpr Uniques(source::UniquesIndex entry) : entry{entry} {}
-
-  [[nodiscard]] std::string_view form() const;
-  [[nodiscard]] latin::Entry grammar() const;
-  [[nodiscard]] latin::Inflection inflection() const;
-  [[nodiscard]] latin::Age age() const;
-  [[nodiscard]] latin::Area area() const;
-  [[nodiscard]] latin::Geography geography() const;
-  [[nodiscard]] latin::Frequency frequency() const;
-  [[nodiscard]] latin::Source source() const;
-  [[nodiscard]] std::string_view senses() const;
-
-private:
-  source::UniquesIndex entry;
+struct PresentIf {
+  char member[24]{};
+  consteval PresentIf(const char* name) {
+    for (std::size_t i = 0; name[i] != '\0'; ++i)
+      member[i] = name[i];
+  }
 };
 
-class Addons {
-public:
-  explicit constexpr Addons(source::AddonsIndex entry) : entry{entry} {}
-
-  [[nodiscard]] latin::Addon addon() const;
-  [[nodiscard]] std::string_view meaning() const;
-  [[nodiscard]] latin::AddonKind kind() const;
-
-private:
-  source::AddonsIndex entry;
+struct Labels {
+  [[= Column{1, 1}]] latin::Age age;
+  [[= Column{3, 1}]] latin::Area area;
+  [[= Column{5, 1}]] latin::Geography geography;
+  [[= Column{7, 1}]] latin::Frequency frequency;
+  [[= Column{9, 1}]] latin::Source source;
 };
+
+struct DictlineEntry {
+  [[= Column{0, 19}]] Stem stem1;
+  [[= Column{19, 19}]] Stem stem2;
+  [[= Column{38, 19}]] Stem stem3;
+  [[= Column{57, 19}]] Stem stem4;
+  [[ = Column{83, 16}, = PartColumn{76, 7} ]] latin::Entry grammar;
+  [[= Column{99, 11}]] Labels labels;
+  [[= Column{110, 0}]] std::string_view senses;
+  std::string_view packon;
+};
+
+struct InflectsEntry {
+  latin::Inflection grammar;
+  latin::StemKey stemKey;
+  latin::CharacterCount characterCount;
+  [[= PresentIf{"characterCount"}]] std::string_view ending;
+  latin::Age age;
+  latin::Frequency frequency;
+};
+
+struct UniquesEntry {
+  std::string_view form;
+  latin::Entry grammar;
+  latin::Inflection inflection;
+  Labels labels;
+  std::string_view senses;
+};
+
+struct AddonsEntry {
+  latin::Addon addon;
+  std::string_view meaning;
+  latin::AddonKind kind;
+};
+
+[[nodiscard]] const DictlineEntry& entry(DictlineRow row);
+[[nodiscard]] const InflectsEntry& entry(InflectsRow row);
+[[nodiscard]] const UniquesEntry& entry(UniquesRow row);
+[[nodiscard]] const AddonsEntry& entry(source::AddonsIndex row);
 
 } // namespace word

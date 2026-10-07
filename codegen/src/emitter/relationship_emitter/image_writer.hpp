@@ -4,9 +4,8 @@
 
 namespace emitter {
 
-class ImageFile;
+struct ImageFile;
 
-[[nodiscard]] ImageFile encodeImage(const ImageData& imageData,
-                                    const DirectOutputMachine& machine);
+[[nodiscard]] ImageFile encodeImage(const ImageData& imageData, const Machine& machine);
 
 } // namespace emitter

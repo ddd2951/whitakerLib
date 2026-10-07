@@ -1,15 +1,12 @@
 #include "source.hpp"
 
-#include <main_config.hpp>
-
 #include "error/error.hpp"
 #include "source/schemes.hpp"
 #include "util/file_load.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
-#include <print>
+#include <meta>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,213 +15,95 @@
 namespace {
 
 namespace scheme = source::scheme;
-using Kind = scheme::SourceFileKind;
 
-// NOTE: No two paths may name one file. Added after it happened.
-static_assert(main_config::kSourceDictlinePath !=
-                  main_config::kSourceInflectsPath,
-              "DICTLINE.GEN and INFLECTS.LAT are the same path");
-static_assert(main_config::kSourceDictlinePath !=
-                  main_config::kSourceUniquesPath,
-              "DICTLINE.GEN and UNIQUES.LAT are the same path");
-static_assert(main_config::kSourceDictlinePath !=
-                  main_config::kSourceAddonsPath,
-              "DICTLINE.GEN and ADDONS.LAT are the same path");
-static_assert(main_config::kSourceInflectsPath !=
-                  main_config::kSourceUniquesPath,
-              "INFLECTS.LAT and UNIQUES.LAT are the same path");
-static_assert(main_config::kSourceInflectsPath !=
-                  main_config::kSourceAddonsPath,
-              "INFLECTS.LAT and ADDONS.LAT are the same path");
-static_assert(main_config::kSourceUniquesPath != main_config::kSourceAddonsPath,
-              "UNIQUES.LAT and ADDONS.LAT are the same path");
+template <std::meta::info file> std::array<std::string, [:file:] ::kLinesPerFile> lines;
 
-consteval std::string_view getPath(Kind kind) {
-  switch (kind) {
-  case Kind::dictline:
-    return main_config::kSourceDictlinePath;
-  case Kind::inflects:
-    return main_config::kSourceInflectsPath;
-  case Kind::uniques:
-    return main_config::kSourceUniquesPath;
-  case Kind::addons:
-    return main_config::kSourceAddonsPath;
-  }
-}
-
-constexpr char kLineFeed{'\n'};
-constexpr char kCarriageReturn{'\r'};
-
-template <Kind kind>
-std::array<std::string, scheme::getLinesPerFile(kind)> lines;
-
-template <Kind kind> void read() {
-  constexpr std::string_view path = getPath(kind);
+template <std::meta::info file> void read() {
+  constexpr std::string_view path = [:file:] ::kPath;
   const std::vector<char> bytes = util::fileLoad(path);
   std::size_t next{};
   std::string line;
   for (const char byte : bytes) {
-    if (byte != kLineFeed) {
+    if (byte != '\n') {
       line.push_back(byte);
       continue;
     }
-    if (!line.empty() && line.back() == kCarriageReturn)
+    if (!line.empty() && line.back() == '\r')
       line.pop_back();
-    if (next == lines<kind>.size())
-      error::fatal(std::string{path} + ": holds more lines than the " +
-                   std::to_string(lines<kind>.size()) + " its scheme states");
-    lines<kind>[next++] = std::move(line);
+    if (next == lines<file>.size())
+      error::invalid("line count over the scheme's " + std::to_string(lines<file>.size()), path);
+    lines<file>[next++] = std::move(line);
     line.clear();
   }
   if (!line.empty())
-    error::fatal(std::string{path} + ":" + std::to_string(next + 1) +
-                 ": last line has no terminator");
-  if (next != lines<kind>.size())
-    error::fatal(std::string{path} + ": holds " + std::to_string(next) +
-                 " lines, its scheme states " +
-                 std::to_string(lines<kind>.size()));
+    error::invalid("last line without a terminator", std::string{path} + ":" + std::to_string(next + 1));
+  if (next != lines<file>.size())
+    error::invalid("line count under the scheme's " + std::to_string(lines<file>.size()), path);
 }
 
-template <Kind kind> void verify() {
-  constexpr std::string_view path = getPath(kind);
-  constexpr std::string_view ending = scheme::getLineEnding(kind);
-  const auto& file = lines<kind>;
+template <std::meta::info file> std::array<std::size_t, [:file:] ::kEntriesPerFile * [:file:] ::kLinesPerEntry> records;
 
-  std::println("formatted lines: {} ({})", path, file.size());
-  std::println("{}:{}: |{}|", path, 1, file.front());
-  std::println("{}:{}: |{}|", path, file.size(), file.back());
-
-  std::size_t number{1};
-  for (const std::string& line : file) {
-    if (line.contains('\r') || line.contains('\n'))
-      error::fatal(std::string{path} + ":" + std::to_string(number) +
-                   ": formatted line holds a line ending");
-    ++number;
-  }
-
-  // NOTE: Compare every source byte, including the pinned line endings.
-  std::string rebuilt;
-  std::size_t size{};
-  for (const std::string& line : file)
-    size += line.size() + ending.size();
-  rebuilt.reserve(size);
-  for (const std::string& line : file) {
-    rebuilt += line;
-    rebuilt += ending;
-  }
-  const auto lineHolding = [&file, ending](std::size_t offset) {
-    std::size_t start{};
-    std::size_t holding{1};
-    for (const std::string& line : file) {
-      start += line.size() + ending.size();
-      if (offset < start)
-        break;
-      ++holding;
-    }
-    return holding;
-  };
-  const std::vector<char> bytes = util::fileLoad(path);
-  const std::size_t shared = std::min(rebuilt.size(), bytes.size());
-  for (std::size_t at{}; at < shared; ++at)
-    if (rebuilt[at] != bytes[at])
-      error::fatal(std::string{path} + ":" + std::to_string(lineHolding(at)) +
-                   ": rebuilt source differs at byte " + std::to_string(at));
-  if (rebuilt.size() != bytes.size())
-    error::fatal(std::string{path} + ": rebuilt source is " +
-                 std::to_string(rebuilt.size()) + " bytes, the file is " +
-                 std::to_string(bytes.size()));
+template <std::meta::info file> void indexEveryLine() {
+  static_assert(records<file>.size() == lines<file>.size());
+  for (std::size_t at{}; at < records<file>.size(); ++at)
+    records<file>[at] = at;
 }
 
-template <Kind kind>
-std::array<std::size_t,
-           scheme::getEntryCount(kind) * scheme::getLineCount(kind)>
-    records;
-
-template <Kind kind> void everyLine() {
-  static_assert(records<kind>.size() == lines<kind>.size());
-  for (std::size_t at{}; at < records<kind>.size(); ++at)
-    records<kind>[at] = at;
-}
-
-// NOTE: ADDONS meanings can contain `--`, so framing skips only whole-line
-//  comments.
-template <Kind kind>
-void frame(std::string_view commentMarker, std::string_view whitespace) {
-  constexpr std::string_view path = getPath(kind);
+// NOTE: ADDONS meanings can contain `--`, so framing skips only whole-line comments.
+template <std::meta::info file> void frame() {
+  constexpr std::string_view path = [:file:] ::kPath;
+  constexpr std::string_view commentMarker = [:file:] ::kCommentMarker;
+  constexpr std::string_view whitespace = [:file:] ::kWhitespace;
   std::size_t index{};
-  for (std::size_t at{}; at < lines<kind>.size(); ++at) {
-    const std::string_view text = lines<kind>[at];
+  for (std::size_t at{}; at < lines<file>.size(); ++at) {
+    const std::string_view text = lines<file>[at];
     const std::size_t content = text.find_first_not_of(whitespace);
     if (content == std::string_view::npos)
       continue;
     if (text.substr(content).starts_with(commentMarker))
       continue;
-    if (index == records<kind>.size())
-      error::fatal(std::string{path} + ":" + std::to_string(at + 1) +
-                   ": more record lines than the scheme's " +
-                   std::to_string(records<kind>.size()));
-    records<kind>[index++] = at;
+    if (index == records<file>.size())
+      error::invalid("record line past the scheme's " + std::to_string(records<file>.size()),
+                     std::string{path} + ":" + std::to_string(at + 1));
+    records<file>[index++] = at;
   }
-  if (index != records<kind>.size())
-    error::fatal(std::string{path} + ": " + std::to_string(index) +
-                 " record lines, the scheme states " +
-                 std::to_string(records<kind>.size()));
+  if (index != records<file>.size())
+    error::invalid(std::to_string(index) + " record lines, the scheme's " + std::to_string(records<file>.size()), path);
 }
 
-template <Kind kind>
-std::string_view recordLine(std::size_t entry, std::size_t part) {
-  return lines<kind>[records<kind>[entry * scheme::getLineCount(kind) + part]];
+template <std::meta::info file> std::string_view recordLine(std::size_t entry, std::size_t part) {
+  return lines<file>[records<file>[entry * [:file:] ::kLinesPerEntry + part]];
 }
 
-template <Kind kind> std::size_t firstLineNumber(std::size_t entry) {
-  return records<kind>[entry * scheme::getLineCount(kind)] + 1;
+template <std::meta::info file> std::size_t firstLineNumber(std::size_t entry) {
+  return records<file>[entry * [:file:] ::kLinesPerEntry] + 1;
 }
 
 } // namespace
 
 void source::init() {
-  read<Kind::dictline>();
-  read<Kind::inflects>();
-  read<Kind::uniques>();
-  read<Kind::addons>();
-  verify<Kind::dictline>();
-  verify<Kind::inflects>();
-  verify<Kind::uniques>();
-  verify<Kind::addons>();
-  everyLine<Kind::dictline>();
-  frame<Kind::inflects>(scheme::inflects::kCommentMarker,
-                        scheme::inflects::kWhitespace);
-  everyLine<Kind::uniques>();
-  frame<Kind::addons>(scheme::addons::kCommentMarker,
-                      scheme::addons::kWhitespace);
+  read<^^scheme::dictline>();
+  read<^^scheme::inflects>();
+  read<^^scheme::uniques>();
+  read<^^scheme::addons>();
+  indexEveryLine<^^scheme::dictline>();
+  frame<^^scheme::inflects>();
+  indexEveryLine<^^scheme::uniques>();
+  frame<^^scheme::addons>();
 }
 
-std::string_view source::dictline(DictlineIndex entry) {
-  return recordLine<Kind::dictline>(entry.value, 0);
-}
-std::string_view source::inflects(InflectsIndex entry) {
-  return recordLine<Kind::inflects>(entry.value, 0);
-}
+std::string_view source::dictline(DictlineIndex entry) { return recordLine<^^scheme::dictline>(entry.value, 0); }
+std::string_view source::inflects(InflectsIndex entry) { return recordLine<^^scheme::inflects>(entry.value, 0); }
 source::UniquesLines source::uniques(UniquesIndex entry) {
-  return {recordLine<Kind::uniques>(entry.value, 0),
-          recordLine<Kind::uniques>(entry.value, 1),
-          recordLine<Kind::uniques>(entry.value, 2)};
+  return {recordLine<^^scheme::uniques>(entry.value, 0), recordLine<^^scheme::uniques>(entry.value, 1),
+          recordLine<^^scheme::uniques>(entry.value, 2)};
 }
 source::AddonsLines source::addons(AddonsIndex entry) {
-  return {recordLine<Kind::addons>(entry.value, 0),
-          recordLine<Kind::addons>(entry.value, 1),
-          recordLine<Kind::addons>(entry.value, 2)};
+  return {recordLine<^^scheme::addons>(entry.value, 0), recordLine<^^scheme::addons>(entry.value, 1),
+          recordLine<^^scheme::addons>(entry.value, 2)};
 }
 
-std::size_t source::lineNumber(DictlineIndex entry) {
-  return firstLineNumber<Kind::dictline>(entry.value);
-}
-std::size_t source::lineNumber(InflectsIndex entry) {
-  return firstLineNumber<Kind::inflects>(entry.value);
-}
-std::size_t source::lineNumber(UniquesIndex entry) {
-  return firstLineNumber<Kind::uniques>(entry.value);
-}
-std::size_t source::lineNumber(AddonsIndex entry) {
-  return firstLineNumber<Kind::addons>(entry.value);
-}
+std::size_t source::lineNumber(DictlineIndex entry) { return firstLineNumber<^^scheme::dictline>(entry.value); }
+std::size_t source::lineNumber(InflectsIndex entry) { return firstLineNumber<^^scheme::inflects>(entry.value); }
+std::size_t source::lineNumber(UniquesIndex entry) { return firstLineNumber<^^scheme::uniques>(entry.value); }
+std::size_t source::lineNumber(AddonsIndex entry) { return firstLineNumber<^^scheme::addons>(entry.value); }

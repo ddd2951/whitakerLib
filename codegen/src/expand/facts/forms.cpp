@@ -1,12 +1,10 @@
 #include <cstddef>
-#include <print>
 #include <vector>
 
 #include "facts.hpp"
 #include "expand/facts/forms.hpp"
 
-expand::Forms expand::forms(const Sorted& sorted,
-                            const AdverbCorrections& corrections) {
+expand::Forms expand::forms(const Sorted& sorted, const AdverbCorrections& corrections) {
   Forms result;
   for (std::size_t letter = 0; letter < facts::kLetterCount; ++letter) {
     const std::vector<Form>& forms = sorted.byLetter[letter];
@@ -22,16 +20,4 @@ expand::Forms expand::forms(const Sorted& sorted,
     }
   }
   return result;
-}
-
-void expand::report(const Forms& forms) {
-  std::size_t total = 0;
-  for (std::size_t letter = 0; letter < facts::kLetterCount; ++letter) {
-    const std::size_t count = forms.byLetter[letter].size();
-    if (count == 0)
-      continue;
-    total += count;
-    std::println("forms for '{}': {}", facts::kLatinLetters[letter], count);
-  }
-  std::println("forms total: {}", total);
 }

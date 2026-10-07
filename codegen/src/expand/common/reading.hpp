@@ -14,10 +14,7 @@ struct Reading {
   latin::Entry entry;
   latin::Inflection inflection;
   latin::Age entryAge;
-  latin::Area area;
-  latin::Geography geography;
   latin::Frequency entryFrequency;
-  latin::Source source;
   latin::Age inflectionAge;
   latin::Frequency inflectionFrequency;
   std::string_view senses;

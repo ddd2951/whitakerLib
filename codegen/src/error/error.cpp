@@ -17,17 +17,22 @@ const char* basename(const char* path) noexcept {
 
 } // namespace
 
-[[noreturn]] void fatal(const char* message,
-                        std::source_location location) noexcept {
-  std::fprintf(stderr, "[error] %s (%s:%u)\n",
-               message == nullptr ? "" : message,
-               basename(location.file_name()), location.line());
+[[noreturn]] void fatal(const char* message, std::source_location location) noexcept {
+  std::fprintf(stderr, "[error] %s (%s:%u)\n", message == nullptr ? "" : message, basename(location.file_name()),
+               location.line());
   std::exit(1);
 }
 
-[[noreturn]] void fatal(const std::string& message,
-                        std::source_location location) noexcept {
+[[noreturn]] void fatal(const std::string& message, std::source_location location) noexcept {
   fatal(message.c_str(), location);
+}
+
+[[noreturn]] void invalid(std::string_view what, std::string_view where, std::source_location location) noexcept {
+  std::string message = "Invalid: ";
+  message += what;
+  if (!where.empty())
+    message.append(" at ").append(where);
+  fatal(message, location);
 }
 
 } // namespace error

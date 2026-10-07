@@ -1,144 +1,136 @@
 # whitakerLib lookup-image generator
 
-This maintainer tool builds `../data/whitaker.dat`, the lookup image embedded
-by whitakerLib. The image is checked in, so library users neither build nor run
-the generator.
+`gen` builds `data/whitaker.dat`, the lookup image the library embeds.
+No options; to change what it builds, change the vendored sources and their
+schemes. It works and its output is checked exhaustively, but it is far from
+finished.
 
-The generator is intentionally narrow. It understands the pinned WORDS source
-layout used by this repository and writes one fixed output. It is not a
-general-purpose dictionary converter and it has no command-line options.
+## Inputs
 
-## Inputs and output
-
-Every run reads:
+`gen` runs from the repository root and expects the files as follows:
 
 ```text
-../data/source/DICTLINE.GEN
-../data/source/INFLECTS.LAT
-../data/source/UNIQUES.LAT
-../data/source/ADDONS.LAT
+data/source/DICTLINE.GEN   39,335 lines
+data/source/INFLECTS.LAT    3,228 lines, 1,797 records
+data/source/UNIQUES.LAT       237 lines,    79 records
+data/source/ADDONS.LAT      1,200 lines,   343 records
 ```
 
-and writes:
+The line and record counts are constexpr, so adding or removing a word means
+changing them. A new understanding or change of what a word means does not.
+
+## Output
+
+`gen` will write `data/whitaker.dat`. The write only happens after it has
+verified it, so a failed run does not replace the old one (see Checks).
+
+## Build and run
+
+Needs a POSIX system, CMake 3.28 or newer and GCC 16 with `-freflection`
+(C++26 reflection). Tested on Linux only, would love to hear if anyone gets it
+to build on macOS or a BSD. From the repository root:
+
+```sh
+cmake -S codegen -B build-codegen
+cmake --build build-codegen --target image
+```
+
+The build is Release unless another type is given. The `image` target builds
+`gen` and runs it from the repository root.
+
+`sha256sum data/whitaker.dat` with the pinned corpus should give:
 
 ```text
-../data/whitaker.dat
+size:    10,472,992 bytes
+SHA-256: 7e9ab3fbd8060b6a90946b819aceafe8c3adcb943ade0613f55f2c37020a7f6b
 ```
 
-The paths and source formats are compiled in. The program works from any
-directory, but alternate inputs, outputs, or formats require a code change.
-Each source's line and record counts are stated in its scheme under
-`src/source/`, and a file that does not match them is refused:
-`DICTLINE.GEN` 39,335 lines, `INFLECTS.LAT` 3,228 lines with 1,797 records,
-`UNIQUES.LAT` 237 lines with 79 records, `ADDONS.LAT` 1,200 lines with 343
-records.
-
-## Toolchain
-
-The generator currently requires:
-
-- GNU/Linux;
-- CMake 3.28 or newer; and
-- GCC 16 with C++26 reflection support and `-freflection`.
-
-This toolchain is needed only to regenerate the image.
-
-## Build
-
-Run these commands from the parent `whitakerLib` directory:
-
-```sh
-cmake -S codegen -B build-codegen -DCMAKE_BUILD_TYPE=Release
-cmake --build build-codegen -j2
-```
-
-Expansion's compile-time fact checks run during the build. Corpus validation
-runs in `gen`, where the complete data is available.
-
-## Generate the image
-
-```sh
-./build-codegen/gen
-```
-
-The command reports each stage, replaces the tracked image after structural
-validation, and then performs its exhaustive comparison. Review the result
-before committing it:
-
-```sh
-sha256sum data/whitaker.dat
-git diff --stat -- data/whitaker.dat
-```
-
-For the image currently checked in:
-
-```text
-size:    11,133,203 bytes
-SHA-256: 7376d2f43b2f831aecc9d268af33b92f08fcf4684a2389314d95b33375c5c6da
-```
-
-An unchanged source and unchanged generator are expected to produce the same
-image byte for byte.
-
-## Measured generation time
-
-A warmed Release run took a median 4.12 seconds on an AMD Ryzen 5 5600X with
-GCC 16.2.1. This includes parsing, expansion, publication, structural
-validation, and exhaustive post-write comparison, but not compilation. It is
-a single-machine baseline, not a guarantee.
+A warm Release run takes a median 3.4 seconds on an AMD Ryzen 5 5600X with
+GCC 16.2.1, pinned to one core.
 
 ## Pipeline
 
-One run has four phases:
+`main()` runs four phases in order:
 
-1. `source::init()` reads the four source files into entries, and proves them
-   against the files byte for byte.
-2. `word::init()` parses every entry once into words: typed values, and text
-   as views into the source.
-3. Expansion applies the WORDS morphology rules and decides which generated
-   forms and readings are retained.
-4. Emission builds the lookup state machine and relationship tables, then
-   serializes them as `whitaker.dat`.
+1. `source::init()` reads the four files into lines and frames their records.
+2. `word::init()` parses every record once into typed values.
+3. `expand::init()` applies the WORDS morphology rules and decides which forms
+   and readings are kept.
+4. `emitter::emit()` builds the automaton and tables, writes the image and
+   checks it.
 
-`main()` calls the four steps in order. Source, word, and expansion each own
-their data; the emitter reads their doors and builds the fixed output image.
+Each phase keeps what it builds until `gen` exits and answers through plain
+functions on typed indices: `source::dictline(index)`, `word::entry(row)`,
+`expand::spelling(result)`. They hand out views, not copies: a word's text is a
+`string_view` into the source lines, a spelling a view into expansion's store.
+Nothing is copied between phases and nothing is freed early.
 
-A door is valid only after its island's `init()` has run, and only for an
-index inside what the island holds. This is a contract, not a check: no door
-verifies it, and none should. Using a door any other way is not valid.
+The price: a phase answers only after its `init()` has run. Before that its
+storage is there but empty, and a call returns empty text or a default record,
+or reads out of bounds, without complaint. Nothing checks the order; `main()`
+is the only place that states it.
 
-## Publication and validation
+## Why reflection?
 
-The generator does not write directly over the existing image. It creates a
-temporary sibling file, flushes it to storage, closes it, and asks the runtime
-image reader to validate its structure. Only then does it rename the temporary
-file over `data/whitaker.dat`.
+Reading Whitaker's WORDS from C++ is a problem I keep coming back to, as a place
+to try out new things I've learned. With reflection such an exciting addition
+to C++, it was natural for this project to start asking what it could do here.
+The first use was replacing magic_enum for turning an `enum class` into a
+`string_view`. The first public version, 0.1, was already built this way.
+Since then, a few places have shown where it really shines:
 
-After publication, the generator reopens the image and checks:
+- **Columns on the struct.** DICTLINE's fixed columns are annotations on the
+  record's members (`[[= Column{0, 19}]] Stem stem1;`); the parser reads them
+  from there.
+- **Records filled member by member.** A `template for` over a struct's members
+  parses each field into the next member; a new member needs no parser change.
+- **Enum names are the source tokens.** `N`, `ADJ`, `TRANS` are read and
+  printed straight from the enumerators; no name tables.
+- **Types know their part of speech.** `[[= Part::N]] struct Noun`, read by
+  `latin::partOf`, in place of hand-written switches.
+- **One index type per source file.** `source::Index<^^scheme::dictline>`: a
+  DICTLINE index can't be passed where an INFLECTS one is expected.
+- **The C header checked against gen.** `whitaker.h`'s C enums mirror gen's,
+  names and values, in one loop instead of 197 lines of asserts.
+- **Any value described.** Error reports print a record field by field, and
+  name exactly the fields that differ.
 
-- the header, section directory, state machine, instructions, records, string
-  pool, and complete graph walk;
-- every spelling retained by expansion;
-- every ordered analysis row for each spelling;
-- each row's stem, meaning, and grammar;
-- all 39,415 stored entries match the parsed dictionary and UNIQUES words;
-- the stated word-length and row counts; and
-- rejection of representative corruptions to the image format.
+The cost: GCC 16 only, and `-Wno-shadow`, since every `template for` trips
+`-Wshadow`. Editors lag behind: clangd only gets close with the
+[clang-p2996](https://github.com/bloomberg/clang-p2996) fork, and still trips
+over annotations through a PCH bug I'm working on a fix for. The library itself
+is C++23 and has no reflection; only `gen` uses it.
 
-The semantic comparison happens after replacement. If it fails, the new image
-remains for inspection, but the command exits with an error.
+## Checks
+
+- **Build:** the C enums in `whitaker.h` mirror gen's
+  (`src/types/latin_test.cpp`).
+- **Load:** the image loads as the library would (header, directory, section
+  sizes).
+- **Spellings:** every kept spelling, in order, by walking the whole automaton.
+- **Rows:** every row of each spelling, in order: its stem, meaning and grammar.
+- **Entries:** all 39,415 stored entries match the parsed DICTLINE and UNIQUES
+  words.
+- **Fallback:** the records only the fallback reads stay inside their tables,
+  and the endings and fallback stems are sorted. Which rows they hold is
+  pinned by the library's examples test (`examples/expected/c.txt`), not here.
+
+All but the first run on a temporary file beside the image
+(`data/.whitaker.dat.tmp.<n>`). Only an image that passes every check replaces
+`data/whitaker.dat`. The first failure stops `gen`; the old image is untouched
+and the failed one stays for inspection.
 
 ## Updating the corpus
 
-When the vendored WORDS files change:
+To try a newer WORDS:
 
-1. Record the upstream revision and update the files under `data/source/`.
-2. Update `data/source/MANIFEST.sha256` with the reviewed source hashes.
-3. Build and run the generator.
-4. Confirm that every generator check passes.
-5. Build and test the public library against the new image.
-6. Review behavior changes before committing the sources and image together.
+1. Update the files under `data/source/` and their hashes in
+   `data/source/MANIFEST.sha256`; note the upstream revision in the root
+   README under "Data and licence".
+2. Update the counts in the schemes under `src/source/`, and in Inputs above.
+3. Build the `image` target, which replaces `data/whitaker.dat` only when
+   every check passes; then build the library and run its tests.
 
-The generator proves that the image represents its constructed rows. It does
-not prove a corpus change is linguistically correct or reproduce every WORDS
-front-end behavior.
+The checks prove the image holds exactly what expansion built. They do not
+prove a corpus change is linguistically right, nor that every WORDS front-end
+behaviour is reproduced.

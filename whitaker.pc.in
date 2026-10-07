@@ -1,7 +1,7 @@
 prefix=${pcfiledir}/@WHITAKER_PC_PREFIX@
 exec_prefix=${prefix}
-libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
-includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+libdir=@WHITAKER_PC_LIBDIR@
+includedir=@WHITAKER_PC_INCLUDEDIR@
 
 Name: whitaker
 Description: Latin morphological analysis from Whitaker's WORDS

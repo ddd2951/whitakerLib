@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "expand/common/spelling.hpp"
-#include "expand/facts/slice.hpp"
 #include "types/grammar.hpp"
 
 namespace expand {
@@ -13,6 +12,6 @@ struct Candidates {
   ByLetter byLetter;
 };
 
-Candidates candidates(const Slice& slice);
+Candidates candidates();
 
 } // namespace expand

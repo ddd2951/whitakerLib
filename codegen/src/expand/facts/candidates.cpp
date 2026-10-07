@@ -21,20 +21,16 @@ struct Placed {
 
 } // namespace
 
-// NOTE: Views into the pool are taken only after the last append; the pool
-//  is never sized ahead.
-expand::Candidates expand::candidates(const Slice& slice) {
-  const auto want = wanted(slice.letters);
-  const auto bucket = [&want](std::string_view stem,
-                              std::string_view suffix) -> int {
+// NOTE: Views into the pool are taken only after the last append; the pool is never sized ahead.
+expand::Candidates expand::candidates() {
+  const auto bucket = [](std::string_view stem, std::string_view suffix) -> int {
     const std::string_view head = stem.empty() ? suffix : stem;
     if (head.empty())
       return -1;
     const int index = facts::letterIndex(head.front());
     if (index < 0)
-      error::fatal("stem or ending begins outside the alphabet: " +
-                   std::string{head});
-    return want[static_cast<std::size_t>(index)] ? index : -1;
+      error::invalid("stem or ending '" + std::string{head} + "' outside the alphabet");
+    return index;
   };
 
   Candidates candidates;
@@ -43,20 +39,14 @@ expand::Candidates expand::candidates(const Slice& slice) {
     const int index = bucket(j.stem, j.suffix);
     if (index < 0)
       return;
-    placed.push_back({candidates.spellings.size(),
-                      j.stem.size() + j.suffix.size(),
-                      static_cast<std::uint8_t>(index),
+    placed.push_back({candidates.spellings.size(), j.stem.size() + j.suffix.size(), static_cast<std::uint8_t>(index),
                       Joined{j.entry, j.inflection, j.column}});
-    candidates.spellings.insert(candidates.spellings.end(), j.stem.begin(),
-                                j.stem.end());
-    candidates.spellings.insert(candidates.spellings.end(), j.suffix.begin(),
-                                j.suffix.end());
+    candidates.spellings.insert(candidates.spellings.end(), j.stem.begin(), j.stem.end());
+    candidates.spellings.insert(candidates.spellings.end(), j.suffix.begin(), j.suffix.end());
   });
 
-  const std::string_view pool{candidates.spellings.data(),
-                              candidates.spellings.size()};
+  const std::string_view pool{candidates.spellings.data(), candidates.spellings.size()};
   for (const Placed& p : placed)
-    candidates.byLetter[p.letter].push_back(
-        Form{pool.substr(p.at, p.length), p.origin});
+    candidates.byLetter[p.letter].push_back(Form{pool.substr(p.at, p.length), p.origin});
   return candidates;
 }

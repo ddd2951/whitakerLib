@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <ranges>
 #include <string_view>
 #include <vector>
 
@@ -14,14 +15,12 @@ namespace {
 
 namespace rel = whitaker::relationship;
 
-using Image = rel::Image;
 using Part = latin::Part;
 
-// INFO: Lower_Case(Raw_Word). A prefix's first character and CONNECT are
-//  compared against this, not against the folded query.
+// INFO: Lower_Case(Raw_Word). A prefix's first character and CONNECT are compared against this, not against the folded
+//  query.
 [[nodiscard]] constexpr char lower(char value) noexcept {
-  return value >= 'A' && value <= 'Z' ? static_cast<char>(value - 'A' + 'a')
-                                      : value;
+  return value >= 'A' && value <= 'Z' ? static_cast<char>(value - 'A' + 'a') : value;
 }
 
 struct Query {
@@ -29,17 +28,14 @@ struct Query {
   std::string_view lowered;
 };
 
-// NOTE: Also an entry of Apply_Suffix's Ssa, where `stemLength` has the fix
-//  taken off.
-struct Split {
+// NOTE: Also an entry of Apply_Suffix's Ssa, where `stemLength` has the fix taken off.
+struct StemAndEnding {
   std::uint32_t stemLength{};
-  std::uint16_t inflectFirst{};
-  std::uint16_t inflectCount{};
+  rel::Run inflects;
 };
 
-// NOTE: `allowed` is kept, not applied: a rejected reading still counts as
-//  List_Sweep's evidence.
-struct Hit {
+// NOTE: `allowed` is kept, not applied: a rejected reading still counts as List_Sweep's evidence.
+struct FoundReading {
   FallbackMatch match;
   latin::Age entryAge{};
   latin::Frequency entryFrequency{};
@@ -48,210 +44,155 @@ struct Hit {
   bool allowed{};
 };
 
-thread_local std::vector<Hit> sHits;
+thread_local std::vector<FoundReading> sReadings;
 thread_local std::vector<FallbackMatch> sMatches;
-thread_local std::vector<Split> sSplits;
-thread_local std::vector<Split> sSsa;
-thread_local std::vector<bool> sFound;
+thread_local std::vector<StemAndEnding> sSplits;
+thread_local std::vector<StemAndEnding> sShortened;
 
-[[nodiscard]] bool noFix(std::uint16_t gate) noexcept {
-  return (gate & rel::kGateAbbreviation) != 0;
+[[nodiscard]] bool takesNoAddon(std::uint16_t rules) noexcept { return (rules & rel::kRuleAbbreviation) != 0; }
+
+// INFO: A suffix replaces the part of speech, so only the prefix arm asks about INTERJ and CONJ.
+[[nodiscard]] bool takesNoPrefix(std::uint16_t rules) noexcept {
+  return (rules & (rel::kRuleAbbreviation | rel::kRuleInterjOrConj)) != 0;
 }
 
-// INFO: A suffix replaces the part of speech, so only the prefix arm asks
-//  about INTERJ and CONJ.
-[[nodiscard]] bool noPrefix(std::uint16_t gate) noexcept {
-  return (gate & (rel::kGateAbbreviation | rel::kGateInterjOrConj)) != 0;
+[[nodiscard]] std::uint16_t packonOf(std::uint16_t rules) noexcept {
+  return (rules >> rel::kRulePackonShift) & rel::kRulePackonMask;
 }
 
-// Which packon a PACK class answers to, or zero for any other class.
-[[nodiscard]] std::uint16_t packonOf(std::uint16_t gate) noexcept {
-  return (gate >> rel::kGatePackonShift) & rel::kGatePackonMask;
-}
-
-// INFO: Allowed_Stem. The inflection's share is in the image; the rest comes
-//  off the entry and the stem the reading prints.
-[[nodiscard]] bool allowedStem(latin::AllowSet allow, std::uint16_t gate,
-                               latin::VerbKind kind,
-                               std::string_view stem) noexcept {
-  return latin::allowedStem(allow, kind, (gate & rel::kGateConjThreeOne) != 0,
-                            stem);
-}
-
-struct Rows {
-  std::uint32_t start{};
-  std::uint16_t count{};
-};
-
-template <typename Visit>
-void visitRows(const Image& image, Rows owner, const Split& split,
-               Visit&& visit) {
-  const std::uint16_t last =
-      static_cast<std::uint16_t>(split.inflectFirst + split.inflectCount);
-  std::uint32_t low = owner.start;
-  std::uint32_t high = owner.start + owner.count;
-  while (low < high) {
-    const std::uint32_t middle = low + (high - low) / 2;
-    if (image.fallbackRow(middle).inflect < split.inflectFirst)
-      low = middle + 1;
-    else
-      high = middle;
-  }
-  for (std::uint32_t row = low; row < owner.start + owner.count; ++row) {
-    const Image::FallbackRow entry = image.fallbackRow(row);
-    if (entry.inflect >= last)
+template <typename Visit> void visitRows(rel::Run rows, const StemAndEnding& split, Visit&& visit) {
+  const auto rowIds = std::views::iota(rows.first, rows.end());
+  const auto first = std::ranges::lower_bound(rowIds, split.inflects.first, {},
+                                              [](std::uint32_t i) { return rel::fallbackRow(i).inflect; });
+  for (const std::uint32_t row : std::ranges::subrange(first, rowIds.end())) {
+    const rel::FallbackRowRecord entry = rel::fallbackRow(row);
+    if (entry.inflect >= split.inflects.end())
       break;
     visit(entry);
   }
 }
 
-struct Slot {
+struct Candidate {
   std::uint16_t dictionary{};
-  std::uint8_t key{};
+  std::uint8_t stemKey{};
   Part part{};
-  std::uint16_t classId{};
   latin::VerbKind verbKind{};
-  std::uint16_t gate{};
+  std::uint16_t rules{};
   latin::Age age{};
   latin::Frequency frequency{};
-  Rows rows;
+  rel::Run rows;
 };
 
-[[nodiscard]] Slot slotOf(const Image& image,
-                          const Image::FallbackStem& stem) noexcept {
-  const Image::DictionaryMetadata entry =
-      image.dictionaryMetadata(stem.dictionary);
+[[nodiscard]] Candidate candidateOf(const rel::FallbackStemRecord& stem) noexcept {
+  const rel::DictionaryRecord entry = rel::dictionary(stem.dictionary);
   const std::uint16_t id = entry.classId & rel::kClassIdMask;
-  const Image::Class grammar = image.dictionaryClass(id);
-  return Slot{.dictionary = stem.dictionary,
-              .key = stem.key,
-              .part = stem.part,
-              .classId = id,
-              .verbKind = latin::VerbKind{static_cast<std::uint8_t>(
-                  (entry.classId >> rel::kClassVerbKindShift) &
-                  rel::kClassVerbKindMask)},
-              .gate = grammar.gate,
-              .age = entry.age,
-              .frequency = entry.frequency,
-              .rows = Rows{grammar.rowStart, grammar.rowCount}};
+  const rel::ClassRecord grammar = rel::dictionaryClass(id);
+  return Candidate{.dictionary = stem.dictionary,
+                   .stemKey = stem.stemKey,
+                   .part = stem.part,
+                   .verbKind = latin::VerbKind{static_cast<std::uint8_t>((entry.classId >> rel::kClassVerbKindShift) &
+                                                                         rel::kClassVerbKindMask)},
+                   .rules = grammar.rules,
+                   .age = entry.age,
+                   .frequency = entry.frequency,
+                   .rows = grammar.rows()};
 }
 
-void record(const Image& image, const Image::FallbackRow& row, const Slot& slot,
-            std::uint16_t gate, std::uint32_t orthOffset,
-            std::string_view shown, const Image::Addon& addon,
-            const Image::Addon* secondAddon = nullptr) {
-  const Image::Inflection inflection = image.inflection(row.inflect);
-  sHits.push_back(Hit{
-      .match = {.orthOffset = orthOffset,
-                .orthLength = static_cast<std::uint32_t>(shown.size()),
-                .meaning = image.dictionaryMeaning(slot.dictionary),
-                .grammar = image.grammar(row.description),
-                .dictionary = slot.dictionary,
-                .addonId = {addon.id,
-                            secondAddon ? secondAddon->id : std::uint16_t{}},
-                .addonKind = {addon.kind, secondAddon ? secondAddon->kind
-                                                      : latin::AddonKind{}},
-                .addonCount = static_cast<std::uint8_t>(secondAddon ? 2 : 1)},
-      .entryAge = slot.age,
-      .entryFrequency = slot.frequency,
-      .inflectAge = inflection.age,
-      .inflectFrequency = inflection.frequency,
-      .allowed = allowedStem(inflection.allow, gate, slot.verbKind, shown)});
+void addReading(const rel::FallbackRowRecord& row, const Candidate& candidate, std::uint16_t rules,
+                std::uint32_t orthOffset, std::string_view shown, const rel::Addon& addon,
+                const rel::Addon* secondAddon = nullptr) {
+  const rel::InflectionRecord inflection = rel::inflection(row.inflect);
+  sReadings.push_back(
+      FoundReading{.match = {.orthOffset = orthOffset,
+                             .orthLength = static_cast<std::uint32_t>(shown.size()),
+                             .grammar = rel::grammar(row.description),
+                             .dictionary = candidate.dictionary,
+                             .addonId = {addon.id, secondAddon ? secondAddon->id : std::uint16_t{}},
+                             .addonKind = {addon.kind, secondAddon ? secondAddon->kind : latin::AddonKind{}},
+                             .addonCount = static_cast<std::uint8_t>(secondAddon ? 2 : 1)},
+                   .entryAge = candidate.age,
+                   .entryFrequency = candidate.frequency,
+                   .inflectAge = inflection.age,
+                   .inflectFrequency = inflection.frequency,
+                   .allowed = latin::allowedStem(latin::AllowSet{inflection.allow}, candidate.verbKind,
+                                                 (rules & rel::kRuleConjThreeOne) != 0, shown)});
 }
 
 // INFO: Apply_Prefix, word_package.adb:1140-1205. The first prefix that
 //  answers ends the search.
-// NOTE: `combined` is Apply_Suffix's else arm; the gates then read the
+// NOTE: `afterSuffix` is Apply_Suffix's else arm; the rules then read the
 //  suffix's target, not the entry.
-void applyPrefix(const Image& image, const Query& query,
-                 std::span<const Split> splits, std::uint16_t suffix,
-                 bool combined) {
-  Image::Addon suffixRecord{};
+void applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std::uint16_t suffix, bool afterSuffix) {
+  rel::Addon suffixRecord{};
   std::size_t suffixLength = 0;
-  if (combined) {
-    suffixRecord = image.addon(suffix);
+  if (afterSuffix) {
+    suffixRecord = rel::addon(suffix);
     // NOTE: No target rows means no parse line, not match-anything.
-    if (suffixRecord.rowCount == 0)
+    if (suffixRecord.rows.empty())
       return;
-    suffixLength = std::string_view{suffixRecord.fix}.size();
+    suffixLength = suffixRecord.fix.size();
   }
 
-  for (std::uint16_t index = 0; index < image.addonCount(); ++index) {
-    const Image::Addon addon = image.addon(index);
-    if (addon.kind != latin::AddonKind::Prefix)
+  for (const rel::Addon& addon : rel::addonsOf(latin::AddonKind::Prefix)) {
+    const std::string_view fix = addon.fix;
+    // INFO: First character compared unfolded; the query is lowercased, so the capitalised II, V and X never fire.
+    if (fix.empty() || query.folded.size() <= fix.size() || query.lowered.front() != addon.firstLetterAsSpelled ||
+        !query.folded.starts_with(fix) ||
+        (addon.connectingLetter != '\0' && query.lowered[fix.size()] != addon.connectingLetter))
       continue;
-    const std::string_view fix{addon.fix};
-    if (fix.empty())
-      continue;
-    const std::size_t before = sHits.size();
+    const std::size_t before = sReadings.size();
 
-    for (const Split& split : splits) {
-      // INFO: First character compared unfolded; the query is lowercased,
-      //  so the capitalised II, V and X never fire.
-      if (split.stemLength == 0 || query.lowered.front() != addon.firstRaw)
-        continue;
+    for (const StemAndEnding& split : splits) {
       if (split.stemLength <= fix.size())
         continue;
-      if (query.folded.substr(0, fix.size()) != fix)
-        continue;
-      if (addon.connect != '\0' && query.lowered[fix.size()] != addon.connect)
-        continue;
 
-      const auto [first, last] = image.fallbackStemRange(
-          query.folded.substr(fix.size(), split.stemLength - fix.size()));
-      if (first == last)
+      const rel::Run stems = rel::fallbackStemRange(query.folded.substr(fix.size(), split.stemLength - fix.size()));
+      if (stems.empty())
         continue;
 
       // NOTE: The stem the reading prints: prefix off, suffix still on.
-      const std::string_view shown = query.folded.substr(
-          fix.size(), split.stemLength + suffixLength - fix.size());
+      const std::string_view shown = query.folded.substr(fix.size(), split.stemLength + suffixLength - fix.size());
 
-      for (std::uint32_t s = first; s < last; ++s) {
-        const Slot slot = slotOf(image, image.fallbackStem(s));
-        // NOTE: A prefix alone never derives from a PACK half word. A marker,
-        //  not a rule: ADDONS.LAT's wider X restriction is unmodelled.
-        if (!combined && slot.part == Part::PACK)
+      for (std::uint32_t s = stems.first; s < stems.end(); ++s) {
+        const Candidate candidate = candidateOf(rel::fallbackStem(s));
+        // NOTE: A prefix alone never derives from a PACK half word. A marker, not a rule: ADDONS.LAT's wider X
+        //  restriction is unmodelled.
+        if (!afterSuffix && candidate.part == Part::PACK)
           continue;
 
-        // INFO: The suffix's gates read the entry: no fix on an
-        //  abbreviation, then Root and Root_Key.
-        if (combined) {
-          if (noFix(slot.gate))
+        // INFO: The suffix's gates read the entry: no fix on an abbreviation, then Root and Root_Key.
+        if (afterSuffix) {
+          if (takesNoAddon(candidate.rules))
             continue;
-          if (!latin::suffixRootAdmits(suffixRecord.root, slot.part))
+          if (!latin::suffixRootAdmits(suffixRecord.root, candidate.part))
             continue;
-          if (!latin::stemKeyAdmits(slot.key, suffixRecord.rootKey, slot.part))
+          if (!latin::stemKeyAdmits(candidate.stemKey, suffixRecord.rootStemKey, candidate.part))
             continue;
         }
 
-        const Part part = combined ? suffixRecord.targetPart : slot.part;
-        const std::uint16_t gate =
-            combined ? suffixRecord.targetGate : slot.gate;
-        const Rows rows =
-            combined ? Rows{suffixRecord.rowStart, suffixRecord.rowCount}
-                     : slot.rows;
+        const Part part = afterSuffix ? suffixRecord.targetPart : candidate.part;
+        const std::uint16_t rules = afterSuffix ? suffixRecord.targetRules : candidate.rules;
+        const rel::Run rows = afterSuffix ? suffixRecord.rows : candidate.rows;
 
-        // A prefix has no Root_Key; its gate is the part alone.
+        // A prefix has no Root_Key; only its part is checked.
         if (!latin::rootAdmits(addon.root, part))
           continue;
-        if (noPrefix(gate))
+        if (takesNoPrefix(rules))
           continue;
 
-        visitRows(image, rows, split, [&](const Image::FallbackRow& row) {
-          // NOTE: A suffix's rows carry Target_Key; a class's rows do not,
-          //  so the key is asked here.
-          if (!combined &&
-              !latin::stemKeyAdmits(slot.key, image.inflection(row.inflect).key,
-                                    slot.part))
+        visitRows(rows, split, [&](const rel::FallbackRowRecord& row) {
+          // NOTE: A suffix's rows carry Target_Key; a class's rows do not, so the key is asked here.
+          if (!afterSuffix &&
+              !latin::stemKeyAdmits(candidate.stemKey, rel::inflection(row.inflect).stemKey, candidate.part))
             return;
-          record(image, row, slot, gate, static_cast<std::uint32_t>(fix.size()),
-                 shown, addon, combined ? &suffixRecord : nullptr);
+          addReading(row, candidate, rules, static_cast<std::uint32_t>(fix.size()), shown, addon,
+                     afterSuffix ? &suffixRecord : nullptr);
         });
       }
     }
 
     // INFO: Reduce_Stem_List tests the record, not one split.
-    if (sHits.size() != before)
+    if (sReadings.size() != before)
       return;
   }
 }
@@ -260,79 +201,71 @@ void applyPrefix(const Image& image, const Query& query,
 //  contributes.
 // NOTE: Record outer, splits inner: "no dictionary hit" is a property of
 //  the record.
-void applySuffix(const Image& image, const Query& query,
-                 std::span<const Split> splits) {
-  for (std::uint16_t index = 0; index < image.addonCount(); ++index) {
-    const Image::Addon addon = image.addon(index);
-    if (addon.kind != latin::AddonKind::Suffix)
-      continue;
-    const std::string_view fix{addon.fix};
+void applySuffix(const Query& query, std::span<const StemAndEnding> splits) {
+  for (const rel::Addon& addon : rel::addonsOf(latin::AddonKind::Suffix)) {
+    const std::string_view fix = addon.fix;
     if (fix.empty())
       continue;
 
-    sSsa.clear();
-    sFound.clear();
+    sShortened.clear();
     bool anyDictionary = false;
 
-    for (const Split& split : splits) {
+    for (const StemAndEnding& split : splits) {
       const std::string_view base = query.folded.substr(0, split.stemLength);
       if (fix.size() >= base.size())
         continue;
-      if (base.substr(base.size() - fix.size()) != fix)
+      if (!base.ends_with(fix))
         continue;
       // INFO: Subtract_Suffix's CONNECT, compared unfolded.
-      if (addon.connect != '\0' &&
-          query.lowered[base.size() - fix.size() - 1] != addon.connect)
+      if (addon.connectingLetter != '\0' && query.lowered[base.size() - fix.size() - 1] != addon.connectingLetter)
         continue;
 
-      const std::uint32_t shortened =
-          split.stemLength - static_cast<std::uint32_t>(fix.size());
-      const auto [first, last] =
-          image.fallbackStemRange(query.folded.substr(0, shortened));
-      anyDictionary = anyDictionary || first != last;
-      sSsa.push_back(Split{shortened, split.inflectFirst, split.inflectCount});
-      sFound.push_back(first != last);
+      const std::uint32_t shortened = split.stemLength - static_cast<std::uint32_t>(fix.size());
+      anyDictionary = anyDictionary || !rel::fallbackStemRange(query.folded.substr(0, shortened)).empty();
+      sShortened.push_back(StemAndEnding{shortened, split.inflects});
     }
 
-    if (sSsa.empty())
+    if (sShortened.empty())
       continue;
 
-    // INFO: No dictionary hit at all: the shortened stems go to Apply_Prefix
-    //  carrying this suffix.
+    // INFO: No dictionary hit at all: the shortened stems go to Apply_Prefix carrying this suffix.
     if (!anyDictionary) {
-      applyPrefix(image, query, sSsa, index, true);
+      applyPrefix(query, sShortened, addon.id, true);
       continue;
     }
 
-    if (addon.rowCount == 0)
+    if (addon.rows.empty())
       continue;
 
-    for (std::size_t i = 0; i < sSsa.size(); ++i) {
-      if (!sFound[i])
-        continue;
-      const Split& split = sSsa[i];
+    for (const StemAndEnding& split : sShortened) {
       // NOTE: A suffix reading prints the stem with the fix still on.
-      const std::string_view shown =
-          query.folded.substr(0, split.stemLength + fix.size());
+      const std::string_view shown = query.folded.substr(0, split.stemLength + fix.size());
 
-      const auto [first, last] =
-          image.fallbackStemRange(query.folded.substr(0, split.stemLength));
-      for (std::uint32_t s = first; s < last; ++s) {
-        const Slot slot = slotOf(image, image.fallbackStem(s));
-        if (!latin::suffixRootAdmits(addon.root, slot.part))
+      const rel::Run stems = rel::fallbackStemRange(query.folded.substr(0, split.stemLength));
+      for (std::uint32_t s = stems.first; s < stems.end(); ++s) {
+        const Candidate candidate = candidateOf(rel::fallbackStem(s));
+        if (!latin::suffixRootAdmits(addon.root, candidate.part))
           continue;
-        if (!latin::stemKeyAdmits(slot.key, addon.rootKey, slot.part))
+        if (!latin::stemKeyAdmits(candidate.stemKey, addon.rootStemKey, candidate.part))
           continue;
         // NOTE: On the class the entry has, not the one the suffix gives it.
-        if (noFix(slot.gate))
+        if (takesNoAddon(candidate.rules))
           continue;
 
-        visitRows(image, Rows{addon.rowStart, addon.rowCount}, split,
-                  [&](const Image::FallbackRow& row) {
-                    record(image, row, slot, addon.targetGate, 0, shown, addon);
-                  });
+        visitRows(addon.rows, split, [&](const rel::FallbackRowRecord& row) {
+          addReading(row, candidate, addon.targetRules, 0, shown, addon);
+        });
       }
     }
+  }
+}
+
+// INFO: Run_Inflections, inverted.
+void splitEndings(std::string_view text) {
+  for (std::size_t length = 0; length < text.size(); ++length) {
+    const rel::Run inflects = rel::endingRun(text.substr(text.size() - length));
+    if (!inflects.empty())
+      sSplits.push_back(StemAndEnding{static_cast<std::uint32_t>(text.size() - length), inflects});
   }
 }
 
@@ -340,71 +273,60 @@ void applySuffix(const Image& image, const Query& query,
 //  runs it inside Word, and quocumque is an ADV and is reported here too.
 // INFO: The pronoun kind is not joined: WORDS reports quiquam for the INDEF
 //  tack against an ADJECT entry.
-void applyPackon(const Image& image, const Query& query) {
+void applyPackon(const Query& query) {
   std::uint16_t ordinal = 0;
-  for (std::uint16_t index = 0; index < image.addonCount(); ++index) {
-    const Image::Addon addon = image.addon(index);
-    if (addon.kind != latin::AddonKind::Packon)
-      continue;
+  for (const rel::Addon& addon : rel::addonsOf(latin::AddonKind::Packon)) {
     ++ordinal;
-    const std::string_view fix{addon.fix};
+    const std::string_view fix = addon.fix;
     if (fix.empty() || query.folded.size() <= fix.size())
       continue;
-    if (query.folded.substr(query.folded.size() - fix.size()) != fix)
+    if (!query.folded.ends_with(fix))
       continue;
-    const std::string_view base =
-        query.folded.substr(0, query.folded.size() - fix.size());
+    const std::string_view base = query.folded.substr(0, query.folded.size() - fix.size());
 
-    for (std::size_t length = 0; length < base.size(); ++length) {
-      const auto [first, count] =
-          image.endingRun(base.substr(base.size() - length));
-      if (count == 0)
-        continue;
-      const Split split{static_cast<std::uint32_t>(base.size() - length), first,
-                        count};
+    sSplits.clear();
+    splitEndings(base);
+    for (const StemAndEnding& split : sSplits) {
       const std::string_view stem = base.substr(0, split.stemLength);
 
-      const auto [begin, end] = image.fallbackStemRange(stem);
-      for (std::uint32_t s = begin; s < end; ++s) {
-        const Slot slot = slotOf(image, image.fallbackStem(s));
-        if (slot.part != Part::PACK || packonOf(slot.gate) != ordinal)
+      const rel::Run stems = rel::fallbackStemRange(stem);
+      for (std::uint32_t s = stems.first; s < stems.end(); ++s) {
+        const Candidate candidate = candidateOf(rel::fallbackStem(s));
+        if (candidate.part != Part::PACK || packonOf(candidate.rules) != ordinal)
           continue;
-        visitRows(image, slot.rows, split, [&](const Image::FallbackRow& row) {
-          // INFO: No stem-key gate: WORDS prints cui.que as DAT S X and
-          //  NOM P M off different columns. Prints as PRON, base alone.
-          record(image, row, slot, slot.gate, 0, stem, addon);
+        visitRows(candidate.rows, split, [&](const rel::FallbackRowRecord& row) {
+          // INFO: No stem-key check: WORDS prints cui.que as DAT S X and NOM P M off different columns. Prints as PRON,
+          //  base alone.
+          addReading(row, candidate, candidate.rules, 0, stem, addon);
         });
       }
     }
   }
 }
 
-// INFO: List_Sweep's rarity pass. Its evidence is counted before Allowed_Stem
-//  removes anything.
-void trim() {
+// INFO: List_Sweep's rarity pass. Its evidence is counted before Allowed_Stem removes anything.
+void dropRareReadings() {
   bool notOnlyArchaic = false;
   bool notOnlyMedieval = false;
   bool notOnlyUncommon = false;
-  for (const Hit& hit : sHits) {
-    if (!latin::archaic(hit.inflectAge) && !latin::archaic(hit.entryAge))
+  for (const FoundReading& reading : sReadings) {
+    if (!latin::archaic(reading.inflectAge) && !latin::archaic(reading.entryAge))
       notOnlyArchaic = true;
-    if (!latin::medieval(hit.inflectAge) && !latin::medieval(hit.entryAge))
+    if (!latin::medieval(reading.inflectAge) && !latin::medieval(reading.entryAge))
       notOnlyMedieval = true;
-    if (!latin::uncommonInflection(hit.inflectFrequency) &&
-        !latin::uncommonEntry(hit.entryFrequency))
+    if (!latin::uncommonInflection(reading.inflectFrequency) && !latin::uncommonEntry(reading.entryFrequency))
       notOnlyUncommon = true;
   }
-  std::erase_if(sHits, [=](const Hit& hit) {
-    return !hit.allowed || (notOnlyArchaic && latin::archaic(hit.inflectAge)) ||
-           (notOnlyMedieval && latin::medieval(hit.inflectAge)) ||
-           (notOnlyUncommon && latin::uncommonInflection(hit.inflectFrequency));
+  std::erase_if(sReadings, [=](const FoundReading& reading) {
+    return !reading.allowed || (notOnlyArchaic && latin::archaic(reading.inflectAge)) ||
+           (notOnlyMedieval && latin::medieval(reading.inflectAge)) ||
+           (notOnlyUncommon && latin::uncommonInflection(reading.inflectFrequency));
   });
 }
 
 template <typename Stages>
-[[nodiscard]] std::span<const FallbackMatch> run(std::string_view word,
-                                                 Stages&& stages) noexcept {
-  sHits.clear();
+[[nodiscard]] std::span<const FallbackMatch> run(std::string_view word, Stages&& stages) noexcept {
+  sReadings.clear();
   sMatches.clear();
   sSplits.clear();
   if (word.empty() || word.size() > facts::kMaxWordCharacters)
@@ -420,39 +342,28 @@ template <typename Stages>
                     std::string_view{lowerBuffer.data(), word.size()}};
 
   stages(query);
-  trim();
+  dropRareReadings();
 
-  sMatches.reserve(sHits.size());
-  for (const Hit& hit : sHits)
-    sMatches.push_back(hit.match);
+  sMatches.reserve(sReadings.size());
+  for (const FoundReading& reading : sReadings)
+    sMatches.push_back(reading.match);
   return sMatches;
 }
 
 } // namespace
 
-std::span<const FallbackMatch> packonReadings(const Image& image,
-                                              std::string_view word) noexcept {
-  return run(word, [&image](const Query& query) { applyPackon(image, query); });
+std::span<const FallbackMatch> packonReadings(std::string_view word) noexcept {
+  return run(word, [](const Query& query) { applyPackon(query); });
 }
 
-std::span<const FallbackMatch> addonFallback(const Image& image,
-                                             std::string_view word) noexcept {
-  return run(word, [&image](const Query& query) {
-    // INFO: Run_Inflections, inverted: a stem is the query with an ending off,
-    //  never empty.
-    for (std::size_t length = 0; length < query.folded.size(); ++length) {
-      const auto [first, count] =
-          image.endingRun(query.folded.substr(query.folded.size() - length));
-      if (count != 0)
-        sSplits.push_back(
-            Split{static_cast<std::uint32_t>(query.folded.size() - length),
-                  first, count});
-    }
+std::span<const FallbackMatch> addonFallback(std::string_view word) noexcept {
+  return run(word, [](const Query& query) {
+    splitEndings(query.folded);
 
     // INFO: Prune_Stems' precedence: prefixes first, suffixes only if nothing.
-    applyPrefix(image, query, sSplits, 0, false);
-    if (sHits.empty())
-      applySuffix(image, query, sSplits);
+    applyPrefix(query, sSplits, 0, false);
+    if (sReadings.empty())
+      applySuffix(query, sSplits);
   });
 }
 

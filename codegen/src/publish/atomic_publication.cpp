@@ -1,19 +1,19 @@
 #include "atomic_publication.hpp"
 
-#include <atomic>
 #include <cerrno>
-#include <fcntl.h>
-#include <unistd.h>
-
 #include <cstdio>
 #include <string>
 #include <system_error>
 #include <utility>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 namespace fs = std::filesystem;
 
 namespace {
 
+// NOTE: Not error::fatal: returning lets Temporary clean up.
 bool fail(std::string& failure, std::string message) {
   failure = std::move(message);
   return false;
@@ -27,34 +27,27 @@ public:
   ~Temporary() {
     if (m_file != nullptr)
       std::fclose(m_file);
-    if (!m_path.empty()) {
+    if (!m_kept && !m_path.empty()) {
       std::error_code ignored;
       fs::remove(m_path, ignored);
     }
   }
 
   bool openBeside(const fs::path& destination, std::string& failure) {
-    static std::atomic_uint64_t s_serial{};
-    const fs::path directory = destination.has_parent_path()
-                                   ? destination.parent_path()
-                                   : fs::path{"."};
     const std::string stem = "." + destination.filename().string() + ".tmp.";
-    for (unsigned attempt = 0; attempt < 128; ++attempt) {
-      m_path = directory / (stem + std::to_string(++s_serial));
+    for (unsigned attempt = 1; attempt <= 128; ++attempt) {
+      m_path = destination.parent_path() / (stem + std::to_string(attempt));
       errno = 0;
-      // "x": create exclusively, so two runs in the same directory cannot
-      // choose the same name and write over each other.
       m_file = std::fopen(m_path.c_str(), "wbx");
       if (m_file != nullptr)
         return true;
       if (errno != EEXIST) {
         m_path.clear();
-        return fail(failure,
-                    "cannot create temporary image beside destination");
+        return fail(failure, "cannot create the temporary file");
       }
     }
     m_path.clear();
-    return fail(failure, "cannot allocate a unique temporary image name");
+    return fail(failure, "no free temporary file name");
   }
 
   [[nodiscard]] std::FILE* file() const { return m_file; }
@@ -65,48 +58,41 @@ public:
     m_file = nullptr;
     if (std::fflush(file) != 0 || ::fsync(::fileno(file)) != 0) {
       std::fclose(file);
-      return fail(failure, "cannot flush temporary image to storage");
+      return fail(failure, "cannot flush the temporary file to storage");
     }
     if (std::fclose(file) != 0)
-      return fail(failure, "cannot close temporary image");
+      return fail(failure, "cannot close the temporary file");
     return true;
   }
 
-  void committed() { m_path.clear(); }
+  void keep() { m_kept = true; }
 
 private:
   fs::path m_path;
   std::FILE* m_file{};
+  bool m_kept{};
 };
 
 } // namespace
 
-bool publish::atomically(const fs::path& destination, const Writer& writer,
-                         const Validator& validator, std::string& failure) {
+bool publish::atomically(const fs::path& destination, std::span<const unsigned char> bytes, Validator validator,
+                         std::string& failure) {
   Temporary temporary;
   if (!temporary.openBeside(destination, failure))
     return false;
-  if (!writer(temporary.file())) {
-    std::string closeFailure;
-    failure = "temporary image write failed";
-    if (!temporary.close(closeFailure))
-      failure += "; " + closeFailure;
+  if (std::fwrite(bytes.data(), 1, bytes.size(), temporary.file()) != bytes.size())
+    return fail(failure, "cannot write the temporary file");
+  if (!temporary.close(failure))
     return false;
-  }
-  if (!temporary.close(failure) || !validator(temporary.path(), failure))
-    return false;
-  const fs::path directory =
-      destination.has_parent_path() ? destination.parent_path() : fs::path{"."};
+  temporary.keep();
+  validator(temporary.path());
   if (std::rename(temporary.path().c_str(), destination.c_str()) != 0)
-    return fail(failure, "cannot atomically replace destination image");
-  temporary.committed();
-  if (const int handle = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
-      handle >= 0) {
+    return fail(failure, "cannot rename the temporary file over the old image");
+  if (const int handle = ::open(destination.parent_path().c_str(), O_RDONLY | O_DIRECTORY); handle >= 0) {
     const int synced = ::fsync(handle);
     ::close(handle);
     if (synced != 0)
-      return fail(failure, "cannot record the published image in its "
-                           "directory");
+      return fail(failure, "cannot sync the directory");
   }
   return true;
 }

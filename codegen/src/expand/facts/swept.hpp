@@ -23,6 +23,5 @@ struct Swept {
 };
 
 Swept swept(const Forms& listed, const Readings& readings);
-void report(const Swept& swept);
 
 } // namespace expand

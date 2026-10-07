@@ -2,27 +2,25 @@
 
 #include <array>
 #include <cstddef>
+#include <meta>
 #include <string_view>
 
-#include "shared/semantic/value.hpp"
 #include "source/schemes.hpp"
 
 namespace source {
 
-struct DictlineIndexTag;
-struct InflectsIndexTag;
-struct UniquesIndexTag;
-struct AddonsIndexTag;
+template <std::meta::info file> struct Index {
+  std::size_t value{};
+  friend constexpr bool operator==(Index, Index) = default;
+};
 
-using DictlineIndex = semantic::Value<DictlineIndexTag, std::size_t>;
-using InflectsIndex = semantic::Value<InflectsIndexTag, std::size_t>;
-using UniquesIndex = semantic::Value<UniquesIndexTag, std::size_t>;
-using AddonsIndex = semantic::Value<AddonsIndexTag, std::size_t>;
+using DictlineIndex = Index<^^scheme::dictline>;
+using InflectsIndex = Index<^^scheme::inflects>;
+using UniquesIndex = Index<^^scheme::uniques>;
+using AddonsIndex = Index<^^scheme::addons>;
 
-using UniquesLines =
-    std::array<std::string_view, scheme::uniques::kLinesPerEntry>;
-using AddonsLines =
-    std::array<std::string_view, scheme::addons::kLinesPerEntry>;
+using UniquesLines = std::array<std::string_view, scheme::uniques::kLinesPerEntry>;
+using AddonsLines = std::array<std::string_view, scheme::addons::kLinesPerEntry>;
 
 void init();
 

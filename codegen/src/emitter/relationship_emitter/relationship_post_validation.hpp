@@ -4,6 +4,6 @@
 
 namespace emitter {
 
-void validatePublishedRelationshipImage(const std::filesystem::path& path);
+void validateImage(const std::filesystem::path& path);
 
 } // namespace emitter

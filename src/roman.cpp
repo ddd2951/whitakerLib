@@ -2,9 +2,7 @@
 
 namespace {
 
-[[nodiscard]] char upper(char c) noexcept {
-  return (c >= 'a' && c <= 'z') ? static_cast<char>(c - 'a' + 'A') : c;
-}
+[[nodiscard]] char upper(char c) noexcept { return (c >= 'a' && c <= 'z') ? static_cast<char>(c - 'a' + 'A') : c; }
 
 // U is intentionally excluded even though lookup otherwise folds v onto u.
 [[nodiscard]] bool isRomanDigit(char c) noexcept {
@@ -26,8 +24,7 @@ namespace {
 
 namespace whitaker {
 
-// INFO: Roman_Number, words_engine-roman_numerals_package.adb:68,
-//  transliterated.
+// INFO: Roman_Number, words_engine-roman_numerals_package.adb:68, transliterated.
 unsigned romanValue(std::string_view word) noexcept {
   if (word.empty())
     return 0;
@@ -37,9 +34,7 @@ unsigned romanValue(std::string_view word) noexcept {
 
   unsigned total = 0;
   int j = static_cast<int>(word.size()) - 1;
-  const auto at = [&](int i) {
-    return upper(word[static_cast<std::size_t>(i)]);
-  };
+  const auto at = [&](int i) { return upper(word[static_cast<std::size_t>(i)]); };
 
   while (j >= 0) {
     if (at(j) == 'I') {
@@ -153,8 +148,7 @@ unsigned romanValue(std::string_view word) noexcept {
         if (--j < 0)
           return total;
       }
-      if (at(j) == 'I' || at(j) == 'V' || at(j) == 'X' || at(j) == 'L' ||
-          at(j) == 'C' || at(j) == 'D')
+      if (at(j) == 'I' || at(j) == 'V' || at(j) == 'X' || at(j) == 'L' || at(j) == 'C' || at(j) == 'D')
         return 0;
     }
 
@@ -174,8 +168,7 @@ unsigned romanValue(std::string_view word) noexcept {
         if (--j < 0)
           return total;
       }
-      if (at(j) == 'I' || at(j) == 'V' || at(j) == 'X' || at(j) == 'L' ||
-          at(j) == 'C' || at(j) == 'D')
+      if (at(j) == 'I' || at(j) == 'V' || at(j) == 'X' || at(j) == 'L' || at(j) == 'C' || at(j) == 'D')
         return 0;
     }
   }

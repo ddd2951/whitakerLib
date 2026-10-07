@@ -1,0 +1,263 @@
+Vir
+  vir | N D2 V3 NOM S M
+    man; husband; hero; person of courage, honor, and nobility;
+  vir | N D2 V3 VOC S M
+    man; husband; hero; person of courage, honor, and nobility;
+prudens
+  prudens | ADJ D3 V1 NOM S X POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+  prudens | ADJ D3 V1 VOC S X POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+  prudens | ADJ D3 V1 ACC S N POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+non
+  Non | N D9 V8 X X M
+    Nones (pl.), abb. Non.; 7th of month, March, May, July, Oct., 5th elsewhen;
+  non | ADV POS
+    not, by no means, no; [non modo ... sed etiam => not only ... but also];
+  non | ADV POS
+    not, by no means, no; [non modo ... sed etiam => not only ... but also];
+contra
+  contra | ADV POS
+    facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
+  contra | ADV POS
+    facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
+  contra | ADV POS
+    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
+  contra | ADV POS
+    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
+  contra | ADV POS
+    ||otherwise, differently; conversely; on the contrary; vice versa;
+  contra | ADV POS
+    ||otherwise, differently; conversely; on the contrary; vice versa;
+  contra | PREP ACC
+    against, facing, opposite; weighed against; as against; in resistance/reply to;
+  contra | PREP ACC
+    |contrary to, not in conformance with; the reverse of; otherwise than;
+  contra | PREP ACC
+    ||towards/up to, in direction of;  directly over/level with; to detriment of;
+ventum
+  vent | VPAR C3 V4 ACC S M PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 NOM S N PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 ACC S N PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 VOC S N PERF PASSIVE PPL
+    come;
+  vent | SUPINE C3 V4 ACC S N
+    come;
+  vent | N D2 V1 ACC S M
+    wind;
+mingit
+  ming | V C3 V1 PRES ACTIVE IND 3 S
+    make water, urinate;
+  ming | V C3 V1 PRES ACTIVE IND 3 S
+    make water, urinate;
+nisi
+  nisi | CONJ
+    if not; except, unless;
+  nis | VPAR C3 V1 GEN S M PERF PASSIVE PPL
+    press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
+  nis | VPAR C3 V1 NOM P M PERF PASSIVE PPL
+    press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
+  nis | VPAR C3 V1 VOC P M PERF PASSIVE PPL
+    press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
+  nis | VPAR C3 V1 GEN S N PERF PASSIVE PPL
+    press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
+si
+  si | CONJ
+    if, if only; whether; [quod si/si quis or quid => but if/if anyone or anything];
+balneo
+  balne | N D2 V2 DAT S N
+    bath; bathtub; act of bathing; bathroom, (public) bath place/rooms (esp. pl.);
+  balne | N D2 V2 ABL S N
+    bath; bathtub; act of bathing; bathroom, (public) bath place/rooms (esp. pl.);
+eget
+  eg | V C2 V1 PRES ACTIVE IND 3 S
+    need (w/GEN/ABL), lack, want; require, be without;
+Mulier
+  mulier | N D3 V1 NOM S F
+    woman; wife; mistress;
+  mulier | N D3 V1 VOC S F
+    woman; wife; mistress;
+prudens
+  prudens | ADJ D3 V1 NOM S X POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+  prudens | ADJ D3 V1 VOC S X POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+  prudens | ADJ D3 V1 ACC S N POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+contra
+  contra | ADV POS
+    facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
+  contra | ADV POS
+    facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
+  contra | ADV POS
+    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
+  contra | ADV POS
+    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
+  contra | ADV POS
+    ||otherwise, differently; conversely; on the contrary; vice versa;
+  contra | ADV POS
+    ||otherwise, differently; conversely; on the contrary; vice versa;
+  contra | PREP ACC
+    against, facing, opposite; weighed against; as against; in resistance/reply to;
+  contra | PREP ACC
+    |contrary to, not in conformance with; the reverse of; otherwise than;
+  contra | PREP ACC
+    ||towards/up to, in direction of;  directly over/level with; to detriment of;
+ventum
+  vent | VPAR C3 V4 ACC S M PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 NOM S N PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 ACC S N PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 VOC S N PERF PASSIVE PPL
+    come;
+  vent | SUPINE C3 V4 ACC S N
+    come;
+  vent | N D2 V1 ACC S M
+    wind;
+non
+  Non | N D9 V8 X X M
+    Nones (pl.), abb. Non.; 7th of month, March, May, July, Oct., 5th elsewhen;
+  non | ADV POS
+    not, by no means, no; [non modo ... sed etiam => not only ... but also];
+  non | ADV POS
+    not, by no means, no; [non modo ... sed etiam => not only ... but also];
+mingit
+  ming | V C3 V1 PRES ACTIVE IND 3 S
+    make water, urinate;
+  ming | V C3 V1 PRES ACTIVE IND 3 S
+    make water, urinate;
+quia
+  quia | CONJ
+    because;
+prudens
+  prudens | ADJ D3 V1 NOM S X POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+  prudens | ADJ D3 V1 VOC S X POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+  prudens | ADJ D3 V1 ACC S N POS
+    aware, skilled; sensible, prudent; farseeing; experienced;
+est
+  es | V C7 V3 PRES ACTIVE IND 3 S
+    eat/consume/devour; eat away (fire/water/disease); destroy; spend money on food;
+   | V C5 V1 PRES ACTIVE IND 3 S
+    be; exist; (also used to form verb perfect passive tenses) with NOM PERF PPL
+Senatus
+  senat | N D4 V1 NOM S M
+    senate;
+  senat | N D4 V1 VOC S M
+    senate;
+  senat | N D4 V1 GEN S M
+    senate;
+  senat | N D4 V1 NOM P M
+    senate;
+  senat | N D4 V1 VOC P M
+    senate;
+  senat | N D4 V1 ACC P M
+    senate;
+  senat | ADJ D1 V1 NOM S M POS
+    Sienna-earth-colored;
+Populusque
+  popul | N D2 V1 NOM S M | tackon que
+    people, nation, State; public/populace/multitude/crowd; a following;
+  popul | N D2 V1 NOM S M | tackon que
+    |members of a society/sex; region/district (L+S); army (Bee);
+  popul | N D2 V1 NOM S F | tackon que
+    poplar tree; (long o);
+Romanus
+  roman | N D2 V1 NOM S M
+    Roman; the Romans (pl.);
+  roman | ADJ D1 V1 NOM S M POS
+    Roman;
+Iuppiter
+  Juppiter | N D3 V1 NOM S M
+    Jupiter; (Roman chief/sky god); (supreme being); heavens/sky (poetic);
+  Juppiter | N D3 V1 VOC S M
+    Jupiter; (Roman chief/sky god); (supreme being); heavens/sky (poetic);
+Optimus
+  opti | ADJ D1 V1 NOM S M SUPER
+    good, honest, brave, noble, kind, pleasant, right, useful; valid; healthy;
+Maximus
+  maxi | ADJ D1 V1 NOM S M SUPER
+    large/great/big/vast/huge; much; powerful; tall/long/broad; extensive/spacious;
+  maxi | ADJ D1 V1 NOM S M SUPER
+    |great (achievement); mighty; distinguished; skilled; bold/confident; proud;
+  maxi | ADJ D1 V1 NOM S M SUPER
+    ||full/complete/utter/pure; intense; loud; at high price; notable/famous; old;
+  maxi | ADJ D0 V0 NOM S M SUPER
+    greatest/biggest/largest; longest; oldest; highest, utmost; leading, chief;
+Legio
+  legio | N D3 V1 NOM S F
+    legion; army;
+  legio | N D3 V1 VOC S F
+    legion; army;
+XIV
+  XIV | NUM D2 V0 X X X CARD
+     14  as a ROMAN NUMERAL;
+Veni
+  ven | N D2 V2 LOC S N
+    sale, purchase; (only sg. ACC/DAT w/dare); [venum dare => put up for sale];
+  ven | N D2 V2 GEN S N
+    sale, purchase; (only sg. ACC/DAT w/dare); [venum dare => put up for sale];
+  veni | V C6 V1 PRES ACTIVE IMP 2 S
+    go for sale, be sold (as slave), be disposed of for (dishonorable/venal) gain;
+  ven | V C3 V4 PERF ACTIVE IND 1 S
+    come;
+  ven | V C3 V4 PRES ACTIVE IMP 2 S
+    come;
+vidi
+  vid | V C2 V1 PERF ACTIVE IND 1 S
+    see, look at; consider; (PASS) seem, seem good, appear, be seen;
+vici
+  vic | N D2 V1 GEN S M
+    village; hamlet; street, row of houses;
+  vic | N D2 V1 LOC S M
+    village; hamlet; street, row of houses;
+  vic | N D2 V1 NOM P M
+    village; hamlet; street, row of houses;
+  vic | N D2 V1 VOC P M
+    village; hamlet; street, row of houses;
+  vic | N D3 V3 LOC S F
+    turn, change, succession; exchange, interchange, repayment; plight, lot;
+  vic | N D3 V3 DAT S F
+    turn, change, succession; exchange, interchange, repayment; plight, lot;
+  vic | N D3 V3 ABL S F
+    turn, change, succession; exchange, interchange, repayment; plight, lot;
+  vic | V C3 V1 PERF ACTIVE IND 1 S
+    conquer, defeat, excel; outlast; succeed;
+computatrum
+  computatr | N D2 V2 GEN P N
+    calculator;
+  computatr | N D2 V2 NOM S N
+    calculator;
+  computatr | N D2 V2 VOC S N
+    calculator;
+  computatr | N D2 V2 ACC S N
+    calculator;
+Kindle
+  no reading
+honorificabilitudinitatibus
+  longer than 24 letters
+succerealis
+  cereal | N D3 V4 GEN S N | prefix suc
+    festival of Ceres (pl.);
+magalia
+  magal | ADJ D3 V2 NOM P N POS | suffix al
+    wise/learned man; magician (Persian); astrologer;
+  magal | ADJ D3 V2 ACC P N POS | suffix al
+    wise/learned man; magician (Persian); astrologer;
+  magal | ADJ D3 V2 VOC P N POS | suffix al
+    wise/learned man; magician (Persian); astrologer;
+nequaquamcumque
+  qu | PRON D1 V9 NOM P N | tackon que | tackon cum | tickon ne | packon quam
+    (w/-quam) any, anyone (no pl.) (INDEF) anything; any man, any person;
+  qu | PRON D1 V9 ACC P N | tackon que | tackon cum | tickon ne | packon quam
+    (w/-quam) any, anyone (no pl.) (INDEF) anything; any man, any person;
+audiit
+  audiv | V C3 V4 PERF ACTIVE IND 3 S
+    hear, listen, accept, agree with; obey; harken, pay attention; be able to hear;

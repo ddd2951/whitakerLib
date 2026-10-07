@@ -18,9 +18,8 @@ inline constexpr std::size_t kStemColumnCount{4};
 // Longest input accepted by analyze().
 inline constexpr std::size_t kMaxWordCharacters{24};
 
-// Fold one character to the letter it is filed under: upper case to lower,
-// j to i, v to u. A character outside a-z is returned unchanged and has no
-// bucket of its own.
+// Fold one character to the letter it is filed under: upper case to lower, j to i, v to u. A character outside a-z is
+// returned unchanged and has no bucket of its own.
 [[nodiscard]] constexpr char foldLetter(char c) noexcept {
   if (c >= 'A' && c <= 'Z')
     c = static_cast<char>(c - 'A' + 'a');

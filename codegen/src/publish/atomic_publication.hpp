@@ -1,21 +1,14 @@
 #pragma once
 
-#include <cstdio>
 #include <filesystem>
-#include <functional>
+#include <span>
 #include <string>
 
-// NOTE: We create a temporary image, only after it's validated does it
-// overwrite an earlier image
 namespace publish {
 
-using Writer = std::function<bool(std::FILE*)>;
+using Validator = void (*)(const std::filesystem::path&);
 
-using Validator =
-    std::function<bool(const std::filesystem::path&, std::string&)>;
-
-[[nodiscard]] bool atomically(const std::filesystem::path& destination,
-                              const Writer& writer, const Validator& validator,
-                              std::string& failure);
+[[nodiscard]] bool atomically(const std::filesystem::path& destination, std::span<const unsigned char> bytes,
+                              Validator validator, std::string& failure);
 
 } // namespace publish

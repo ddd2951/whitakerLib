@@ -1,228 +1,116 @@
 #include "image_writer.hpp"
 
 #include "emitter/image_file.hpp"
+#include "error/error.hpp"
+#include "util/reflect_util.hpp"
 #include "src/search/relationship_schema.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace rel = whitaker::relationship;
 
 namespace emitter {
 
-[[nodiscard]] ImageFile encodeImage(const ImageData& imageData,
-                                    const DirectOutputMachine& machine) {
+namespace {
+
+template <typename T> void append(std::vector<unsigned char>& out, const T& value) {
+  if constexpr (requires { value.fields(); }) {
+    std::array<unsigned char, rel::recordBytes<T>()> bytes{};
+    rel::storeRecord(bytes.data(), value);
+    out.insert(out.end(), bytes.begin(), bytes.end());
+  } else {
+    std::array<unsigned char, sizeof value> bytes{};
+    rel::storeField(bytes.data(), value);
+    out.insert(out.end(), bytes.begin(), bytes.end());
+  }
+}
+
+void appendWord(std::vector<unsigned char>& out, std::uint64_t word, std::size_t bytes) {
+  for (std::size_t i = 0; i < bytes; ++i)
+    out.push_back(static_cast<unsigned char>(word >> (8 * i)));
+}
+
+} // namespace
+
+[[nodiscard]] ImageFile encodeImage(const ImageData& imageData, const Machine& machine) {
   ImageFile image;
-  const Saved header = image.reserve("header", {1, rel::kHeaderBytes * 8});
-  const Saved directory = image.reserve(
-      "directory", {rel::kSectionCount, rel::kDirectoryBytes * 8});
+  image.bytes.resize(rel::kHeaderBytes + rel::kSectionCount * rel::kDirectoryBytes);
+  image.parts = {{"header", 0, rel::kHeaderBytes, 1, rel::kHeaderBytes},
+                 {"directory", rel::kHeaderBytes, image.bytes.size(), rel::kSectionCount, rel::kDirectoryBytes}};
   std::array<rel::DirectoryEntry, rel::kSectionCount> entries{};
 
-  const auto saveSection =
-      [&]<typename Save>(rel::Section id, std::string_view name, Shape shape,
-                         std::uint64_t directoryCount, Save&& save) {
-        const Saved saved = image.save(name, shape, static_cast<Save&&>(save));
-        entries[static_cast<std::size_t>(id)] = {
-            saved.byteStart, saved.byteLength(), directoryCount};
-      };
+  // NOTE: `count` is the section's items; the instructions and the strings give their directory another count.
+  const auto section = [&](rel::Section id, std::size_t count, const auto& write,
+                           std::optional<std::uint64_t> directoryCount = {}) {
+    const std::size_t start = image.bytes.size();
+    write(image.bytes);
+    const std::size_t width = rel::widthOf(id);
+    if (image.bytes.size() - start != count * width)
+      error::fatal("image: a section's bytes are not its records");
+    entries[static_cast<std::size_t>(id)] = {start, image.bytes.size() - start, directoryCount.value_or(count)};
+    image.parts.push_back({util::enumToSv(id), start, image.bytes.size(), count, width});
+  };
+  const auto all = [](const auto& items) {
+    return [&items](std::vector<unsigned char>& out) {
+      for (const auto& item : items)
+        append(out, item);
+    };
+  };
 
-  saveSection(rel::Section::States, "states",
-              {machine.states(), rel::kStateBytes * 8}, machine.states(),
-              [&](Encoder& out) {
-                for (std::size_t state = 0; state < machine.states(); ++state) {
-                  const std::uint64_t packed = machine.packedStates()[state];
-                  out.u32(static_cast<std::uint32_t>(packed));
-                  out.u32(static_cast<std::uint32_t>(packed >> 32));
-                  out.u8(machine.resultCounts()[state]);
-                  out.u8(0);
-                  out.u16(0);
-                }
-              });
-  saveSection(rel::Section::Transitions, "transitions",
-              {machine.transitions(), rel::kTransitionBytes * 8},
-              machine.transitions(), [&](Encoder& out) {
-                for (const std::uint64_t edge : machine.packedEdges())
-                  out.u64(edge);
-              });
-  saveSection(rel::Section::Lexemes, "lexemes",
-              {imageData.program.lexemes.size(), rel::kLexemeBytes * 8},
-              imageData.program.lexemes.size(), [&](Encoder& out) {
-                for (const Lexeme& lexeme : imageData.program.lexemes) {
-                  out.u16(lexeme.dictionary);
-                  out.u8(lexeme.stem);
-                  out.u8(0);
-                  out.u16(lexeme.paradigm);
-                  out.u16(0);
-                }
-              });
-  saveSection(rel::Section::Paradigms, "paradigms",
-              {imageData.program.paradigms.size(), rel::kParadigmBytes * 8},
-              imageData.program.paradigms.size(), [&](Encoder& out) {
-                for (const Paradigm& paradigm : imageData.program.paradigms) {
-                  out.u32(paradigm.firstTarget);
-                  out.u8(paradigm.count);
-                  out.u8(0);
-                  out.u16(0);
-                }
-              });
-  saveSection(rel::Section::Targets, "targets",
-              {imageData.program.targets.size(), rel::kTargetBytes * 8},
-              imageData.program.targets.size(), [&](Encoder& out) {
-                for (const std::uint16_t target : imageData.program.targets)
-                  out.u16(target);
-              });
-  // NOTE: Directory count is ordered analyses, not bytes; the reader checks it.
-  saveSection(rel::Section::Instructions, "instructions",
-              {imageData.program.instructions.size(), 8},
-              imageData.analyses.size(), [&](Encoder& out) {
-                for (const std::byte instruction :
-                     imageData.program.instructions)
-                  out.u8(std::to_integer<std::uint8_t>(instruction));
-              });
-  saveSection(rel::Section::Dictionaries, "dictionaries",
-              {imageData.dictionaries.size(), rel::kDictionaryBytes * 8},
-              imageData.dictionaries.size(), [&](Encoder& out) {
-                for (const DictionaryRecord& dictionary :
-                     imageData.dictionaries) {
-                  for (const std::uint32_t orth : dictionary.orth)
-                    out.u32(orth);
-                  out.u32(dictionary.meaning);
-                  out.u8(dictionary.age);
-                  out.u8(dictionary.frequency);
-                  out.u16(dictionary.classId);
-                }
-              });
-  saveSection(rel::Section::Addons, "addons",
-              {imageData.addons.size(), rel::kAddonBytes * 8},
-              imageData.addons.size(), [&](Encoder& out) {
-                for (const AddonRecord& addon : imageData.addons) {
-                  out.u32(addon.fix);
-                  out.u32(addon.meaning);
-                  for (const std::uint16_t field : addon.target)
-                    out.u16(field);
-                  out.u8(std::to_underlying(addon.kind));
-                  out.u8(std::to_underlying(addon.root));
-                  out.u8(std::to_underlying(addon.targetPart));
-                  out.u8(addon.rootKey);
-                  out.u8(addon.targetKey);
-                  out.u8(addon.connect);
-                  out.u8(addon.targetGate);
-                  out.u32(addon.rowStart);
-                  out.u16(addon.rowCount);
-                  out.u8(addon.firstRaw);
-                  out.u16(0);
-                }
-              });
-  saveSection(rel::Section::Classes, "classes",
-              {imageData.classes.size(), rel::kClassBytes * 8},
-              imageData.classes.size(), [&](Encoder& out) {
-                for (const ClassRecord& record : imageData.classes) {
-                  out.u32(record.rowStart);
-                  out.u16(record.rowCount);
-                  out.u16(record.gate);
-                }
-              });
-  saveSection(rel::Section::FallbackRows, "fallback rows",
-              {imageData.fallbackRows.size(), rel::kFallbackRowBytes * 8},
-              imageData.fallbackRows.size(), [&](Encoder& out) {
-                for (const FallbackRowRecord& row : imageData.fallbackRows) {
-                  out.u16(row.inflect);
-                  out.u16(row.description);
-                }
-              });
-  saveSection(rel::Section::Inflections, "inflections",
-              {imageData.inflections.size(), rel::kInflectionBytes * 8},
-              imageData.inflections.size(), [&](Encoder& out) {
-                for (const InflectionRecord& inflection :
-                     imageData.inflections) {
-                  out.u32(inflection.ending);
-                  out.u8(inflection.key);
-                  out.u8(inflection.allow);
-                  out.u8(inflection.age);
-                  out.u8(inflection.frequency);
-                }
-              });
-  saveSection(rel::Section::Endings, "endings",
-              {imageData.endings.size(), rel::kEndingBytes * 8},
-              imageData.endings.size(), [&](Encoder& out) {
-                for (const EndingRecord& ending : imageData.endings) {
-                  out.u32(ending.text);
-                  out.u16(ending.first);
-                  out.u16(ending.count);
-                }
-              });
-  saveSection(rel::Section::FallbackStems, "fallback stems",
-              {imageData.fallbackStems.size(), rel::kFallbackStemBytes * 8},
-              imageData.fallbackStems.size(), [&](Encoder& out) {
-                for (const FallbackStemRecord& stem : imageData.fallbackStems) {
-                  out.u32(stem.text);
-                  out.u16(stem.dictionary);
-                  out.u8(stem.key);
-                  out.u8(std::to_underlying(stem.part));
-                }
-              });
-  saveSection(rel::Section::Strings, "strings",
-              {imageData.strings.blob().size(), 8}, imageData.strings.count(),
-              [&](Encoder& out) { out.raw(imageData.strings.blob()); });
-  saveSection(rel::Section::Grammars, "grammars",
-              {imageData.grammars.size(), rel::kGrammarBytes * 8},
-              imageData.grammars.size(), [&](Encoder& out) {
-                for (const latin::Analysis& grammar : imageData.grammars) {
-                  out.u8(std::to_underlying(grammar.part));
-                  out.u8(grammar.which);
-                  out.u8(grammar.variant.value);
-                  out.u8(std::to_underlying(grammar.caseOf));
-                  out.u8(std::to_underlying(grammar.number));
-                  out.u8(std::to_underlying(grammar.gender));
-                  out.u8(std::to_underlying(grammar.comparison));
-                  out.u8(std::to_underlying(grammar.numeralSort));
-                  out.u8(std::to_underlying(grammar.tense));
-                  out.u8(std::to_underlying(grammar.voice));
-                  out.u8(std::to_underlying(grammar.mood));
-                  out.u8(grammar.person.value);
-                }
-              });
-  saveSection(rel::Section::Entries, "entries",
-              {imageData.entries.size(), rel::kEntryBytes * 8},
-              imageData.entries.size(), [&](Encoder& out) {
-                for (const rel::Entry& entry : imageData.entries) {
-                  out.u8(std::to_underlying(entry.part));
-                  out.u8(entry.which);
-                  out.u8(entry.variant);
-                  out.u8(std::to_underlying(entry.gender));
-                  out.u8(entry.kind);
-                  out.u8(std::to_underlying(entry.comparison));
-                  out.u8(std::to_underlying(entry.numeralSort));
-                  out.u8(std::to_underlying(entry.area));
-                  out.u8(std::to_underlying(entry.geography));
-                  out.u8(std::to_underlying(entry.source));
-                  out.u16(entry.numeralValue.value);
-                }
-              });
+  section(rel::Section::States, machine.states.size(), all(machine.states));
+  section(rel::Section::Transitions, machine.transitions.size(), all(machine.transitions));
+  section(rel::Section::Lexemes, imageData.program.lexemes.size(), all(imageData.program.lexemes));
+  section(rel::Section::Paradigms, imageData.program.paradigms.size(), all(imageData.program.paradigms));
+  section(rel::Section::Targets, imageData.program.targets.size(), all(imageData.program.targets));
+  section(
+      rel::Section::Instructions, imageData.program.instructions.size(),
+      [&](std::vector<unsigned char>& out) {
+        for (const std::byte instruction : imageData.program.instructions)
+          out.push_back(std::to_integer<unsigned char>(instruction));
+      },
+      imageData.analyses.size());
+  section(rel::Section::Dictionaries, imageData.dictionaries.size(), all(imageData.dictionaries));
+  section(rel::Section::Addons, imageData.addons.size(), all(imageData.addons));
+  section(rel::Section::Classes, imageData.classes.size(), all(imageData.classes));
+  section(rel::Section::FallbackRows, imageData.fallbackRows.size(), all(imageData.fallbackRows));
+  section(rel::Section::Inflections, imageData.inflections.size(), all(imageData.inflections));
+  section(rel::Section::Endings, imageData.endings.size(), all(imageData.endings));
+  section(rel::Section::FallbackStems, imageData.fallbackStems.size(), all(imageData.fallbackStems));
+  section(
+      rel::Section::Strings, imageData.strings.blob().size(),
+      [&](std::vector<unsigned char>& out) {
+        out.insert(out.end(), imageData.strings.blob().begin(), imageData.strings.blob().end());
+      },
+      imageData.strings.count());
+  section(rel::Section::Grammars, imageData.grammars.size(), [&](std::vector<unsigned char>& out) {
+    for (const latin::Analysis& grammar : imageData.grammars)
+      appendWord(out, rel::packGrammar(grammar), rel::kGrammarBytes);
+  });
+  section(rel::Section::Entries, imageData.entries.size(), [&](std::vector<unsigned char>& out) {
+    for (const rel::Entry& entry : imageData.entries)
+      appendWord(out, rel::packEntry(entry), rel::kEntryBytes);
+  });
+  section(rel::Section::StemPatterns, imageData.stemPatterns.size(), all(imageData.stemPatterns));
 
-  image.fill(header, [&](Encoder& out) {
-    for (const char c : rel::kMagic)
-      out.u8(static_cast<std::uint8_t>(c));
-    out.u32(rel::kVersion);
-    out.u32(rel::kHeaderBytes);
-    out.u64(image.byteSize());
-    out.u32(rel::kSectionCount);
-    out.u32(machine.root());
-    out.u32(machine.rootOutput());
-    out.u32(rel::kMaximumWordLength);
-    out.u32(static_cast<std::uint32_t>(imageData.words.size()));
-    out.u32(static_cast<std::uint32_t>(imageData.analyses.size()));
-  });
-  image.fill(directory, [&](Encoder& out) {
-    for (const rel::DirectoryEntry& entry : entries) {
-      out.u64(entry.offset);
-      out.u64(entry.bytes);
-      out.u64(entry.count);
-    }
-  });
+  rel::storeRecord(image.bytes.data(),
+                   rel::HeaderRecord{.magic = rel::kMagic,
+                                     .version = rel::kVersion,
+                                     .headerBytes = std::uint32_t{rel::kHeaderBytes},
+                                     .imageBytes = image.bytes.size(),
+                                     .sectionCount = rel::kSectionCount,
+                                     .root = machine.root,
+                                     .rootOutput = machine.rootOutput,
+                                     .maximumWordLength = facts::kMaxWordCharacters,
+                                     .spellingCount = static_cast<std::uint32_t>(imageData.words.size()),
+                                     .resultCount = static_cast<std::uint32_t>(imageData.analyses.size())});
+  for (std::size_t i = 0; i < entries.size(); ++i)
+    rel::storeRecord(image.bytes.data() + rel::kHeaderBytes + i * rel::kDirectoryBytes, entries[i]);
   return image;
 }
 

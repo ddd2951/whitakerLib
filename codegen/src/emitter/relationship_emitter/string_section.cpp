@@ -19,9 +19,8 @@ std::uint32_t StringSection::intern(std::string_view text) {
   const auto found = m_offsets.find(std::string{text});
   if (found != m_offsets.end())
     return found->second;
-  if (m_blob.size() + text.size() + 1 >
-      std::numeric_limits<std::uint32_t>::max())
-    error::fatal("relationship emitter: string section exceeds uint32_t");
+  if (m_blob.size() + text.size() + 1 > std::numeric_limits<std::uint32_t>::max())
+    error::fatal("image: string section past 32 bits");
   const std::uint32_t offset = static_cast<std::uint32_t>(m_blob.size());
   m_blob.append(text);
   m_blob.push_back('\0');

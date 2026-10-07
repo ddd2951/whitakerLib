@@ -9,8 +9,13 @@ extern "C" {
 
 #define WHITAKER_VERSION_MAJOR 0
 #define WHITAKER_VERSION_MINOR 2
+#define WHITAKER_VERSION_PATCH 1
 
-#if defined(__GNUC__)
+#if defined(_WIN32) && defined(WHITAKER_BUILDING)
+#define WHITAKER_API __declspec(dllexport)
+#elif defined(_WIN32)
+#define WHITAKER_API __declspec(dllimport)
+#elif defined(__GNUC__)
 #define WHITAKER_API __attribute__((visibility("default")))
 #else
 #define WHITAKER_API
@@ -18,21 +23,22 @@ extern "C" {
 
 typedef enum {
   WHITAKER_OK = 0,
+  // NOTE: No longer returned; kept so the values after it keep their numbers.
   WHITAKER_NOT_INITIALIZED,
   WHITAKER_INVALID_ARGUMENT,
   WHITAKER_INPUT_TOO_LONG,
+  // NOTE: No longer returned: the image is checked when the library is built. Kept so the value keeps its number.
   WHITAKER_MALFORMED_IMAGE,
 } WhitakerStatus;
 
 #define WHITAKER_MAX_WORD_LENGTH 24
 #define WHITAKER_MAX_MATCHES 256
-// NOTE: Tickon, tackon and packon steps each remove at least two letters of
-//  a word of at most WHITAKER_MAX_WORD_LENGTH, and the image is refused
-//  otherwise; prefix and suffix steps come alone, two at most.
+// NOTE: Tickon, tackon and packon steps each remove at least two letters of a word of at most WHITAKER_MAX_WORD_LENGTH,
+//  and the library does not build otherwise; prefix and suffix steps come alone, two at most.
 #define WHITAKER_MAX_ADDON_STEPS (WHITAKER_MAX_WORD_LENGTH / 2)
 #define WHITAKER_TEXT_BYTES 8192
 
-// NOTE: These values match latin/latin.hpp; whitaker.cpp checks each one.
+// NOTE: These values match latin/latin.hpp; gen checks each one (codegen/src/types/latin_test.cpp).
 typedef enum {
   WHITAKER_PART_X = 0,
   WHITAKER_PART_N = 1,
@@ -256,9 +262,8 @@ typedef enum {
   WHITAKER_SOURCE_Z = 25,
 } WhitakerSource;
 
-// NOTE: Not a twin. The API numbers addon kinds from 1 in its own order and
-//  leaves 0 for "no addon"; latin::AddonKind (Tickon = 0 ...) has no such
-//  value. whitaker.cpp maps one to the other.
+// NOTE: Not a twin. The API numbers addon kinds from 1 in its own order and leaves 0 for "no addon"; latin::AddonKind
+//  (Tickon = 0 ...) has no such value. whitaker.cpp maps one to the other.
 typedef enum {
   WHITAKER_ADDON_PREFIX = 1,
   WHITAKER_ADDON_SUFFIX,
@@ -267,18 +272,16 @@ typedef enum {
   WHITAKER_ADDON_TICKON,
 } WhitakerAddonKind;
 
-// NOTE: `kind` holds a WhitakerAddonKind. `id` names one of the library's
-//  addon records, for whitaker_addon_spelling and whitaker_addon_meaning.
-//  An id is only valid for the library that returned it; don't store it.
+// NOTE: `kind` holds a WhitakerAddonKind. `id` names one of the library's addon records, for whitaker_addon_spelling
+//  and whitaker_addon_meaning. An id is only valid for the library that returned it; don't store it.
 typedef struct {
   uint16_t id;
   uint8_t kind;
 } WhitakerAddonStep;
 
-// NOTE: Each field holds the value of the enum it names (`part` a
-//  WhitakerPart, `case_of` a WhitakerCase, ...), one byte each. `which` is
-//  the declension or conjugation and `variant` its variant; a field the
-//  reading has no use for is 0.
+// NOTE: Each field holds the value of the enum it names (`part` a WhitakerPart, `case_of` a WhitakerCase, ...), one
+//  byte each. `which` is the declension or conjugation and `variant` its variant; a field the reading has no use for is
+//  0.
 typedef struct {
   uint8_t part;
   uint8_t which;
@@ -294,11 +297,10 @@ typedef struct {
   uint8_t person;
 } WhitakerGrammar;
 
-// NOTE: Each enum field holds its matching Whitaker* value. `which` is a
-//  declension for N, PRON, PACK, ADJ and NUM, or a conjugation for V. `kind`
-//  is NounKind for N, PronounKind for PRON, PackonKind for PACK, and VerbKind
-//  for V. Other unused fields are 0. `numeral_value` is the NUM value,
-//  0..1000 for a dictionary numeral; a roman numeral's goes up to 4999.
+// NOTE: Each enum field holds its matching Whitaker* value. `which` is a declension for N, PRON, PACK, ADJ and NUM, or
+//  a conjugation for V. `kind` is NounKind for N, PronounKind for PRON, PackonKind for PACK, and VerbKind for V. Other
+//  unused fields are 0. `numeral_value` is the NUM value, 0..1000 for a dictionary numeral; a roman numeral's goes up
+//  to 4999.
 typedef struct {
   uint8_t part;
   uint8_t which;
@@ -356,38 +358,30 @@ typedef struct {
   char text[WHITAKER_TEXT_BYTES];
 } WhitakerResult;
 
-// NOTE: Call before the first analyze. Calling it again is harmless, from
-//  any thread.
+// NOTE: Not needed: the library is ready when loaded. Returns WHITAKER_OK; harmless from any thread.
 WHITAKER_API WhitakerStatus whitaker_init(void);
 
 // NOTE: Readings are in the same order WORDS prints them. An unknown word
 //  gives WHITAKER_OK and count 0. On an error `out` is not touched.
 // NOTE: Safe to call from several threads at once, each with its own `out`.
-WHITAKER_API WhitakerStatus whitaker_analyze(const char* word,
-                                             WhitakerResult* out);
+WHITAKER_API WhitakerStatus whitaker_analyze(const char* word, WhitakerResult* out);
 
-// NOTE: Copies `src` into `dst` and points the copied strings into `dst`.
-//  A null argument or the same object twice does nothing.
-WHITAKER_API void whitaker_result_copy(WhitakerResult* dst,
-                                       const WhitakerResult* src);
+// NOTE: Copies `src` into `dst` and points the copied strings into `dst`. A null argument or the same object twice does
+//  nothing.
+WHITAKER_API void whitaker_result_copy(WhitakerResult* dst, const WhitakerResult* src);
 
-// NOTE: The name WORDS prints for `value` of `field`, "NOM" for
-//  WHITAKER_CASE_NOM. NULL for a value the field doesn't have. The string is
-//  the library's; don't free it.
+// NOTE: The name WORDS prints for `value` of `field`, "NOM" for WHITAKER_CASE_NOM. NULL for a value the field doesn't
+//  have. The string is the library's; don't free it.
 WHITAKER_API const char* whitaker_name(WhitakerField field, uint8_t value);
 
-// NOTE: The spelling and meaning of addon step `id`. NULL for an id the
-//  library doesn't have, or before whitaker_init. The strings are the
+// NOTE: The spelling and meaning of addon step `id`. NULL for an id the library doesn't have. The strings are the
 //  library's; don't free them.
 WHITAKER_API const char* whitaker_addon_spelling(uint16_t id);
 WHITAKER_API const char* whitaker_addon_meaning(uint16_t id);
 
-// NOTE: Writes the line WORDS prints for `grammar`, like snprintf: at most
-//  `size` bytes, the terminator included, and returns the length of the
-//  whole line. `out` may be NULL when `size` is 0. A null `grammar`
-//  returns 0.
-WHITAKER_API size_t whitaker_describe(const WhitakerGrammar* grammar, char* out,
-                                      size_t size);
+// NOTE: Writes the line WORDS prints for `grammar`, like snprintf: at most `size` bytes, the terminator included, and
+//  returns the length of the whole line. `out` may be NULL when `size` is 0. A null `grammar` returns 0.
+WHITAKER_API size_t whitaker_describe(const WhitakerGrammar* grammar, char* out, size_t size);
 
 #ifdef __cplusplus
 }

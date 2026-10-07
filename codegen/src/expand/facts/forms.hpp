@@ -12,6 +12,5 @@ struct Forms {
 };
 
 Forms forms(const Sorted& sorted, const AdverbCorrections& corrections);
-void report(const Forms& forms);
 
 } // namespace expand

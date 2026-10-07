@@ -8,19 +8,27 @@ jobs:
   build:
     name: ${{ matrix.compiler }} ${{ matrix.sanitize == 'ON' && 'sanitizers' || 'release' }}
     runs-on: ubuntu-24.04
+    # #embed needs GCC 15 or Clang 19, newer than Ubuntu 24.04's own.
+    container: ${{ matrix.image }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - compiler: gcc
+            image: gcc:15
+            packages: cmake
             cc: gcc
             cxx: g++
             sanitize: "OFF"
           - compiler: clang
+            image: debian:trixie
+            packages: cmake make clang g++
             cc: clang
             cxx: clang++
             sanitize: "OFF"
           - compiler: gcc
+            image: gcc:15
+            packages: cmake
             cc: gcc
             cxx: g++
             sanitize: "ON"
@@ -29,6 +37,11 @@ jobs:
       CXX: ${{ matrix.cxx }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install the build tools
+        run: >
+          apt-get update &&
+          apt-get install -y --no-install-recommends ${{ matrix.packages }}
 
       - name: Verify the vendored sources
         run: sha256sum -c MANIFEST.sha256
@@ -47,14 +60,6 @@ jobs:
 
       - name: Install
         run: cmake --install build --prefix "$PWD/prefix"
-
-      - name: Build the examples against the install
-        if: matrix.sanitize == 'OFF'
-        run: |
-          cmake -S examples -B build-examples -DCMAKE_PREFIX_PATH="$PWD/prefix"
-          cmake --build build-examples
-          LD_LIBRARY_PATH="$PWD/prefix/lib" ./build-examples/whitaker-c-example
-          LD_LIBRARY_PATH="$PWD/prefix/lib" ./build-examples/whitaker-cpp-example
 
       - name: Exported symbols
         if: matrix.sanitize == 'OFF'

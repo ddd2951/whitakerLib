@@ -1,11 +1,29 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
+#include <utility>
+
+// WORDS' terms, as ADDONS.LAT and DICTLINE use them:
+// - prefix: added to the start of a stem to change its meaning:
+//   ante + cedo -> antecedo.
+// - suffix: added to the end of a stem, before the inflection; it can change
+//   the part of speech: vinc- + tor -> victor.
+// - tackon: added to the end of a whole, inflected word; taking it off leaves
+//   the same inflected word: -que, -ne, -ve.
+// - packon: a tackon that only joins the qu- pronouns: qui + cumque ->
+//   quicumque. The pronoun halves are DICTLINE's PACK entries.
+// - tickon: added to the front of those same qu- pronouns: ec- + quis ->
+//   ecquis.
+// - stem key: which of an entry's four stems an inflection joins; each
+//   INFLECTS row names the key it needs.
+// - allowed stem (AllowSet): WORDS' further checks on whether an inflection
+//   may join a stem, such as the short imperatives dic, duc, fac, fer.
 
 namespace latin {
 
-// INFO: DICTLINE and ADDONS.LAT number the parts differently. Both are
-//  converted to this one ordinal, so the image compares like with like.
+// INFO: DICTLINE and ADDONS.LAT number the parts differently. Both are converted to this one ordinal, so the image
+//  compares like with like.
 enum class Part : unsigned char {
   // ADDONS.LAT's X: the record accepts any part.
   X = 0,
@@ -293,28 +311,14 @@ struct Analysis {
 };
 
 // INFO: Declensions 7 and 8 are not part of the source domain.
-[[nodiscard]] constexpr bool isValid(Declension d) noexcept {
-  return d.value <= 6 || d.value == 9;
-}
-[[nodiscard]] constexpr bool isValid(Variant v) noexcept {
-  return v.value <= 9;
-}
-[[nodiscard]] constexpr bool isValid(Conjugation c) noexcept {
-  return c.value <= 9;
-}
-[[nodiscard]] constexpr bool isValid(StemKey key) noexcept {
-  return key.value <= 9;
-}
-[[nodiscard]] constexpr bool isValid(CharacterCount count) noexcept {
-  return count.value <= 7;
-}
-[[nodiscard]] constexpr bool isValid(Person person) noexcept {
-  return person.value <= 3;
-}
+[[nodiscard]] constexpr bool isValid(Declension d) noexcept { return d.value <= 6 || d.value == 9; }
+[[nodiscard]] constexpr bool isValid(Variant v) noexcept { return v.value <= 9; }
+[[nodiscard]] constexpr bool isValid(Conjugation c) noexcept { return c.value <= 9; }
+[[nodiscard]] constexpr bool isValid(StemKey key) noexcept { return key.value <= 9; }
+[[nodiscard]] constexpr bool isValid(CharacterCount count) noexcept { return count.value <= 7; }
+[[nodiscard]] constexpr bool isValid(Person person) noexcept { return person.value <= 3; }
 // INFO: Whitaker's NUMERAL_VALUE_TYPE is range 0..1000.
-[[nodiscard]] constexpr bool isValid(NumeralValue value) noexcept {
-  return value.value <= 1000;
-}
+[[nodiscard]] constexpr bool isValid(NumeralValue value) noexcept { return value.value <= 1000; }
 
 [[nodiscard]] constexpr bool isPart(unsigned char value) noexcept {
   switch (Part{value}) {
@@ -350,32 +354,26 @@ struct Analysis {
 }
 
 // INFO: word_package.adb:854-858; a prefix's root of X accepts any part.
-[[nodiscard]] constexpr bool rootAdmits(Part root, Part part) noexcept {
-  return root == Part::X || root == part;
-}
+[[nodiscard]] constexpr bool rootAdmits(Part root, Part part) noexcept { return root == Part::X || root == part; }
 
 // INFO: word_package.adb:756-765 and 819, Reduce_Stem_List's "<=" on parts.
 [[nodiscard]] constexpr bool suffixRootAdmits(Part root, Part part) noexcept {
   return rootAdmits(root, part) || (part == Part::PACK && root == Part::PRON);
 }
 
-// INFO: word_package.adb:780-787, 820-823 and 884-887; the asymmetry is
-//  Whitaker's.
-[[nodiscard]] constexpr bool
-stemKeyAdmits(unsigned char dictKey, unsigned char wanted, Part part) noexcept {
+// INFO: word_package.adb:780-787, 820-823 and 884-887; the asymmetry is Whitaker's.
+[[nodiscard]] constexpr bool stemKeyAdmits(unsigned char dictKey, unsigned char wanted, Part part) noexcept {
   if (dictKey == wanted || wanted == 0)
     return true;
-  return dictKey == 0 && wanted >= 1 && wanted <= 2 &&
-         (part == Part::N || part == Part::ADJ || part == Part::V);
+  return dictKey == 0 && wanted >= 1 && wanted <= 2 && (part == Part::N || part == Part::ADJ || part == Part::V);
 }
 
 // INFO: Whitaker's matching predicates, dictionary on the left, inflection on
 //  the right.
 // INFO: inflections_package.adb:266-277, "<=" on Decn_Record, which holds a
 //  declension or a conjugation.
-[[nodiscard]] constexpr bool
-numberMatches(unsigned char left, unsigned char leftVariant,
-              unsigned char right, unsigned char rightVariant) noexcept {
+[[nodiscard]] constexpr bool numberMatches(unsigned char left, unsigned char leftVariant, unsigned char right,
+                                           unsigned char rightVariant) noexcept {
   if (right == left && rightVariant == leftVariant)
     return true;
   if (right == 0 && rightVariant == 0 && left != 9)
@@ -383,41 +381,30 @@ numberMatches(unsigned char left, unsigned char leftVariant,
   return right == left && rightVariant == 0;
 }
 
-[[nodiscard]] constexpr bool declensionMatches(Declension left,
-                                               Variant leftVariant,
-                                               Declension right,
+[[nodiscard]] constexpr bool declensionMatches(Declension left, Variant leftVariant, Declension right,
                                                Variant rightVariant) noexcept {
-  return numberMatches(left.value, leftVariant.value, right.value,
-                       rightVariant.value);
+  return numberMatches(left.value, leftVariant.value, right.value, rightVariant.value);
 }
 
-[[nodiscard]] constexpr bool conjugationMatches(Conjugation left,
-                                                Variant leftVariant,
-                                                Conjugation right,
+[[nodiscard]] constexpr bool conjugationMatches(Conjugation left, Variant leftVariant, Conjugation right,
                                                 Variant rightVariant) noexcept {
-  return numberMatches(left.value, leftVariant.value, right.value,
-                       rightVariant.value);
+  return numberMatches(left.value, leftVariant.value, right.value, rightVariant.value);
 }
 
 // INFO: word_package.adb:768-778, Reduce_Stem_List's own "<=" on genders.
 [[nodiscard]] constexpr bool genderMatches(Gender left, Gender right) noexcept {
-  return right == left || right == Gender::X ||
-         (right == Gender::C && left != Gender::N);
+  return right == left || right == Gender::X || (right == Gender::C && left != Gender::N);
 }
 
 // INFO: word_package.adb:944-946.
-[[nodiscard]] constexpr bool comparisonMatches(Comparison left,
-                                               Comparison right) noexcept {
+[[nodiscard]] constexpr bool comparisonMatches(Comparison left, Comparison right) noexcept {
   return right == left || right == Comparison::X || left == Comparison::X;
 }
 
-// INFO: addons_package.adb:122-125; a TACKON whose entry is a PACK of
-//  declension 1 or 2 and whose gloss starts "PACKON w/" is a PACKON.
-template <typename Gloss>
-[[nodiscard]] constexpr bool isPackon(Declension declension,
-                                      const Gloss& gloss) noexcept {
-  return (declension.value == 1 || declension.value == 2) &&
-         gloss.starts_with("PACKON w/");
+// INFO: addons_package.adb:122-125; a TACKON whose entry is a PACK of declension 1 or 2 and whose gloss starts
+//  "PACKON w/" is a PACKON.
+template <typename Gloss> [[nodiscard]] constexpr bool isPackon(Declension declension, const Gloss& gloss) noexcept {
+  return (declension.value == 1 || declension.value == 2) && gloss.starts_with("PACKON w/");
 }
 
 // INFO: list_sweep.adb:362-378 and 401-415, List_Sweep's rarity pass.
@@ -464,8 +451,7 @@ template <typename Gloss>
 
 // INFO: Allowed_Stem's mood and tense ranges (list_sweep.adb:29-189).
 [[nodiscard]] constexpr bool moodIndToInf(Mood mood) noexcept {
-  return mood == Mood::IND || mood == Mood::SUB || mood == Mood::IMP ||
-         mood == Mood::INF;
+  return mood == Mood::IND || mood == Mood::SUB || mood == Mood::IMP || mood == Mood::INF;
 }
 
 [[nodiscard]] constexpr bool moodIndToImp(Mood mood) noexcept {
@@ -480,8 +466,7 @@ template <typename Gloss>
   return tense == Tense::PERF || tense == Tense::PLUP || tense == Tense::FUTP;
 }
 
-// An inflection row's share of Allowed_Stem; the entry's share is its verb
-// kind and the stem the reading prints.
+// An inflection row's share of Allowed_Stem; the entry's share is its verb kind and the stem the reading prints.
 struct AllowSet {
   enum Bit : unsigned char {
     IsVerb = 1 << 0,
@@ -493,23 +478,19 @@ struct AllowSet {
     SemidepDrop = 1 << 6,
   };
   unsigned char bits{};
-  [[nodiscard]] constexpr bool has(Bit bit) const noexcept {
-    return (bits & bit) != 0;
-  }
+  [[nodiscard]] constexpr bool has(Bit bit) const noexcept { return (bits & bit) != 0; }
   constexpr void add(Bit bit) noexcept { bits |= bit; }
 };
 
-[[nodiscard]] constexpr AllowSet allowOf(Tense tense, Voice voice, Mood mood,
-                                         Person person, Number number,
+[[nodiscard]] constexpr AllowSet allowOf(Tense tense, Voice voice, Mood mood, Person person, Number number,
                                          bool noEnding) noexcept {
   AllowSet allow{};
   allow.add(AllowSet::IsVerb);
-  if (tense == Tense::PRES && voice == Voice::ACTIVE && mood == Mood::IMP &&
-      person.value == 2 && number == Number::S && noEnding)
+  if (tense == Tense::PRES && voice == Voice::ACTIVE && mood == Mood::IMP && person.value == 2 && number == Number::S &&
+      noEnding)
     allow.add(AllowSet::ShortImp);
-  if (mood == Mood::IMP &&
-      !((tense == Tense::PRES && person.value == 2) ||
-        (tense == Tense::FUT && (person.value == 2 || person.value == 3))))
+  if (mood == Mood::IMP && !((tense == Tense::PRES && person.value == 2) ||
+                             (tense == Tense::FUT && (person.value == 2 || person.value == 3))))
     allow.add(AllowSet::ImpNoPerson);
   if (person.value != 3)
     allow.add(AllowSet::NotThird);
@@ -518,23 +499,20 @@ struct AllowSet {
   else if (voice == Voice::ACTIVE && moodIndToInf(mood))
     allow.add(AllowSet::DepDrop);
   if (moodIndToImp(mood) &&
-      ((voice == Voice::PASSIVE && tensePresToFut(tense)) ||
-       (voice == Voice::ACTIVE && tensePerfToFutp(tense))))
+      ((voice == Voice::PASSIVE && tensePresToFut(tense)) || (voice == Voice::ACTIVE && tensePerfToFutp(tense))))
     allow.add(AllowSet::SemidepDrop);
   return allow;
 }
 
 // INFO: dic/duc/fac/fer shortened imperative (G&L 130.5).
 template <typename Stem>
-[[nodiscard]] constexpr bool allowedStem(AllowSet allow, VerbKind kind,
-                                         bool conjugationThreeOne,
+[[nodiscard]] constexpr bool allowedStem(AllowSet allow, VerbKind kind, bool conjugationThreeOne,
                                          const Stem& stem) noexcept {
   if (!allow.has(AllowSet::IsVerb))
     return true;
   bool allowed = true;
   if (allow.has(AllowSet::ShortImp) && conjugationThreeOne)
-    allowed = stem.ends_with("dic") || stem.ends_with("duc") ||
-              stem.ends_with("fac") || stem.ends_with("fer");
+    allowed = stem.ends_with("dic") || stem.ends_with("duc") || stem.ends_with("fac") || stem.ends_with("fer");
   if (allow.has(AllowSet::ImpNoPerson))
     allowed = false;
   if (kind == VerbKind::IMPERS && allow.has(AllowSet::NotThird))
@@ -1000,26 +978,57 @@ template <typename Stem>
 
 namespace detail {
 
+// A name with its length, padded so that it can be copied as one 8-byte word.
+struct Word {
+  std::array<char, 8> text{};
+  std::size_t size{};
+};
+
+// One past the last value of E that has a name.
+template <typename E>
+constexpr std::size_t kNamed = [] {
+  std::size_t count = 0;
+  for (std::size_t value = 0; value < 256; ++value)
+    if (name(E{static_cast<unsigned char>(value)}) != nullptr)
+      count = value + 1;
+  return count;
+}();
+
+// Every name of E by value, then "?" for a value with none.
+template <typename E>
+constexpr auto kWords = [] {
+  std::array<Word, kNamed<E> + 1> words{};
+  for (std::size_t value = 0; value < words.size(); ++value) {
+    const char* text = value < kNamed<E> ? name(E{static_cast<unsigned char>(value)}) : nullptr;
+    text = text != nullptr ? text : "?";
+    Word& word = words[value];
+    for (; text[word.size] != '\0'; ++word.size)
+      word.text.at(word.size) = text[word.size];
+    // NOTE: A full word would leave no room for the copy's padding.
+    word.text.at(word.size) = '\0';
+  }
+  return words;
+}();
+
+// The whole line, built unchecked: no name passes 7 letters, so the longest line (a VPAR: part, two numbers, six
+//  fields) and the 8-byte copy that ends it fit. describe then copies it out as snprintf would.
 struct Line {
-  char* out;
-  std::size_t size;
+  static constexpr std::size_t kBytes = 8 + 2 * 3 + 6 * 8 + 8;
+  std::array<char, kBytes> text;
   std::size_t used{};
 
-  constexpr void put(char c) noexcept {
-    if (used + 1 < size)
-      out[used] = c;
-    ++used;
+  constexpr void put(char c) noexcept { text[used++] = c; }
+  template <typename E> constexpr void word(E value) noexcept {
+    const std::size_t at = std::to_underlying(value);
+    const Word& word = kWords<E>[at < kNamed<E> ? at : kNamed<E>];
+    for (std::size_t i = 0; i < word.text.size(); ++i)
+      text[used + i] = word.text[i];
+    used += word.size;
   }
-  constexpr void put(const char* text) noexcept {
-    for (text = text != nullptr ? text : "?"; *text != '\0'; ++text)
-      put(*text);
-  }
-  constexpr void digit(unsigned char value) noexcept {
-    put(value <= 9 ? "0123456789"[value] : '?');
-  }
-  constexpr void field(const char* text) noexcept {
+  constexpr void digit(unsigned char value) noexcept { put(value <= 9 ? static_cast<char>('0' + value) : '?'); }
+  template <typename E> constexpr void field(E value) noexcept {
     put(' ');
-    put(text);
+    word(value);
   }
   constexpr void number(char prefix, unsigned char value) noexcept {
     put(' ');
@@ -1030,13 +1039,11 @@ struct Line {
 
 } // namespace detail
 
-// INFO: The line WORDS prints for an inflection. Like snprintf: writes at
-//  most `size` bytes, the terminator included, and returns the length of
-//  the whole line.
-constexpr std::size_t describe(const Analysis& analysis, char* out,
-                               std::size_t size) noexcept {
-  detail::Line line{out, size};
-  line.put(name(analysis.part));
+// INFO: The line WORDS prints for an inflection. Like snprintf: writes at most `size` bytes, the terminator included,
+//  and returns the length of the whole line.
+constexpr std::size_t describe(const Analysis& analysis, char* out, std::size_t size) noexcept {
+  detail::Line line;
+  line.word(analysis.part);
   switch (analysis.part) {
   case Part::N:
   case Part::PRON:
@@ -1059,51 +1066,55 @@ constexpr std::size_t describe(const Analysis& analysis, char* out,
   case Part::N:
   case Part::PRON:
   case Part::SUPINE:
-    line.field(name(analysis.caseOf));
-    line.field(name(analysis.number));
-    line.field(name(analysis.gender));
+    line.field(analysis.caseOf);
+    line.field(analysis.number);
+    line.field(analysis.gender);
     break;
   case Part::ADJ:
-    line.field(name(analysis.caseOf));
-    line.field(name(analysis.number));
-    line.field(name(analysis.gender));
-    line.field(name(analysis.comparison));
+    line.field(analysis.caseOf);
+    line.field(analysis.number);
+    line.field(analysis.gender);
+    line.field(analysis.comparison);
     break;
   case Part::NUM:
-    line.field(name(analysis.caseOf));
-    line.field(name(analysis.number));
-    line.field(name(analysis.gender));
-    line.field(name(analysis.numeralSort));
+    line.field(analysis.caseOf);
+    line.field(analysis.number);
+    line.field(analysis.gender);
+    line.field(analysis.numeralSort);
     break;
   case Part::ADV:
-    line.field(name(analysis.comparison));
+    line.field(analysis.comparison);
     break;
   case Part::V:
-    line.field(name(analysis.tense));
-    line.field(name(analysis.voice));
-    line.field(name(analysis.mood));
+    line.field(analysis.tense);
+    line.field(analysis.voice);
+    line.field(analysis.mood);
     if (analysis.person.value != 0) {
       line.put(' ');
       line.digit(analysis.person.value);
     }
-    line.field(name(analysis.number));
+    line.field(analysis.number);
     break;
   case Part::VPAR:
-    line.field(name(analysis.caseOf));
-    line.field(name(analysis.number));
-    line.field(name(analysis.gender));
-    line.field(name(analysis.tense));
-    line.field(name(analysis.voice));
-    line.field(name(analysis.mood));
+    line.field(analysis.caseOf);
+    line.field(analysis.number);
+    line.field(analysis.gender);
+    line.field(analysis.tense);
+    line.field(analysis.voice);
+    line.field(analysis.mood);
     break;
   case Part::PREP:
-    line.field(name(analysis.caseOf));
+    line.field(analysis.caseOf);
     break;
   default:
     break;
   }
-  if (size != 0)
-    out[line.used < size ? line.used : size - 1] = '\0';
+  if (size != 0) {
+    const std::size_t kept = line.used < size ? line.used : size - 1;
+    for (std::size_t i = 0; i < kept; ++i)
+      out[i] = line.text[i];
+    out[kept] = '\0';
+  }
   return line.used;
 }
 

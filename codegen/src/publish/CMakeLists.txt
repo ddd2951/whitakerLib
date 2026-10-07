@@ -1,3 +1,0 @@
-add_library(gen_publish STATIC atomic_publication.cpp)
-target_link_libraries(gen_publish PUBLIC gen_headers)
-target_link_libraries(gen_publish PRIVATE gen_policy)

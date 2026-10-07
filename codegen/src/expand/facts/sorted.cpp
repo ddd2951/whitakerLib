@@ -41,17 +41,13 @@ bool formLess(const Form& a, const Form& b) {
 
 } // namespace
 
-expand::Sorted expand::sorted(const Candidates& candidates,
-                              const Uniques& uniques) {
+expand::Sorted expand::sorted(const Candidates& candidates, const Uniques& uniques) {
   Sorted sorted;
   for (std::size_t letter = 0; letter < facts::kLetterCount; ++letter) {
     auto& forms = sorted.byLetter[letter];
-    forms.reserve(candidates.byLetter[letter].size() +
-                  uniques.byLetter[letter].size());
-    forms.insert(forms.end(), candidates.byLetter[letter].begin(),
-                 candidates.byLetter[letter].end());
-    forms.insert(forms.end(), uniques.byLetter[letter].begin(),
-                 uniques.byLetter[letter].end());
+    forms.reserve(candidates.byLetter[letter].size() + uniques.byLetter[letter].size());
+    forms.insert(forms.end(), candidates.byLetter[letter].begin(), candidates.byLetter[letter].end());
+    forms.insert(forms.end(), uniques.byLetter[letter].begin(), uniques.byLetter[letter].end());
     std::ranges::sort(forms, formLess);
   }
   return sorted;

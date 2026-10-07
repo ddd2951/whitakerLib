@@ -8,8 +8,7 @@
 
 namespace emitter {
 
-// The image's string section: every text once, NUL-terminated. Offset 0 is
-// the empty string.
+// The image's string section: every text once, NUL-terminated. Offset 0 is the empty string.
 class StringSection {
 public:
   StringSection();
