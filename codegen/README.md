@@ -97,9 +97,14 @@ Since then, a few places have shown where it really shines:
 
 The cost: GCC 16 only, and `-Wno-shadow`, since every `template for` trips
 `-Wshadow`. Editors lag behind: clangd only gets close with the
-[clang-p2996](https://github.com/bloomberg/clang-p2996) fork, and still trips
-over annotations through a PCH bug I'm working on a fix for. The library itself
-is C++23 and has no reflection; only `gen` uses it.
+[clang-p2996](https://github.com/bloomberg/clang-p2996) fork, and until my fix
+([#361](https://github.com/bloomberg/clang-p2996/pull/361)) is in, it trips
+over annotations: clangd keeps the headers it has parsed as a precompiled
+header, and the fork doesn't save annotation values in one, so they come back
+empty. With the fix, clangd is clean on gen except `src/types/latin_test.cpp`,
+where the fork rejects an enumerator reflection passed to `substitute` (GCC
+accepts it). The library itself is C++23 and has no reflection; only `gen`
+uses it.
 
 ## Checks
 
