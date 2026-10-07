@@ -1,9 +1,9 @@
 # whitakerLib lookup-image generator
 
 `gen` builds `data/whitaker.dat`, the lookup image the library embeds.
-No options; to change what it builds, change the vendored sources and their
-schemes. It works and its output is checked exhaustively, but it is far from
-finished.
+It takes no options: what it builds comes from the vendored sources and
+their schemes, so change those instead. It works and its output is checked
+exhaustively, but it is far from finished.
 
 ## Inputs
 
