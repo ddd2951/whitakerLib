@@ -8,7 +8,7 @@ jobs:
   build:
     name: ${{ matrix.compiler }} ${{ matrix.sanitize == 'ON' && 'sanitizers' || 'release' }}
     runs-on: ubuntu-24.04
-    # #embed needs GCC 15 or Clang 19, newer than Ubuntu 24.04's own.
+    # #embed needs GCC 15 or Clang 20, newer than Ubuntu 24.04's own.
     container: ${{ matrix.image }}
     strategy:
       fail-fast: false
@@ -21,10 +21,10 @@ jobs:
             cxx: g++
             sanitize: "OFF"
           - compiler: clang
-            image: debian:trixie
-            packages: cmake make clang g++
-            cc: clang
-            cxx: clang++
+            image: ubuntu:26.04
+            packages: cmake make clang-20 g++
+            cc: clang-20
+            cxx: clang++-20
             sanitize: "OFF"
           - compiler: gcc
             image: gcc:15

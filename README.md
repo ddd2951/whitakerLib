@@ -21,9 +21,9 @@ little memory, and a plain C interface any language can call.
 It isn't meant as an easy tool for translating Latin, but as the backend for
 other things, such as running it on a Kindle or another low-resource device.
 
-It's fair to say most Latin tools won't need lookups this quick, and that the
-generator could be written without reflection. But I build this for fun, and
-both would be less fun (see "Why reflection?" in `codegen/README.md`).
+Most Latin tools won't need lookups this quick, and the generator could be
+written without reflection. But both were fun to build. "Why reflection?" in
+`codegen/README.md` tells that part.
 
 ## Arma virumque cano
 
@@ -148,7 +148,7 @@ tr -cs 'A-Za-z' '\n' < book.txt |
 
 ## Build
 
-Tested on Linux only. It needs CMake 3.21, GCC 15 or Clang 19 (for `#embed`
+Tested on Linux only. It needs CMake 3.21, GCC 15 or Clang 20 (for `#embed`
 in C++, with its offset parameter), and `nm` for the tests. Callers only need
 C.
 
