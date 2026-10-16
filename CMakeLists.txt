@@ -61,7 +61,6 @@ add_library(whitaker SHARED
     src/search/embedded_image.cpp
     src/search/relationship_image.cpp
     src/search/syncope_lookup.cpp
-    src/roman.cpp
     src/whitaker.cpp
 )
 add_library(Whitaker::whitaker ALIAS whitaker)
