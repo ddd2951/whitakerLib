@@ -272,13 +272,19 @@ void addRawWord(WhitakerResult& out, Text& text, std::string_view word) noexcept
 }
 
 // INFO: Enclitic tries only -que when Word already answered, and all four special tackons for an unanswered word.
-void addEnclitic(WhitakerResult& out, Text& text, std::string_view word, bool wordAnswered) noexcept {
+void addEnclitic(WhitakerResult& out, Text& text, std::string_view word, bool wordAnswered,
+                 bool fixesOnly = false) noexcept {
   for (const rel::Addon& tackon : rel::addonsOf(latin::AddonKind::Tackon).first(wordAnswered ? 1 : kEncliticTackons)) {
     const std::string_view fix = tackon.fix;
     if (fix.empty() || word.size() <= fix.size() || !foldedEquals(word.substr(word.size() - fix.size()), fix))
       continue;
     const int before = out.count;
-    addRawWord(out, text, word.substr(0, word.size() - fix.size()));
+    const std::string_view base = word.substr(0, word.size() - fix.size());
+    // INFO: Base already failed ordinary lookup; addons only.
+    if (fixesOnly)
+      add(out, text, base, whitaker::addonFallback(base));
+    else
+      addRawWord(out, text, base);
     if (out.count != before) {
       prependAddon(out, before, tackon);
       return;
@@ -313,11 +319,13 @@ void addTackonWord(WhitakerResult& out, Text& text, std::string_view word) noexc
   addEnclitic(out, text, word, out.count != before);
 }
 
-// INFO: The ADDONS fallback only turns an unanswered word into answers.
+// INFO: Addons on the word, then its enclitic bases.
 void addFallback(WhitakerResult& out, Text& text, std::string_view word) noexcept {
   if (out.count != 0)
     return;
   add(out, text, word, whitaker::addonFallback(word));
+  if (out.count == 0)
+    addEnclitic(out, text, word, false, true);
 }
 
 void addRomanNumeral(WhitakerResult& out, Text& text, std::string_view word) noexcept {
