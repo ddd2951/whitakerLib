@@ -353,15 +353,15 @@ struct Analysis {
   return false;
 }
 
-// INFO: word_package.adb:854-858; a prefix's root of X accepts any part.
+// INFO: Reduce_Stem_List: a prefix's root of X accepts any part.
 [[nodiscard]] constexpr bool rootAdmits(Part root, Part part) noexcept { return root == Part::X || root == part; }
 
-// INFO: word_package.adb:756-765 and 819, Reduce_Stem_List's "<=" on parts.
+// INFO: Reduce_Stem_List's "<=" on parts.
 [[nodiscard]] constexpr bool suffixRootAdmits(Part root, Part part) noexcept {
   return rootAdmits(root, part) || (part == Part::PACK && root == Part::PRON);
 }
 
-// INFO: word_package.adb:780-787, 820-823 and 884-887; the asymmetry is Whitaker's.
+// INFO: Reduce_Stem_List's "<=" on stem keys and its key-0 exception; the asymmetry is Whitaker's.
 [[nodiscard]] constexpr bool stemKeyAdmits(unsigned char dictKey, unsigned char wanted, Part part) noexcept {
   if (dictKey == wanted || wanted == 0)
     return true;
@@ -370,8 +370,7 @@ struct Analysis {
 
 // INFO: Whitaker's matching predicates, dictionary on the left, inflection on
 //  the right.
-// INFO: inflections_package.adb:266-277, "<=" on Decn_Record, which holds a
-//  declension or a conjugation.
+// INFO: Inflections_Package's "<=" on Decn_Record, which holds a declension or a conjugation.
 [[nodiscard]] constexpr bool numberMatches(unsigned char left, unsigned char leftVariant, unsigned char right,
                                            unsigned char rightVariant) noexcept {
   if (right == left && rightVariant == leftVariant)
@@ -391,23 +390,23 @@ struct Analysis {
   return numberMatches(left.value, leftVariant.value, right.value, rightVariant.value);
 }
 
-// INFO: word_package.adb:768-778, Reduce_Stem_List's own "<=" on genders.
+// INFO: Reduce_Stem_List's own "<=" on genders.
 [[nodiscard]] constexpr bool genderMatches(Gender left, Gender right) noexcept {
   return right == left || right == Gender::X || (right == Gender::C && left != Gender::N);
 }
 
-// INFO: word_package.adb:944-946.
+// INFO: Reduce_Stem_List's ADJ comparison check.
 [[nodiscard]] constexpr bool comparisonMatches(Comparison left, Comparison right) noexcept {
   return right == left || right == Comparison::X || left == Comparison::X;
 }
 
-// INFO: addons_package.adb:122-125; a TACKON whose entry is a PACK of declension 1 or 2 and whose gloss starts
-//  "PACKON w/" is a PACKON.
+// INFO: Load_Addons: a TACKON whose entry is a PACK of declension 1 or 2
+//  and whose gloss starts "PACKON w/" is a PACKON.
 template <typename Gloss> [[nodiscard]] constexpr bool isPackon(Declension declension, const Gloss& gloss) noexcept {
   return (declension.value == 1 || declension.value == 2) && gloss.starts_with("PACKON w/");
 }
 
-// INFO: list_sweep.adb:362-378 and 401-415, List_Sweep's rarity pass.
+// INFO: Order_Parse_Array's rarity pass.
 [[nodiscard]] constexpr bool archaic(Age age) noexcept { return age == Age::A; }
 
 [[nodiscard]] constexpr bool medieval(Age age) noexcept {
@@ -449,7 +448,7 @@ template <typename Gloss> [[nodiscard]] constexpr bool isPackon(Declension decle
   return uncommonInflection(frequency) && frequency != Frequency::C;
 }
 
-// INFO: Allowed_Stem's mood and tense ranges (list_sweep.adb:29-189).
+// INFO: Allowed_Stem's mood and tense ranges.
 [[nodiscard]] constexpr bool moodIndToInf(Mood mood) noexcept {
   return mood == Mood::IND || mood == Mood::SUB || mood == Mood::IMP || mood == Mood::INF;
 }

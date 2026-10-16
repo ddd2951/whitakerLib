@@ -34,7 +34,7 @@ using namespace latin;
 [[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Verb& i) noexcept {
   return conjugationMatches(d.conjugation, d.conjugationVariant, i.conjugation, i.conjugationVariant);
 }
-// INFO: word_package.adb:889 with Eff_Part (word_support_package.adb:29-38): VPAR and SUPINE rows join V entries.
+// INFO: Reduce_Stem_List with Eff_Part: VPAR and SUPINE rows join V entries.
 [[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Participle& i) noexcept {
   return conjugationMatches(d.conjugation, d.conjugationVariant, i.conjugation, i.conjugationVariant);
 }

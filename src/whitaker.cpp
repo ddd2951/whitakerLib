@@ -185,8 +185,8 @@ void addPackon(WhitakerResult& out, Text& text, std::string_view word) noexcept 
   return std::ranges::equal(text, fix, {}, facts::foldLetter);
 }
 
-// INFO: The Qu block of Word, word_package.adb:1755. Strip a tickon; what is left must be a qu/cu pronoun of three
-//  letters or more, answered from PRON entries only. Ada leaves the loop on the first record that answers.
+// INFO: Word's Qu block. Strip a tickon; what is left must be a qu/cu pronoun of three letters or more, answered
+//  from PRON entries only. Ada leaves the loop on the first record that answers.
 void addTickon(WhitakerResult& out, Text& text, std::string_view word) noexcept {
   for (const rel::Addon& tickon : rel::addonsOf(latin::AddonKind::Tickon)) {
     const std::string_view fix = tickon.fix;
@@ -292,8 +292,8 @@ void addEnclitic(WhitakerResult& out, Text& text, std::string_view word, bool wo
   }
 }
 
-// INFO: Pass skips syncope when any reading so far is a (5,1) verb, parse.adb:662-669. A V reading's Con is its
-//  entry's, word_package.adb:1037-1050.
+// INFO: Pass skips syncope when any reading so far is a (5,1) verb.
+//  A V reading's Con is its entry's (Reduce_Stem_List).
 [[nodiscard]] bool hasConjugationFiveOne(const WhitakerResult& out) noexcept {
   for (int i = 0; i < out.count; ++i) {
     const WhitakerMatch& match = out.matches[i];
@@ -309,10 +309,10 @@ void addEnclitic(WhitakerResult& out, Text& text, std::string_view word, bool wo
 void addTackonWord(WhitakerResult& out, Text& text, std::string_view word) noexcept {
   const int before = out.count;
   addRawWord(out, text, word);
-  // INFO: Pass's "Pure SYNCOPE", parse.adb:671.
-  // NOTE: Not ported: Enclitic's second Syncope of the whole word (578) and
-  //  the fixes-only pass's (688), where a restored spelling may take a
-  //  prefix or suffix. Syncope looks up the image only, not Word.
+  // INFO: Pass's "Pure SYNCOPE".
+  // FIXME: When the combined patched Ada version is pinned, fix this. Not ported: Enclitic's Syncope of the base
+  //  and the fixes-only pass's, where a restored spelling may take a prefix or suffix. Syncope looks up the image
+  //  only, not Word.
   if (!hasConjugationFiveOne(out))
     if (const std::string restored = whitaker::syncopeLookup(word); !restored.empty())
       fillResult(out, text, restored);

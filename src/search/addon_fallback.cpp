@@ -121,8 +121,7 @@ void addReading(const rel::FallbackRowRecord& row, const Candidate& candidate, s
                                                  (rules & rel::kRuleConjThreeOne) != 0, shown)});
 }
 
-// INFO: Apply_Prefix, word_package.adb:1140-1205. The first prefix that
-//  answers ends the search.
+// INFO: Apply_Prefix. The first prefix that answers ends the search.
 // NOTE: `afterSuffix` is Apply_Suffix's else arm; the rules then read the
 //  suffix's target, not the entry.
 bool applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std::uint16_t suffix, bool afterSuffix) {
@@ -203,8 +202,7 @@ bool applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std:
   return false;
 }
 
-// INFO: Apply_Suffix, word_package.adb:1207-1296. Every matching record
-//  contributes.
+// INFO: Apply_Suffix. Every matching record contributes.
 // NOTE: Record outer, splits inner: "no dictionary hit" is a property of
 //  the record.
 void applySuffix(const Query& query, std::span<const StemAndEnding> splits) {
@@ -278,8 +276,7 @@ void splitEndings(std::string_view text) {
   }
 }
 
-// INFO: Try_Tackons' packon arm, word_package.adb:1862. Not a fallback: WORDS
-//  runs it inside Word, and quocumque is an ADV and is reported here too.
+// INFO: Process_Packons. Not a fallback: WORDS runs it inside Word, and quocumque is an ADV and is reported here too.
 // INFO: The pronoun kind is not joined: WORDS reports quiquam for the INDEF
 //  tack against an ADJECT entry.
 void applyPackon(const Query& query) {

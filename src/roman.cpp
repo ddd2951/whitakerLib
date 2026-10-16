@@ -24,7 +24,7 @@ namespace {
 
 namespace whitaker {
 
-// INFO: Roman_Number, words_engine-roman_numerals_package.adb:68, transliterated.
+// INFO: Roman_Number, transliterated.
 unsigned romanValue(std::string_view word) noexcept {
   if (word.empty())
     return 0;
