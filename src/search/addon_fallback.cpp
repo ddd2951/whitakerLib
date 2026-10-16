@@ -158,9 +158,9 @@ bool applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std:
 
       for (std::uint32_t s = stems.first; s < stems.end(); ++s) {
         const Candidate candidate = candidateOf(rel::fallbackStem(s));
-        // NOTE: A prefix alone never derives from a PACK half word. A marker, not a rule: ADDONS.LAT's wider X
-        //  restriction is unmodelled.
-        if (!afterSuffix && candidate.part == Part::PACK)
+        // INFO: Dictionary_Search's Regular arm: no PACK or PRON 1.
+        if (candidate.part == Part::PACK ||
+            (candidate.part == Part::PRON && rel::entry(candidate.dictionary).which == 1))
           continue;
 
         // INFO: The suffix's gates read the entry: no fix on an abbreviation, then Root and Root_Key.
