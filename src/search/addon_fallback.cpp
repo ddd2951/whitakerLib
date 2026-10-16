@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <ranges>
 #include <string_view>
@@ -48,6 +49,8 @@ thread_local std::vector<FoundReading> sReadings;
 thread_local std::vector<FallbackMatch> sMatches;
 thread_local std::vector<StemAndEnding> sSplits;
 thread_local std::vector<StemAndEnding> sShortened;
+
+void dropRareReadings(std::size_t begin);
 
 [[nodiscard]] bool takesNoAddon(std::uint16_t rules) noexcept { return (rules & rel::kRuleAbbreviation) != 0; }
 
@@ -122,14 +125,14 @@ void addReading(const rel::FallbackRowRecord& row, const Candidate& candidate, s
 //  answers ends the search.
 // NOTE: `afterSuffix` is Apply_Suffix's else arm; the rules then read the
 //  suffix's target, not the entry.
-void applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std::uint16_t suffix, bool afterSuffix) {
+bool applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std::uint16_t suffix, bool afterSuffix) {
   rel::Addon suffixRecord{};
   std::size_t suffixLength = 0;
   if (afterSuffix) {
     suffixRecord = rel::addon(suffix);
     // NOTE: No target rows means no parse line, not match-anything.
     if (suffixRecord.rows.empty())
-      return;
+      return false;
     suffixLength = suffixRecord.fix.size();
   }
 
@@ -191,10 +194,13 @@ void applyPrefix(const Query& query, std::span<const StemAndEnding> splits, std:
       }
     }
 
-    // INFO: Reduce_Stem_List tests the record, not one split.
-    if (sReadings.size() != before)
-      return;
+    // INFO: Success counts before trimming.
+    if (sReadings.size() != before) {
+      dropRareReadings(before);
+      return true;
+    }
   }
+  return false;
 }
 
 // INFO: Apply_Suffix, word_package.adb:1207-1296. Every matching record
@@ -237,6 +243,7 @@ void applySuffix(const Query& query, std::span<const StemAndEnding> splits) {
     if (addon.rows.empty())
       continue;
 
+    const std::size_t before = sReadings.size();
     for (const StemAndEnding& split : sShortened) {
       // NOTE: A suffix reading prints the stem with the fix still on.
       const std::string_view shown = query.folded.substr(0, split.stemLength + fix.size());
@@ -257,6 +264,8 @@ void applySuffix(const Query& query, std::span<const StemAndEnding> splits) {
         });
       }
     }
+    if (sReadings.size() != before)
+      dropRareReadings(before);
   }
 }
 
@@ -304,12 +313,13 @@ void applyPackon(const Query& query) {
   }
 }
 
-// INFO: List_Sweep's rarity pass. Its evidence is counted before Allowed_Stem removes anything.
-void dropRareReadings() {
+// INFO: List_Sweep trims addon readings group by group; only the newly added group is swept.
+void dropRareReadings(std::size_t begin) {
+  const auto first = sReadings.begin() + static_cast<std::ptrdiff_t>(begin);
   bool notOnlyArchaic = false;
   bool notOnlyMedieval = false;
   bool notOnlyUncommon = false;
-  for (const FoundReading& reading : sReadings) {
+  for (const FoundReading& reading : std::ranges::subrange(first, sReadings.end())) {
     if (!latin::archaic(reading.inflectAge) && !latin::archaic(reading.entryAge))
       notOnlyArchaic = true;
     if (!latin::medieval(reading.inflectAge) && !latin::medieval(reading.entryAge))
@@ -317,11 +327,12 @@ void dropRareReadings() {
     if (!latin::uncommonInflection(reading.inflectFrequency) && !latin::uncommonEntry(reading.entryFrequency))
       notOnlyUncommon = true;
   }
-  std::erase_if(sReadings, [=](const FoundReading& reading) {
+  const auto discarded = std::remove_if(first, sReadings.end(), [=](const FoundReading& reading) {
     return !reading.allowed || (notOnlyArchaic && latin::archaic(reading.inflectAge)) ||
            (notOnlyMedieval && latin::medieval(reading.inflectAge)) ||
            (notOnlyUncommon && latin::uncommonInflection(reading.inflectFrequency));
   });
+  sReadings.erase(discarded, sReadings.end());
 }
 
 template <typename Stages>
@@ -342,7 +353,6 @@ template <typename Stages>
                     std::string_view{lowerBuffer.data(), word.size()}};
 
   stages(query);
-  dropRareReadings();
 
   sMatches.reserve(sReadings.size());
   for (const FoundReading& reading : sReadings)
@@ -353,7 +363,10 @@ template <typename Stages>
 } // namespace
 
 std::span<const FallbackMatch> packonReadings(std::string_view word) noexcept {
-  return run(word, [](const Query& query) { applyPackon(query); });
+  return run(word, [](const Query& query) {
+    applyPackon(query);
+    dropRareReadings(0);
+  });
 }
 
 std::span<const FallbackMatch> addonFallback(std::string_view word) noexcept {
@@ -361,8 +374,7 @@ std::span<const FallbackMatch> addonFallback(std::string_view word) noexcept {
     splitEndings(query.folded);
 
     // INFO: Prune_Stems' precedence: prefixes first, suffixes only if nothing.
-    applyPrefix(query, sSplits, 0, false);
-    if (sReadings.empty())
+    if (!applyPrefix(query, sSplits, 0, false))
       applySuffix(query, sSplits);
   });
 }
