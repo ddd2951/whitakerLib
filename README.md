@@ -120,8 +120,8 @@ Both were measured over eleven Perseus texts, 867,217 words: Caesar,
 Cicero, Virgil, Ovid, Tacitus, Plautus, Horace, Phaedrus, Seneca, Suetonius
 and all of Livy.
 
-**Accuracy.** Against the Ada WORDS program, built from the same data
-revision:
+**Accuracy (0.2.1).** Against the Ada WORDS program, built from the same
+data revision:
 
 - **96.4%** of the words get the same readings (part of speech and
   inflection; stems, meanings and order not compared), from 95.5% for Horace
@@ -130,6 +130,28 @@ revision:
 - Of the rest, 83% are WORDS guessing at a word it doesn't know, by splitting
   it in two or changing letters, which the library doesn't do. Leaving those
   out, the two agree on **99.84%**.
+
+0.2.2 reads a few more words; the numbers above are not measured again yet.
+Every other difference across the books has been traced to its cause, in
+three groups:
+
+- **Lookup fixes** in the library: 0.2.2.
+- **Fixes to WORDS itself**: four sent upstream
+  ([#151](https://github.com/mk270/whitakers-words/pull/151),
+  [#152](https://github.com/mk270/whitakers-words/pull/152),
+  [#153](https://github.com/mk270/whitakers-words/pull/153),
+  [#154](https://github.com/mk270/whitakers-words/pull/154)), three more to
+  follow once their exact cause is pinned down.
+- **Codegen fixes**: 0.3.0.
+
+After that, the aim is not a guesser of our own. Instead, each WORDS guess
+is sorted by why it happens:
+
+- the word is unknown, and a guess should happen;
+- it is a name;
+- WORDS failed a lookup and guessed at a word whose entry it already has.
+
+0.3.0 builds towards that, with a comparison tool and the image rebuild.
 
 **Speed.** The 867,217 words and their 4,229,084 readings take 594 ms one by
 one, as the C example runs them, and about 92 ms on the CPU's 12 threads, as
