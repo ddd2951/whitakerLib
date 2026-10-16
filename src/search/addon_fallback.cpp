@@ -291,7 +291,14 @@ void applyPackon(const Query& query) {
       continue;
     if (!query.folded.ends_with(fix))
       continue;
-    const std::string_view base = query.folded.substr(0, query.folded.size() - fix.size());
+    std::string_view base = query.folded.substr(0, query.folded.size() - fix.size());
+    // INFO: Process_Packons: final n -> m before -dam (quen -> quem).
+    std::array<char, facts::kMaxWordCharacters> restored;
+    if (fix == "dam" && base.ends_with('n')) {
+      std::ranges::copy(base, restored.begin());
+      restored[base.size() - 1] = 'm';
+      base = {restored.data(), base.size()};
+    }
 
     sSplits.clear();
     splitEndings(base);
