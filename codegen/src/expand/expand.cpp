@@ -4,9 +4,10 @@
 #include "expand/facts/adverb_corrections.hpp"
 #include "expand/facts/candidates.hpp"
 #include "expand/facts/forms.hpp"
+#include "expand/facts/order_stems.hpp"
 #include "expand/facts/readings.hpp"
 #include "expand/facts/sorted.hpp"
-#include "expand/facts/swept.hpp"
+#include "expand/facts/list_sweep.hpp"
 #include "expand/facts/uniques.hpp"
 
 #include <algorithm>
@@ -44,10 +45,11 @@ At at(expand::ResultIndex index) {
 
 void expand::init() {
   kept.candidates = candidates();
-  const Sorted sorted = expand::sorted(kept.candidates, uniques());
+  Sorted sorted = expand::sorted(kept.candidates, uniques());
+  orderStems(sorted);
   kept.forms = forms(sorted, adverbCorrections(sorted));
   kept.readings = readings(kept.forms);
-  kept.swept = swept(kept.forms, kept.readings);
+  kept.swept = listSweep(kept.forms, kept.readings);
 
   for (std::uint8_t letter = 0; letter < facts::kLetterCount; ++letter) {
     const std::size_t count = kept.forms.byLetter[letter].size();

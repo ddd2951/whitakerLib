@@ -15,19 +15,11 @@ non
     Nones (pl.), abb. Non.; 7th of month, March, May, July, Oct., 5th elsewhen;
   non | ADV POS
     not, by no means, no; [non modo ... sed etiam => not only ... but also];
-  non | ADV POS
-    not, by no means, no; [non modo ... sed etiam => not only ... but also];
 contra
   contra | ADV POS
     facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
   contra | ADV POS
-    facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
-  contra | ADV POS
     |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
-  contra | ADV POS
-    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
-  contra | ADV POS
-    ||otherwise, differently; conversely; on the contrary; vice versa;
   contra | ADV POS
     ||otherwise, differently; conversely; on the contrary; vice versa;
   contra | PREP ACC
@@ -37,13 +29,13 @@ contra
   contra | PREP ACC
     ||towards/up to, in direction of;  directly over/level with; to detriment of;
 ventum
-  vent | VPAR C3 V4 ACC S M PERF PASSIVE PPL
-    come;
   vent | VPAR C3 V4 NOM S N PERF PASSIVE PPL
     come;
-  vent | VPAR C3 V4 ACC S N PERF PASSIVE PPL
-    come;
   vent | VPAR C3 V4 VOC S N PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 ACC S M PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 ACC S N PERF PASSIVE PPL
     come;
   vent | SUPINE C3 V4 ACC S N
     come;
@@ -59,11 +51,11 @@ nisi
     if not; except, unless;
   nis | VPAR C3 V1 GEN S M PERF PASSIVE PPL
     press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
+  nis | VPAR C3 V1 GEN S N PERF PASSIVE PPL
+    press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
   nis | VPAR C3 V1 NOM P M PERF PASSIVE PPL
     press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
   nis | VPAR C3 V1 VOC P M PERF PASSIVE PPL
-    press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
-  nis | VPAR C3 V1 GEN S N PERF PASSIVE PPL
     press/lean upon; struggle; advance; depend on (with abl.); strive, labor;
 si
   si | CONJ
@@ -92,13 +84,7 @@ contra
   contra | ADV POS
     facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
   contra | ADV POS
-    facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
-  contra | ADV POS
     |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
-  contra | ADV POS
-    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
-  contra | ADV POS
-    ||otherwise, differently; conversely; on the contrary; vice versa;
   contra | ADV POS
     ||otherwise, differently; conversely; on the contrary; vice versa;
   contra | PREP ACC
@@ -108,13 +94,13 @@ contra
   contra | PREP ACC
     ||towards/up to, in direction of;  directly over/level with; to detriment of;
 ventum
-  vent | VPAR C3 V4 ACC S M PERF PASSIVE PPL
-    come;
   vent | VPAR C3 V4 NOM S N PERF PASSIVE PPL
     come;
-  vent | VPAR C3 V4 ACC S N PERF PASSIVE PPL
-    come;
   vent | VPAR C3 V4 VOC S N PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 ACC S M PERF PASSIVE PPL
+    come;
+  vent | VPAR C3 V4 ACC S N PERF PASSIVE PPL
     come;
   vent | SUPINE C3 V4 ACC S N
     come;
@@ -123,8 +109,6 @@ ventum
 non
   Non | N D9 V8 X X M
     Nones (pl.), abb. Non.; 7th of month, March, May, July, Oct., 5th elsewhen;
-  non | ADV POS
-    not, by no means, no; [non modo ... sed etiam => not only ... but also];
   non | ADV POS
     not, by no means, no; [non modo ... sed etiam => not only ... but also];
 mingit
@@ -200,15 +184,15 @@ XIV
   XIV | NUM D2 V0 X X X CARD
      14  as a ROMAN NUMERAL;
 Veni
-  ven | N D2 V2 LOC S N
-    sale, purchase; (only sg. ACC/DAT w/dare); [venum dare => put up for sale];
   ven | N D2 V2 GEN S N
+    sale, purchase; (only sg. ACC/DAT w/dare); [venum dare => put up for sale];
+  ven | N D2 V2 LOC S N
     sale, purchase; (only sg. ACC/DAT w/dare); [venum dare => put up for sale];
   veni | V C6 V1 PRES ACTIVE IMP 2 S
     go for sale, be sold (as slave), be disposed of for (dishonorable/venal) gain;
-  ven | V C3 V4 PERF ACTIVE IND 1 S
+  ven | V C4 V1 PRES ACTIVE IMP 2 S
     come;
-  ven | V C3 V4 PRES ACTIVE IMP 2 S
+  ven | V C4 V1 PERF ACTIVE IND 1 S
     come;
 vidi
   vid | V C2 V1 PERF ACTIVE IND 1 S
@@ -231,13 +215,13 @@ vici
   vic | V C3 V1 PERF ACTIVE IND 1 S
     conquer, defeat, excel; outlast; succeed;
 computatrum
-  computatr | N D2 V2 GEN P N
-    calculator;
   computatr | N D2 V2 NOM S N
     calculator;
   computatr | N D2 V2 VOC S N
     calculator;
   computatr | N D2 V2 ACC S N
+    calculator;
+  computatr | N D2 V2 GEN P N
     calculator;
 Kindle
   no reading
@@ -254,10 +238,10 @@ magalia
   magal | ADJ D3 V2 VOC P N POS | suffix al
     wise/learned man; magician (Persian); astrologer;
 nequaquamcumque
-  qu | PRON D1 V9 NOM P N | tackon que | tackon cum | tickon ne | packon quam
+  qu | PRON D1 V0 NOM P N | tackon que | tackon cum | tickon ne | packon quam
     (w/-quam) any, anyone (no pl.) (INDEF) anything; any man, any person;
-  qu | PRON D1 V9 ACC P N | tackon que | tackon cum | tickon ne | packon quam
+  qu | PRON D1 V0 ACC P N | tackon que | tackon cum | tickon ne | packon quam
     (w/-quam) any, anyone (no pl.) (INDEF) anything; any man, any person;
 audiit
-  audiv | V C3 V4 PERF ACTIVE IND 3 S
+  audiv | V C4 V1 PERF ACTIVE IND 3 S
     hear, listen, accept, agree with; obey; harken, pay attention; be able to hear;

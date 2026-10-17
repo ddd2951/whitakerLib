@@ -16,12 +16,14 @@ enum class Fate : std::uint8_t {
   onlyArchaic,
   onlyMedieval,
   onlyUncommon,
+  duplicate,
 };
 
 struct Swept {
   std::array<std::vector<Fate>, facts::kLetterCount> byLetter;
 };
 
-Swept swept(const Forms& listed, const Readings& readings);
+// INFO: List_Sweep per spelling; the kept forms come first.
+Swept listSweep(Forms& listed, Readings& readings);
 
 } // namespace expand

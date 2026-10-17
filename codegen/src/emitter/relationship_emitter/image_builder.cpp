@@ -340,7 +340,7 @@ using EndingOrder = std::vector<std::pair<std::string, std::uint32_t>>;
 
 void fallbackRow(const latin::Entry& grammar, const word::InflectsEntry& inflection, std::uint32_t position,
                  ImageData& image, DescriptionIds& descriptionIds) {
-  const latin::Analysis analysis = analysisOf(grammar, inflection.grammar, inflection.stemKey);
+  const latin::Analysis analysis = printed(analysisOf(grammar, inflection.grammar, inflection.stemKey));
   const std::uint16_t description = descriptionId(analysis, image, descriptionIds);
   image.fallbackRows.push_back(rel::FallbackRowRecord{static_cast<std::uint16_t>(position), description});
 }

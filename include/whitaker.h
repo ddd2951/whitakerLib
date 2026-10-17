@@ -9,7 +9,7 @@ extern "C" {
 
 #define WHITAKER_VERSION_MAJOR 0
 #define WHITAKER_VERSION_MINOR 2
-#define WHITAKER_VERSION_PATCH 2
+#define WHITAKER_VERSION_PATCH 3
 
 #if defined(_WIN32) && defined(WHITAKER_BUILDING)
 #define WHITAKER_API __declspec(dllexport)

@@ -7,10 +7,10 @@ Whitaker's WORDS data supports: stem, meaning, part of speech and inflection,
 add-ons and Roman numerals included.
 
 - **Under a microsecond a word**, over eleven Latin books.
-- **1,184,036 spellings, 2,378,514 readings** in a 10 MB image embedded in
+- **1,184,036 spellings, 2,374,349 readings** in a 10 MB image embedded in
   the library: no data file, no database, no initialization.
-- **96.4% the same as the original Ada WORDS**; 99.84% leaving out WORDS'
-  guesses.
+- **88.5% of words answered exactly as the Ada WORDS answers them**: every
+  reading, record and add-on, in WORDS' order.
 
 ## Why?
 
@@ -120,46 +120,15 @@ Both were measured over eleven Perseus texts, 867,217 words: Caesar,
 Cicero, Virgil, Ovid, Tacitus, Plautus, Horace, Phaedrus, Seneca, Suetonius
 and all of Livy.
 
-**Accuracy (0.2.1).** Against the Ada WORDS program, built from the same
-data revision:
+**Speed.** On one thread, as the C example runs them, the 867,217 words and
+their 3,374,767 readings take 594 ms, about 0.7 µs a word. On the CPU's 12
+threads, as the C++ example runs them with `std::async`, they take about
+88 ms, describing and checking every reading as well.
 
-- **96.4%** of the words get the same readings (part of speech and
-  inflection; stems, meanings and order not compared), from 95.5% for Horace
-  to 99.3% for Phaedrus.
-- **2.6%**, mostly names, neither knows.
-- Of the rest, 83% are WORDS guessing at a word it doesn't know, by splitting
-  it in two or changing letters, which the library doesn't do. Leaving those
-  out, the two agree on **99.84%**.
-
-0.2.2 reads a few more words; the numbers above are not measured again yet.
-Every other difference across the books has been traced to its cause, in
-three groups:
-
-- **Lookup fixes** in the library: 0.2.2.
-- **Fixes to WORDS itself**: four sent upstream
-  ([#151](https://github.com/mk270/whitakers-words/pull/151),
-  [#152](https://github.com/mk270/whitakers-words/pull/152),
-  [#153](https://github.com/mk270/whitakers-words/pull/153),
-  [#154](https://github.com/mk270/whitakers-words/pull/154)), three more to
-  follow once their exact cause is pinned down.
-- **Codegen fixes**: 0.3.0.
-
-After that, the aim is not a guesser of our own. Instead, each WORDS guess
-is sorted by why it happens:
-
-- the word is unknown, and a guess should happen;
-- it is a name;
-- WORDS failed a lookup and guessed at a word whose entry it already has.
-
-0.3.0 builds towards that, with a comparison tool and the image rebuild.
-
-**Speed.** The 867,217 words and their 4,229,084 readings take 594 ms one by
-one, as the C example runs them, and about 92 ms on the CPU's 12 threads, as
-the C++ example runs them with `std::async`, describing and checking every
-reading as well. GCC 16.2.1 Release on an AMD Ryzen 5 5600X (6 cores), the
-performance governor, one-thread runs pinned to one core, medians of five
-runs: one machine's measurement, not a guarantee.
-The C example reports its time, on stderr, for any text:
+That is GCC 16.2.1 Release on an AMD Ryzen 5 5600X (6 cores), with the
+performance governor, one-thread runs pinned to one core, and the median of
+five runs: one machine's measurement, not a guarantee. The C example prints
+its time on stderr, so you can time any text:
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -167,6 +136,20 @@ cmake --build build && ctest --test-dir build -R examples
 tr -cs 'A-Za-z' '\n' < book.txt |
   build/examples/build/whitaker-c-example > /dev/null
 ```
+
+**Accuracy.** Every word is compared with the answer of the Ada WORDS
+program, built from the same data: each reading with its stem, each
+dictionary record and meaning, the add-ons, and the order of all of them.
+
+**88.5%** of the words (90.5% of the distinct spellings) get exactly WORDS'
+answer, from 81.8% for Plautus to 89.9% for Virgil. The rest have been
+mapped out, and cleaning them up is the current roadmap. The WORDS compared
+against includes five fixes sent upstream
+([#151](https://github.com/mk270/whitakers-words/pull/151),
+[#152](https://github.com/mk270/whitakers-words/pull/152),
+[#153](https://github.com/mk270/whitakers-words/pull/153),
+[#154](https://github.com/mk270/whitakers-words/pull/154),
+[#155](https://github.com/mk270/whitakers-words/pull/155)).
 
 ## Build
 

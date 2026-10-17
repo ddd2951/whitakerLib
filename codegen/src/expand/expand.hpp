@@ -2,7 +2,7 @@
 
 #include "expand/common/form.hpp"
 #include "expand/common/reading.hpp"
-#include "expand/facts/swept.hpp"
+#include "expand/facts/list_sweep.hpp"
 
 #include <cstddef>
 #include <string_view>

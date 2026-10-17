@@ -18,7 +18,10 @@ using namespace latin;
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant) &&
          genderMatches(d.gender, i.gender);
 }
+// INFO: Process_Qu_Pronouns wants the exact declension.
 [[nodiscard]] constexpr bool licenses(const Pronoun& d, const inflected::Pronoun& i) noexcept {
+  if (d.declension.value == 1)
+    return d.declension == i.declension && d.declensionVariant == i.declensionVariant;
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant);
 }
 [[nodiscard]] constexpr bool licenses(const Adjective& d, const inflected::Adjective& i) noexcept {

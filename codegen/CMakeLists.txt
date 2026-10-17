@@ -39,7 +39,8 @@ add_executable(gen
     src/expand/facts/forms.cpp
     src/expand/facts/readings.cpp
     src/expand/facts/sorted.cpp
-    src/expand/facts/swept.cpp
+    src/expand/facts/list_sweep.cpp
+    src/expand/facts/order_stems.cpp
     src/expand/facts/uniques.cpp
     src/emitter/emitter.cpp
     src/emitter/image_file.cpp

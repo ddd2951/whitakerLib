@@ -110,6 +110,17 @@ using latin::partOf;
   return analysis;
 }
 
+// INFO: List_Sweep's last loop.
+[[nodiscard]] inline latin::Analysis printed(latin::Analysis analysis) noexcept {
+  if (analysis.part == latin::Part::PRON && analysis.which == 1)
+    analysis.variant = {};
+  if (analysis.part == latin::Part::V && analysis.which == 3 && analysis.variant.value == 4) {
+    analysis.which = 4;
+    analysis.variant.value = 1;
+  }
+  return analysis;
+}
+
 [[nodiscard]] inline std::string describe(const latin::Analysis& analysis) {
   std::string text(latin::describe(analysis, nullptr, 0), '\0');
   latin::describe(analysis, text.data(), text.size() + 1);
@@ -123,7 +134,7 @@ struct Rendered {
 };
 
 [[nodiscard]] inline Rendered render(const expand::Reading& reading) {
-  const latin::Analysis analysis = analysisOf(reading.entry, reading.inflection, reading.key);
+  const latin::Analysis analysis = printed(analysisOf(reading.entry, reading.inflection, reading.key));
   return {reading.stem, reading.senses, analysis};
 }
 
