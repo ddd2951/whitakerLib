@@ -191,7 +191,7 @@ Of the remaining 12 word occurrences, we've found the cause of each:
 | Words | Occurrences | Cause |
 | --- | ---: | --- |
 | Seven run-together words over 24 letters (eosdemiuvencosetquattuoriugerum, ...) | 7 | The library's input limit; WORDS answers UNKNOWN. |
-| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. Our first fix gave regressions (WORDS crashed on another word in the books), so we are still looking at it. |
+| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. The first fix gave regressions WORDS crashed on another word in the books. |
 | basa, basin | 2 | WORDS prints a reading again for a second dictionary record that shares the stem; this grouping rule is not ported. |
 
 The current accuracy only reflects the books tested so far. As more texts are added, the percentage may go down as we uncover new differences.
