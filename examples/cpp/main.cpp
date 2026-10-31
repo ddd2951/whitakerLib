@@ -1,5 +1,5 @@
-// Analyzes books on all the CPU's threads with std::async, then checks the answers against one thread. Books are plain
-// text; anything but a letter separates words. With no books, three opening lines stand in for them.
+// INFO: Compare threaded and sequential lookup fingerprints. Non-letters separate words;
+//  with no files, use three opening lines.
 //
 //   whitaker-cpp-example caesar.txt virgil.txt ...
 #include <algorithm>
@@ -11,6 +11,7 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <new>
 #include <string>
 #include <thread>
 #include <vector>
@@ -21,16 +22,25 @@ namespace {
 
 constexpr std::size_t kBatch = 1024;
 
-// FNV-1a, folding every reading's stem and grammar into one number.
-constexpr std::uint64_t kFnvBasis = 1469598103934665603u;
+// INFO: FNV-1a fingerprint of each reading's stem and grammar.
+constexpr std::uint64_t kFnvBasis = 14695981039346656037u;
 constexpr std::uint64_t kFnvPrime = 1099511628211u;
 
 struct Tally {
   long readings = 0;
   std::uint64_t fingerprint = kFnvBasis;
   std::size_t busiest = 0;
-  int busiestCount = -1;
+  std::size_t busiestCount = 0;
 };
+
+using Result = std::unique_ptr<WhitakerResult, decltype(&whitaker_result_free)>;
+
+Result newResult() {
+  Result result{whitaker_result_new(), whitaker_result_free};
+  if (!result)
+    throw std::bad_alloc{};
+  return result;
+}
 
 void fold(std::uint64_t& hash, const char* text) {
   for (; *text != '\0'; ++text)
@@ -54,31 +64,33 @@ std::vector<std::string> wordsOf(const std::string& text) {
   return words;
 }
 
-// Batch `k` of `words` into `tallies[k]`. Safe from any number of threads at once: each call has its own result and
-// writes its own tally.
+// NOTE: Each call owns its result and writes a separate tally.
 void analyzeBatch(const std::vector<std::string>& words, std::vector<Tally>& tallies, std::size_t k) {
-  auto result = std::make_unique<WhitakerResult>();
+  const Result result = newResult();
   Tally tally;
   const std::size_t end = std::min(words.size(), (k + 1) * kBatch);
   for (std::size_t i = k * kBatch; i < end; ++i) {
-    if (whitaker_analyze(words[i].c_str(), result.get()) != WHITAKER_OK)
+    const auto status = whitaker_analyze(words[i].c_str(), result.get());
+    if (status == WHITAKER_OUT_OF_MEMORY)
+      throw std::bad_alloc{};
+    if (status != WHITAKER_OK)
       continue;
-    tally.readings += result->count;
-    for (int m = 0; m < result->count; ++m) {
+    tally.readings += static_cast<long>(result->form_count);
+    for (std::size_t f = 0; f < result->form_count; ++f) {
       char line[64];
-      whitaker_describe(&result->matches[m].grammar, line, sizeof line);
-      fold(tally.fingerprint, result->matches[m].orth);
+      whitaker_describe(&result->forms[f].grammar, line, sizeof line);
+      fold(tally.fingerprint, result->forms[f].orth);
       fold(tally.fingerprint, line);
     }
-    if (result->count > tally.busiestCount) {
+    if (result->form_count > tally.busiestCount) {
       tally.busiest = i;
-      tally.busiestCount = result->count;
+      tally.busiestCount = result->form_count;
     }
   }
   tallies[k] = tally;
 }
 
-// The batches' tallies, in batch order: the same however threads ran them.
+// NOTE: Combine in batch order so scheduling cannot change the fingerprint.
 Tally combine(const std::vector<Tally>& tallies) {
   Tally total;
   for (const Tally& tally : tallies) {
@@ -94,7 +106,7 @@ Tally combine(const std::vector<Tally>& tallies) {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) try {
   std::vector<std::string> words;
   for (int i = 1; i < argc; ++i) {
     std::ifstream file(argv[i], std::ios::binary);
@@ -111,13 +123,13 @@ int main(int argc, char** argv) {
                     "Quo usque tandem abutere, Catilina, patientia nostra?");
   const std::size_t batches = (words.size() + kBatch - 1) / kBatch;
 
-  // Every thread takes the next batch until none is left, so a slow batch holds up no one.
   using clock = std::chrono::steady_clock;
   const auto start = clock::now();
   std::vector<Tally> threaded(batches);
   std::atomic<std::size_t> next{0};
   const unsigned threads = std::max(1u, std::thread::hardware_concurrency());
   std::vector<std::future<void>> tasks;
+  // NOTE: Workers claim batches dynamically to balance uneven lookup costs.
   for (unsigned t = 0; t < threads; ++t)
     tasks.push_back(std::async(std::launch::async, [&] {
       for (std::size_t k; (k = next++) < batches;)
@@ -137,20 +149,28 @@ int main(int argc, char** argv) {
   std::cout << words.size() << " words, " << total.readings << " readings, " << (same ? "the same" : "DIFFERENT")
             << " on one thread\n";
 
-  // A result's strings can point into the result itself, so one that is kept is copied with whitaker_result_copy, never
-  // `=`; scratch is then reused for "amo" and kept is unaffected.
+  // NOTE: Clone before reusing the source result.
   if (total.busiestCount > 0) {
-    auto scratch = std::make_unique<WhitakerResult>();
-    auto kept = std::make_unique<WhitakerResult>();
-    if (whitaker_analyze(words[total.busiest].c_str(), scratch.get()) == WHITAKER_OK)
-      whitaker_result_copy(kept.get(), scratch.get());
-    (void)whitaker_analyze("amo", scratch.get());
-    std::cout << "most readings: " << words[total.busiest] << ", " << kept->count << ", the first "
-              << kept->matches[0].orth << ' ' << kept->matches[0].pos << '\n';
+    const Result scratch = newResult();
+    const auto status = whitaker_analyze(words[total.busiest].c_str(), scratch.get());
+    if (status == WHITAKER_OUT_OF_MEMORY)
+      throw std::bad_alloc{};
+    if (status == WHITAKER_OK) {
+      const Result kept{whitaker_result_clone(scratch.get()), whitaker_result_free};
+      if (!kept)
+        throw std::bad_alloc{};
+      if (whitaker_analyze("amo", scratch.get()) == WHITAKER_OUT_OF_MEMORY)
+        throw std::bad_alloc{};
+      std::cout << "most readings: " << words[total.busiest] << ", " << kept->form_count << ", the first "
+                << kept->forms[0].orth << ' ' << kept->records[0].pos << '\n';
+    }
   }
 
   using ms = std::chrono::duration<double, std::milli>;
   std::cerr << ms(split - start).count() << " ms on " << threads << " threads, " << ms(done - split).count()
             << " ms on one\n";
   return same ? 0 : 1;
+} catch (const std::bad_alloc&) {
+  std::cerr << "out of memory\n";
+  return 1;
 }

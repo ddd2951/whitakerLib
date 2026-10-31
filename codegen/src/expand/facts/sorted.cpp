@@ -18,17 +18,9 @@ bool originLess(const Origin& a, const Origin& b) {
     return a.index() < b.index();
   if (ua)
     return std::get<Unique>(a).entry.value < std::get<Unique>(b).entry.value;
-  if (const auto* ja = std::get_if<Joined>(&a)) {
-    const Joined& jb = std::get<Joined>(b);
-    if (ja->entry != jb.entry)
-      return ja->entry.value < jb.entry.value;
-    return ja->inflection.value < jb.inflection.value;
-  }
-  const UniqueAdverb& xa = std::get<UniqueAdverb>(a);
-  const UniqueAdverb& xb = std::get<UniqueAdverb>(b);
-  if (xa.entry != xb.entry)
-    return xa.entry.value < xb.entry.value;
-  return xa.inflection.value < xb.inflection.value;
+  const Joined& ja = std::get<Joined>(a);
+  const Joined& jb = std::get<Joined>(b);
+  return ja.entry != jb.entry ? ja.entry.value < jb.entry.value : ja.inflection.value < jb.inflection.value;
 }
 
 bool formLess(const Form& a, const Form& b) {

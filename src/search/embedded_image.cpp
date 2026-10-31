@@ -59,7 +59,7 @@ static_assert(std::ranges::is_sorted(kAddons, {}, &Addon::kind), "addonsOf needs
 constexpr bool fitsSteps(const Addon& addon) {
   return addon.kind == latin::AddonKind::Prefix || addon.kind == latin::AddonKind::Suffix || addon.fix.size() >= 2;
 }
-static_assert(std::ranges::all_of(kAddons, fitsSteps), "WHITAKER_MAX_ADDON_STEPS needs other fixes two letters long");
+static_assert(std::ranges::all_of(kAddons, fitsSteps), "facts::kMaxAddonSteps needs other fixes two letters long");
 
 constexpr auto kGrammars = [] {
   std::array<latin::Analysis, sectionOf(kFramed, Section::Grammars).count> grammars{};

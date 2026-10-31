@@ -1,9 +1,7 @@
-/* Analyzes the words given as arguments, or a text on stdin, one word or more
-   per line, and prints every reading. For a text, a summary goes to stderr:
-
-     whitaker-c-example amo amoque
-     whitaker-c-example < text.words > /dev/null
-*/
+// INFO: Analyze arguments or whitespace-separated words from stdin; print a summary to stderr for stdin.
+//
+//   whitaker-c-example amo amoque
+//   whitaker-c-example < text.words > /dev/null
 #include <stdio.h>
 #include <time.h>
 
@@ -32,14 +30,13 @@ static const char* addonKind(uint8_t kind) {
   }
 }
 
+static WhitakerResult* result;
 static long readings;
 static double analyzing;
 
 static void print(const char* word) {
-  /* About 34 KiB, so not on the stack. */
-  static WhitakerResult result;
   const double start = milliseconds();
-  const WhitakerStatus status = whitaker_analyze(word, &result);
+  const WhitakerStatus status = whitaker_analyze(word, result);
   analyzing += milliseconds() - start;
 
   printf("%s\n", word);
@@ -51,27 +48,36 @@ static void print(const char* word) {
     printf("  error %d\n", (int)status);
     return;
   }
-  if (result.count == 0)
+  if (result->form_count == 0)
     printf("  no reading\n");
-  readings += result.count;
+  readings += (long)result->form_count;
 
-  for (int i = 0; i < result.count; ++i) {
-    const WhitakerMatch* match = &result.matches[i];
-    char grammar[64];
-    whitaker_describe(&match->grammar, grammar, sizeof grammar);
-    printf("  %s | %s", match->orth, grammar);
-    /* The add-ons around the stem, the outermost first. */
-    for (uint8_t step = 0; step < match->addon_count; ++step)
-      printf(" | %s %s", addonKind(match->addons[step].kind), whitaker_addon_spelling(match->addons[step].id));
-    printf("\n    %s\n", match->meaning);
+  // INFO: Each record's forms, then its add-ons (outermost first) and its meaning.
+  for (size_t r = 0; r < result->record_count; ++r) {
+    const WhitakerRecord* record = &result->records[r];
+    for (size_t f = 0; f < record->form_count; ++f) {
+      const WhitakerForm* form = &result->forms[record->first_form + f];
+      char grammar[64];
+      whitaker_describe(&form->grammar, grammar, sizeof grammar);
+      printf("  %s | %s", form->orth, grammar);
+      for (uint8_t step = 0; step < record->addon_count; ++step)
+        printf(" | %s %s", addonKind(record->addons[step].kind), whitaker_addon_spelling(record->addons[step].id));
+      printf("\n    %s\n", record->meaning);
+    }
   }
 }
 
 int main(int argc, char** argv) {
+  // NOTE: Reuse one result to retain capacity between words.
+  result = whitaker_result_new();
+  if (result == NULL)
+    return 1;
   for (int i = 1; i < argc; ++i)
     print(argv[i]);
-  if (argc > 1)
+  if (argc > 1) {
+    whitaker_result_free(result);
     return 0;
+  }
 
   long words = 0;
   char word[256];
@@ -80,5 +86,6 @@ int main(int argc, char** argv) {
     ++words;
   }
   fprintf(stderr, "%ld words, %ld readings, %.1f ms analyzing\n", words, readings, analyzing);
+  whitaker_result_free(result);
   return 0;
 }

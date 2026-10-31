@@ -16,6 +16,7 @@
 #include "src/search/relationship_schema.hpp"
 #include "types/grammar.hpp"
 #include "util/reflect_util.hpp"
+#include "word/word.hpp"
 
 namespace {
 
@@ -129,7 +130,7 @@ consteval std::string upperSnake(std::string_view name) {
 }
 
 // whitaker.h spells latin's enums for C: WhitakerX mirrors latin::X, each WHITAKER_X_NAME being latin::X::NAME with its
-// value. Status, Field and AddonKind are C's own.
+// value. Status, Field, AddonKind, Route and SpellingKind are C's own.
 consteval std::string mirrorFault() {
   using namespace std::meta;
   constexpr auto ctx = access_context::unchecked();
@@ -138,7 +139,7 @@ consteval std::string mirrorFault() {
     if (!is_type_alias(c) || !identifier_of(c).starts_with("Whitaker") || !is_enum_type(dealias(c)))
       continue;
     const std::string name{identifier_of(c).substr(8)};
-    if (name == "Status" || name == "Field" || name == "AddonKind")
+    if (name == "Status" || name == "Field" || name == "AddonKind" || name == "Route" || name == "SpellingKind")
       continue;
     const auto l = std::ranges::find_if(enums, [&](info e) { return identifier_of(e) == name; });
     if (l == enums.end())
@@ -158,5 +159,8 @@ consteval std::string mirrorFault() {
 }
 constexpr std::string_view kMirrorFault = std::define_static_string(mirrorFault());
 static_assert(kMirrorFault.empty(), kMirrorFault);
+
+// An entry's id is its image record, numbered as WORDS numbers them: DICTLINE.GEN's lines and esse, then UNIQUES.
+static_assert(word::kDictlineWords == WHITAKER_GENERAL_RECORDS);
 
 } // namespace

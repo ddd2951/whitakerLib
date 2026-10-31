@@ -78,10 +78,10 @@ void appendWord(std::vector<unsigned char>& out, std::uint64_t word, std::size_t
   section(rel::Section::Dictionaries, imageData.dictionaries.size(), all(imageData.dictionaries));
   section(rel::Section::Addons, imageData.addons.size(), all(imageData.addons));
   section(rel::Section::Classes, imageData.classes.size(), all(imageData.classes));
-  section(rel::Section::FallbackRows, imageData.fallbackRows.size(), all(imageData.fallbackRows));
+  section(rel::Section::ClassRows, imageData.classRows.size(), all(imageData.classRows));
   section(rel::Section::Inflections, imageData.inflections.size(), all(imageData.inflections));
   section(rel::Section::Endings, imageData.endings.size(), all(imageData.endings));
-  section(rel::Section::FallbackStems, imageData.fallbackStems.size(), all(imageData.fallbackStems));
+  section(rel::Section::Stems, imageData.stems.size(), all(imageData.stems));
   section(
       rel::Section::Strings, imageData.strings.blob().size(),
       [&](std::vector<unsigned char>& out) {
@@ -97,6 +97,8 @@ void appendWord(std::vector<unsigned char>& out, std::uint64_t word, std::size_t
       appendWord(out, rel::packEntry(entry), rel::kEntryBytes);
   });
   section(rel::Section::StemPatterns, imageData.stemPatterns.size(), all(imageData.stemPatterns));
+  section(rel::Section::InflectionLabels, imageData.inflectionLabels.size(), all(imageData.inflectionLabels));
+  section(rel::Section::TrimmedReadings, imageData.trimmedReadings.size(), all(imageData.trimmedReadings));
 
   rel::storeRecord(image.bytes.data(),
                    rel::HeaderRecord{.magic = rel::kMagic,

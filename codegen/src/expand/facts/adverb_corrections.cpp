@@ -1,5 +1,6 @@
+#include <algorithm>
 #include <cstddef>
-#include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -17,14 +18,8 @@ template <typename Part> [[nodiscard]] bool reads(const Form& form) {
 }
 
 Form corrected(const Form& source, InflectsRow adverb) {
-  return std::visit(
-      [&](const auto& origin) -> Form {
-        if constexpr (std::is_same_v<std::remove_cvref_t<decltype(origin)>, Joined>)
-          return {source.spelling, Joined{origin.entry, adverb, origin.column}};
-        else
-          return {source.spelling, UniqueAdverb{origin.entry, adverb}};
-      },
-      source.origin);
+  const Joined& origin = std::get<Joined>(source.origin);
+  return {source.spelling, Joined{origin.entry, adverb, origin.column}};
 }
 
 void correctGroup(const std::vector<Form>& forms, std::size_t begin, std::size_t end,
@@ -33,7 +28,13 @@ void correctGroup(const std::vector<Form>& forms, std::size_t begin, std::size_t
     if (reads<latin::inflected::Adverb>(forms[i]))
       return;
 
+  // INFO: Fix_Adverb (WORDS reference 0b32fb9, Ada bug #4): one adverb per qualifying record, from that record; the
+  //  readings of one record that make the same adverb make it once.
+  std::vector<std::pair<DictlineRow, InflectsRow>> made;
   for (std::size_t k = end; k-- > begin;) {
+    // INFO: Fix_Adverb leaves a unique alone (WORDS reference 5c9a9c0, Ada bug #5).
+    if (std::holds_alternative<Unique>(forms[k].origin))
+      continue;
     const Reading reading = readingOf(forms[k].origin);
     const auto* inflected = std::get_if<latin::inflected::Adjective>(&reading.inflection);
     if (inflected == nullptr)
@@ -51,12 +52,12 @@ void correctGroup(const std::vector<Form>& forms, std::size_t begin, std::size_t
       continue;
     }
 
-    std::size_t first = k;
-    while (first > begin && reads<latin::inflected::Adjective>(forms[first - 1]))
-      --first;
-
     const InflectsRow adverb = degree == latin::Comparison::SUPER ? word::kAdverbSuperlative : word::kAdverbPositive;
-    out.push_back({end - 1, corrected(forms[first], adverb)});
+    const DictlineRow record = std::get<Joined>(forms[k].origin).entry;
+    if (std::ranges::contains(made, std::pair{record, adverb}))
+      continue;
+    made.emplace_back(record, adverb);
+    out.push_back({end - 1, corrected(forms[k], adverb)});
   }
 }
 

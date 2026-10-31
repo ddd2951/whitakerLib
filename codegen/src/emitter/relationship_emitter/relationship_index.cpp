@@ -36,6 +36,7 @@ Machine buildMachine(const std::vector<ProgramWord>& words) {
     std::uint32_t output{kNone};
     std::uint32_t baseOutput{};
     std::uint8_t resultCount{};
+    bool trimmed{};
     char label{};
   };
 
@@ -60,15 +61,17 @@ Machine buildMachine(const std::vector<ProgramWord>& words) {
     }
     trie[path.back()].output = word.instruction;
     trie[path.back()].resultCount = static_cast<std::uint8_t>(word.analysisCount);
+    trie[path.back()].trimmed = word.trimmed;
     previous = word.text;
   }
 
-  // NOTE: Two states are one when their result count, letters and transitions match; the transitions are in letter
-  //  order.
+  // NOTE: Two states are one when their result count, trimmed flag, letters and transitions match; the transitions are
+  //  in letter order.
   Machine machine;
   const auto matches = [&machine](const rel::StateRecord& candidate, const rel::StateRecord& state,
                                   std::span<const rel::TransitionRecord> out) {
-    return candidate.resultCount == state.resultCount && candidate.letterMask == state.letterMask &&
+    return candidate.resultCount == state.resultCount && candidate.trimmed == state.trimmed &&
+           candidate.letterMask == state.letterMask &&
            std::ranges::equal(out, std::span{machine.transitions}.subspan(candidate.firstTransition, out.size()),
                               [](const rel::TransitionRecord& a, const rel::TransitionRecord& b) {
                                 return a.target == b.target && a.output == b.output;
@@ -79,10 +82,11 @@ Machine buildMachine(const std::vector<ProgramWord>& words) {
   std::vector<rel::TransitionRecord> out;
   out.reserve(facts::kLetterCount);
   for (std::size_t n = trie.size(); n-- > 0;) {
-    const std::uint32_t base = trie[n].resultCount != 0 ? trie[n].output : trie[trie[n].firstChild].baseOutput;
+    // NOTE: A word with no readings (all trimmed) still ends here and owns its output.
+    const std::uint32_t base = trie[n].output != kNone ? trie[n].output : trie[trie[n].firstChild].baseOutput;
     trie[n].baseOutput = base;
 
-    rel::StateRecord state{.resultCount = trie[n].resultCount};
+    rel::StateRecord state{.resultCount = trie[n].resultCount, .trimmed = trie[n].trimmed};
     out.clear();
     for (std::uint32_t child = trie[n].firstChild; child != kNone; child = trie[child].nextSibling) {
       state.letterMask |= 1u << (trie[child].label - 'a');
@@ -90,6 +94,7 @@ Machine buildMachine(const std::vector<ProgramWord>& words) {
     }
 
     std::uint64_t hash = mix(0x9d2c5680ULL, state.resultCount);
+    hash = mix(hash, state.trimmed);
     hash = mix(hash, state.letterMask);
     for (const rel::TransitionRecord& edge : out) {
       hash = mix(hash, edge.target);
@@ -118,16 +123,16 @@ Machine buildMachine(const std::vector<ProgramWord>& words) {
 
 Program build(const std::vector<Word>& words, const std::vector<Analysis>& analyses) {
   constexpr unsigned kStemShift = 16;
-  constexpr std::size_t sparseCapacity = std::size_t{facts::kStemColumnCount} << kStemShift;
+  constexpr std::size_t kSparseCapacity = std::size_t{facts::kStemColumnCount} << kStemShift;
   const auto sparseOf = [](const Analysis& analysis) {
     return analysis.dictionary | (std::uint32_t{analysis.stem} << kStemShift);
   };
-  std::vector<std::vector<std::uint16_t>> sparseTargets(sparseCapacity);
+  std::vector<std::vector<std::uint16_t>> sparseTargets(kSparseCapacity);
   for (const Analysis& analysis : analyses)
     sparseTargets[sparseOf(analysis)].push_back(analysis.description);
 
   Program data;
-  std::vector<std::uint16_t> sparseToDense(sparseCapacity, kNoDense);
+  std::vector<std::uint16_t> sparseToDense(kSparseCapacity, kNoDense);
   std::map<std::vector<std::uint16_t>, std::uint16_t> paradigmIds;
   for (std::uint32_t sparse = 0; sparse < sparseTargets.size(); ++sparse) {
     auto& relations = sparseTargets[sparse];
@@ -159,7 +164,7 @@ Program build(const std::vector<Word>& words, const std::vector<Analysis>& analy
     if (data.instructions.size() > std::numeric_limits<std::uint32_t>::max())
       error::fatal("image: instruction addresses past 32 bits");
     data.words.push_back(
-        ProgramWord{word.text, static_cast<std::uint32_t>(data.instructions.size()), word.analysisCount});
+        ProgramWord{word.text, static_cast<std::uint32_t>(data.instructions.size()), word.analysisCount, word.trimmed});
     std::uint16_t previous = kNoDense;
     for (std::uint32_t row = word.analysisFirst; row < word.analysisFirst + word.analysisCount; ++row) {
       const Analysis& analysis = analyses[row];

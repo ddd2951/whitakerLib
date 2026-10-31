@@ -115,9 +115,9 @@ template <typename Record> [[nodiscard]] bool every(rel::Section section, const 
   return true;
 }
 
-// The records only the fallback reads, which the walk above never reaches: each stays inside its tables, and the two
-// the fallback searches are sorted.
-void validateFallbackRecords() {
+// The records only the addon search reads, which the walk above never reaches: each stays inside its tables, and the
+// two tables it searches are sorted.
+void validateAddonSearchRecords() {
   const std::uint64_t pool = rel::section(rel::Section::Strings).bytes;
   const auto inPool = [pool](std::uint32_t offset) { return offset < pool; };
   const auto text = [](std::uint32_t offset) { return std::string_view{rel::sImage->strings + offset}; };
@@ -127,16 +127,16 @@ void validateFallbackRecords() {
   check(every<rel::DictionaryRecord>(rel::Section::Dictionaries,
                                      [&](const rel::DictionaryRecord& r) { return inPool(r.meaning); }),
         "every dictionary meaning is in the string pool");
-  check(every<rel::FallbackRowRecord>(rel::Section::FallbackRows,
-                                      [&](const rel::FallbackRowRecord& r) {
-                                        return r.inflect < count(rel::Section::Inflections) &&
-                                               r.description < count(rel::Section::Grammars);
-                                      }),
-        "every fallback row names an inflection and a grammar");
+  check(every<rel::ClassRowRecord>(rel::Section::ClassRows,
+                                   [&](const rel::ClassRowRecord& r) {
+                                     return r.inflect < count(rel::Section::Inflections) &&
+                                            r.description < count(rel::Section::Grammars);
+                                   }),
+        "every class row names an inflection and a grammar");
   check(every<rel::ClassRecord>(
             rel::Section::Classes,
-            [&](const rel::ClassRecord& r) { return r.rows().end() <= count(rel::Section::FallbackRows); }),
-        "every class's rows are fallback rows");
+            [&](const rel::ClassRecord& r) { return r.rows().end() <= count(rel::Section::ClassRows); }),
+        "every class's rows are class rows");
   check(
       every<rel::InflectionRecord>(rel::Section::Inflections,
                                    [&](const rel::InflectionRecord& r) { return inPool(r.ending) && r.stemKey <= 9; }),
@@ -151,23 +151,35 @@ void validateFallbackRecords() {
                                    return true;
                                  }),
         "the endings are sorted and name inflections");
+  std::pair<std::uint16_t, std::string_view> before{};
+  bool first = true;
+  check(every<rel::InflectionLabelRecord>(
+            rel::Section::InflectionLabels,
+            [&](const rel::InflectionLabelRecord& r) {
+              const std::pair<std::uint16_t, std::string_view> key{r.description, text(r.ending)};
+              if (!inPool(r.ending) || r.description >= count(rel::Section::Grammars) || (!first && !(before < key)))
+                return false;
+              before = key, first = false;
+              return true;
+            }),
+        "the inflection labels are sorted and name grammars");
   previous = {};
-  check(every<rel::FallbackStemRecord>(rel::Section::FallbackStems,
-                                       [&](const rel::FallbackStemRecord& r) {
-                                         if (!inPool(r.text) || r.dictionary >= count(rel::Section::Dictionaries) ||
-                                             r.stemKey > 9 || !part(r.part) || r.part == latin::Part::X ||
-                                             (previous.data() != nullptr && text(r.text) < previous))
-                                           return false;
-                                         previous = text(r.text);
-                                         return true;
-                                       }),
-        "the fallback stems are sorted and name dictionary entries");
+  check(every<rel::StemRecord>(rel::Section::Stems,
+                               [&](const rel::StemRecord& r) {
+                                 if (!inPool(r.text) || r.dictionary >= count(rel::Section::Dictionaries) ||
+                                     r.stemKey > 9 || !part(r.part) || r.part == latin::Part::X ||
+                                     (previous.data() != nullptr && text(r.text) < previous))
+                                   return false;
+                                 previous = text(r.text);
+                                 return true;
+                               }),
+        "the stems are sorted and name dictionary entries");
   check(every<rel::AddonRecord>(rel::Section::Addons,
                                 [&](const rel::AddonRecord& r) {
                                   return inPool(r.fix) && inPool(r.meaning) &&
                                          latin::isAddonKind(std::to_underlying(r.kind)) && part(r.root) &&
                                          part(r.targetPart) && r.rootStemKey <= 9 && r.targetStemKey <= 9 &&
-                                         r.rows().end() <= count(rel::Section::FallbackRows);
+                                         r.rows().end() <= count(rel::Section::ClassRows);
                                 }),
         "every addon's strings, parts, keys and rows are valid");
 }
@@ -183,6 +195,6 @@ void emitter::validateImage(const std::filesystem::path& path) {
   const std::vector<std::string> spellings = rel::spellings();
   validateSemanticRows(spellings);
   validateEntries();
-  validateFallbackRecords();
+  validateAddonSearchRecords();
   std::println("  exhaustive spelling / ordered-row / field check: exact");
 }

@@ -1,404 +1,248 @@
 #include <whitaker.h>
 
-#include "facts.hpp"
-#include "roman.hpp"
-#include "search/addon_fallback.hpp"
-#include "search/relationship_image.hpp"
-#include "search/syncope_lookup.hpp"
+#include "parse/adverb.hpp"
+#include "parse/arena.hpp"
+#include "parse/find_readings.hpp"
+#include "parse/respellings.hpp"
+#include "parse/result.hpp"
 
-#include <algorithm>
-#include <cassert>
-#include <cstdint>
-#include <cstdio>
+#include <cstdlib>
 #include <cstring>
-#include <functional>
-#include <limits>
-#include <optional>
-#include <span>
-#include <string>
+#include <new>
 #include <string_view>
-#include <utility>
+
+struct WhitakerStorage {
+  whitaker::parse::Arena text;
+  WhitakerWord* words = nullptr;
+  std::size_t wordCapacity = 0;
+  WhitakerRecord* records = nullptr;
+  std::size_t recordCapacity = 0;
+  WhitakerForm* forms = nullptr;
+  std::size_t formCapacity = 0;
+
+  ~WhitakerStorage() {
+    std::free(words);
+    std::free(records);
+    std::free(forms);
+  }
+};
 
 namespace {
 
-namespace rel = whitaker::relationship;
+using namespace whitaker::parse;
 
-static_assert(WHITAKER_MAX_WORD_LENGTH == facts::kMaxWordCharacters, "the public word length must be the corpus fact");
-static_assert(WHITAKER_MAX_MATCHES > rel::kMaximumResultsPerSpelling,
-              "the result must hold every image match and a Roman numeral");
-// Every reading owns its printed stem; a Roman numeral owns its spelling and one meaning line.
-static_assert(WHITAKER_MAX_MATCHES * (WHITAKER_MAX_WORD_LENGTH + 1) + 64 <= WHITAKER_TEXT_BYTES,
-              "the result's text must hold every string it can own");
-
-[[nodiscard]] WhitakerGrammar grammarOf(const latin::Analysis& a) noexcept {
-  return {.part = std::to_underlying(a.part),
-          .which = a.which,
-          .variant = a.variant.value,
-          .case_of = std::to_underlying(a.caseOf),
-          .number = std::to_underlying(a.number),
-          .gender = std::to_underlying(a.gender),
-          .comparison = std::to_underlying(a.comparison),
-          .numeral_sort = std::to_underlying(a.numeralSort),
-          .tense = std::to_underlying(a.tense),
-          .voice = std::to_underlying(a.voice),
-          .mood = std::to_underlying(a.mood),
-          .person = a.person.value};
+[[nodiscard]] bool looksLikeAName(std::string_view word) noexcept {
+  return word.size() > 1 && word[0] >= 'A' && word[0] <= 'Z' && word[1] >= 'a' && word[1] <= 'z';
 }
 
-[[nodiscard]] latin::Analysis analysisOf(const WhitakerGrammar& g) noexcept {
-  return {.part = latin::Part{g.part},
-          .which = g.which,
-          .variant = {g.variant},
-          .caseOf = latin::Case{g.case_of},
-          .number = latin::Number{g.number},
-          .gender = latin::Gender{g.gender},
-          .comparison = latin::Comparison{g.comparison},
-          .numeralSort = latin::NumeralSort{g.numeral_sort},
-          .tense = latin::Tense{g.tense},
-          .voice = latin::Voice{g.voice},
-          .mood = latin::Mood{g.mood},
-          .person = {g.person}};
-}
+thread_local Work sWork;
 
-[[nodiscard]] WhitakerEntry entryOf(std::uint16_t index) noexcept {
-  const rel::Entry entry = rel::entry(index);
-  const rel::DictionaryRecord labels = rel::dictionary(index);
-  return {.part = std::to_underlying(entry.part),
-          .which = entry.which,
-          .variant = entry.variant,
-          .gender = std::to_underlying(entry.gender),
-          .kind = entry.kind,
-          .comparison = std::to_underlying(entry.comparison),
-          .numeral_sort = std::to_underlying(entry.numeralSort),
-          .area = std::to_underlying(entry.area),
-          .geography = std::to_underlying(entry.geography),
-          .source = std::to_underlying(entry.source),
-          .numeral_value = entry.numeralValue.value,
-          .age = std::to_underlying(labels.age),
-          .frequency = std::to_underlying(labels.frequency)};
-}
-
-// The strings a result owns, appended to its `text`.
-class Text {
-public:
-  explicit Text(WhitakerResult& out) noexcept : m_text{out.text} {}
-
-  [[nodiscard]] std::size_t checkpoint() const noexcept { return m_used; }
-
-  void rewind(std::size_t checkpoint) noexcept {
-    assert(checkpoint <= m_used);
-    m_used = checkpoint;
-  }
-
-  [[nodiscard]] const char* keep(std::string_view value) noexcept {
-    assert(m_used + value.size() < WHITAKER_TEXT_BYTES);
-    char* const result = m_text + m_used;
-    // Filtering can move a retained stem earlier within this buffer.
-    std::memmove(result, value.data(), value.size());
-    result[value.size()] = '\0';
-    m_used += value.size() + 1;
-    return result;
-  }
-
-private:
-  char* m_text;
-  std::size_t m_used{};
-};
-
-void fillResult(WhitakerResult& out, Text& text, std::string_view spelling,
-                std::optional<latin::Part> only = std::nullopt) noexcept {
-  const rel::Program program = rel::lookup(spelling);
-  std::uint32_t cursor = program.begin;
-  std::uint16_t lexeme = std::numeric_limits<std::uint16_t>::max();
-  for (unsigned i = 0; i < program.count && out.count < WHITAKER_MAX_MATCHES; ++i) {
-    const rel::Result reading = rel::next(cursor, lexeme);
-    if (only && reading.grammar.part != *only)
-      continue;
-    WhitakerMatch& match = out.matches[out.count++];
-    match = {};
-    char stem[facts::kMaxWordCharacters];
-    match.orth = text.keep({stem, rel::printStem(spelling, reading.stemLength, reading.stemPattern, stem)});
-    match.meaning = rel::dictionaryMeaning(reading.dictionary);
-    match.pos = latin::name(reading.grammar.part);
-    match.grammar = grammarOf(reading.grammar);
-    match.entry = entryOf(reading.dictionary);
-  }
-}
-
-[[nodiscard]] std::uint8_t addonKind(latin::AddonKind kind) noexcept {
-  switch (kind) {
-  case latin::AddonKind::Tickon:
-    return WHITAKER_ADDON_TICKON;
-  case latin::AddonKind::Prefix:
-    return WHITAKER_ADDON_PREFIX;
-  case latin::AddonKind::Suffix:
-    return WHITAKER_ADDON_SUFFIX;
-  case latin::AddonKind::Tackon:
-    return WHITAKER_ADDON_TACKON;
-  case latin::AddonKind::Packon:
-    return WHITAKER_ADDON_PACKON;
-  }
-  std::unreachable();
-}
-
-void prependAddon(WhitakerMatch& match, std::uint16_t id, latin::AddonKind kind) noexcept {
-  if (match.addon_count >= WHITAKER_MAX_ADDON_STEPS)
-    return;
-  for (std::size_t i = match.addon_count; i > 0; --i)
-    match.addons[i] = match.addons[i - 1];
-  match.addons[0] = {id, addonKind(kind)};
-  ++match.addon_count;
-}
-
-void prependAddon(WhitakerResult& out, int first, const rel::Addon& addon) noexcept {
-  for (int i = first; i < out.count; ++i)
-    prependAddon(out.matches[i], addon.id, addon.kind);
-}
-
-// INFO: A fix or packon reading prints a slice of the query, not a spelling the image holds, so the result owns that
-//  string.
-void add(WhitakerResult& out, Text& text, std::string_view word,
-         std::span<const whitaker::FallbackMatch> found) noexcept {
-  for (const whitaker::FallbackMatch& match : found) {
-    if (out.count >= WHITAKER_MAX_MATCHES)
-      break;
-    WhitakerMatch& added = out.matches[out.count++];
-    added = {};
-    added.orth = text.keep(word.substr(match.orthOffset, match.orthLength));
-    added.meaning = rel::dictionaryMeaning(match.dictionary);
-    added.pos = latin::name(match.grammar.part);
-    added.grammar = grammarOf(match.grammar);
-    added.entry = entryOf(match.dictionary);
-    for (std::uint8_t i = 0; i < match.addonCount; ++i)
-      added.addons[i] = {match.addonId[i], addonKind(match.addonKind[i])};
-    added.addon_count = match.addonCount;
-  }
-}
-
-// INFO: A PACK entry is half a word the automaton holds no form of, so WORDS answers it inside Word, not as a fallback;
-//  `quocumque` is reported both ways.
-void addPackon(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  add(out, text, word, whitaker::packonReadings(word));
-}
-
-[[nodiscard]] bool foldedEquals(std::string_view text, std::string_view fix) noexcept {
-  return std::ranges::equal(text, fix, {}, facts::foldLetter);
-}
-
-// INFO: Word's Qu block. Strip a tickon; what is left must be a qu/cu pronoun of three letters or more, answered
-//  from PRON entries only. Ada leaves the loop on the first record that answers.
-void addTickon(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  for (const rel::Addon& tickon : rel::addonsOf(latin::AddonKind::Tickon)) {
-    const std::string_view fix = tickon.fix;
-    if (fix.empty() || word.size() <= fix.size() || !foldedEquals(word.substr(0, fix.size()), fix))
-      continue;
-
-    const std::string_view base = word.substr(fix.size());
-    if (base.size() < 3 || !(foldedEquals(base.substr(0, 2), "qu") || foldedEquals(base.substr(0, 2), "cu")))
-      continue;
-
-    const int before = out.count;
-    fillResult(out, text, base, latin::Part::PRON);
-
-    if (out.count == before)
-      addPackon(out, text, base);
-    if (out.count != before) {
-      prependAddon(out, before, tickon);
-      return;
-    }
-  }
-}
-
-// INFO: Try_Tackons accepts every adjective; `cumque` is its only ADJ tackon and the source leaves its declension
-//  unchecked.
-[[nodiscard]] bool tackonAccepts(const WhitakerMatch& match, const rel::Addon& tackon) noexcept {
-  using Part = latin::Part;
-  switch (tackon.targetPart) {
-  case Part::X:
+// NOTE: Reading storage is reused; generated strings live in the supplied arena.
+[[nodiscard]] bool readWord(std::string_view word, Arena& strings) noexcept {
+  sWork.count = 0;
+  sWork.trimmed = 0;
+  sWork.outOfMemory = false;
+  if (word.empty())
     return true;
-  case Part::N:
-    return match.grammar.part == WHITAKER_PART_N && match.grammar.which <= tackon.target[0];
-  case Part::PRON:
-    return match.grammar.part == WHITAKER_PART_PRON && match.grammar.which <= tackon.target[0];
-  case Part::ADJ:
-    return match.grammar.part == WHITAKER_PART_ADJ;
-  default:
+  Text text{strings};
+  findReadings(sWork, text, word);
+  if (!foundOrTrimmed(sWork) && !looksLikeAName(word) && !addRespelledReadings(sWork, text, word))
+    addRespelledEncliticReadings(sWork, text, word);
+  addAdverbsOfAdjectives(sWork);
+  return !sWork.outOfMemory && !text.outOfMemory();
+}
+
+template <typename T> [[nodiscard]] bool reserve(T*& items, std::size_t& capacity, std::size_t needed) noexcept {
+  if (needed <= capacity)
+    return true;
+  std::size_t grown = capacity == 0 ? 16 : capacity;
+  while (grown < needed)
+    grown *= 2;
+  auto* const moved = static_cast<T*>(std::realloc(items, grown * sizeof(T)));
+  if (moved == nullptr)
     return false;
-  }
+  items = moved;
+  capacity = grown;
+  return true;
 }
 
-void addRawWord(WhitakerResult& out, Text& text, std::string_view word) noexcept;
+[[nodiscard]] const char* keepText(Arena& arena, const char* text) noexcept {
+  const std::size_t bytes = std::strlen(text) + 1;
+  auto* const kept = static_cast<char*>(arena.allocate(bytes));
+  if (kept != nullptr)
+    std::memcpy(kept, text, bytes);
+  return kept;
+}
 
-constexpr std::size_t kEncliticTackons = 4;
+// NOTE: Null for none and when out of memory.
+[[nodiscard]] const WhitakerAddonStep* keepAddons(Arena& arena, const WhitakerAddonStep* steps,
+                                                  std::uint8_t count) noexcept {
+  if (count == 0)
+    return nullptr;
+  auto* const kept =
+      static_cast<WhitakerAddonStep*>(arena.allocate(count * sizeof(WhitakerAddonStep), alignof(WhitakerAddonStep)));
+  if (kept != nullptr)
+    std::memcpy(kept, steps, count * sizeof(WhitakerAddonStep));
+  return kept;
+}
 
-// INFO: Try_Tackons: the records after Enclitic's first four, first applicable record wins.
-void addRegularTackon(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  for (const rel::Addon& tackon : rel::addonsOf(latin::AddonKind::Tackon).subspan(kEncliticTackons)) {
-    const std::string_view fix = tackon.fix;
-    if (fix.empty() || word.size() <= fix.size() || !foldedEquals(word.substr(word.size() - fix.size()), fix))
-      continue;
+// NOTE: WORDS starts a new block when the record, part, route, spelling rule or add-ons change.
+[[nodiscard]] bool sameRecord(const Match& a, const Match& b) noexcept {
+  if (a.entry.id != b.entry.id || a.grammar.part != b.grammar.part || a.route != b.route ||
+      a.spellingRule != b.spellingRule || a.addonCount != b.addonCount)
+    return false;
+  for (std::uint8_t i = 0; i < a.addonCount; ++i)
+    if (a.addons[i].id != b.addons[i].id || a.addons[i].kind != b.addons[i].kind)
+      return false;
+  return true;
+}
 
-    const int before = out.count;
-    const std::size_t checkpoint = text.checkpoint();
-    addRawWord(out, text, word.substr(0, word.size() - fix.size()));
-    // Reclaim rejected stems, and compact survivors in their original order. Their strings follow the checkpoint in the
-    // same order as the matches.
-    text.rewind(checkpoint);
-    int kept = before;
-    for (int i = before; i < out.count; ++i) {
-      if (tackonAccepts(out.matches[i], tackon)) {
-        const std::string_view stem{out.matches[i].orth};
-        out.matches[kept] = out.matches[i];
-        out.matches[kept++].orth = text.keep(stem);
-      }
+[[nodiscard]] bool reserveFor(WhitakerResult& result, std::size_t words, std::size_t records,
+                              std::size_t forms) noexcept {
+  WhitakerStorage& storage = *result.storage;
+  const bool reserved = reserve(storage.words, storage.wordCapacity, words) &&
+                        reserve(storage.records, storage.recordCapacity, records) &&
+                        reserve(storage.forms, storage.formCapacity, forms);
+  result.words = storage.words;
+  result.records = storage.records;
+  result.forms = storage.forms;
+  return reserved;
+}
+
+[[nodiscard]] bool appendWord(WhitakerResult& result) noexcept {
+  WhitakerStorage& storage = *result.storage;
+  const std::size_t count = static_cast<std::size_t>(sWork.count);
+  if (!reserveFor(result, result.word_count + 1, result.record_count + count, result.form_count + count))
+    return false;
+  WhitakerWord& word = storage.words[result.word_count];
+  word = {result.record_count, 0, sWork.trimmed};
+  for (std::size_t i = 0; i < count; ++i) {
+    const Match& reading = sWork.matches[i];
+    if (i == 0 || !sameRecord(sWork.matches[i - 1], reading)) {
+      WhitakerRecord& record = storage.records[word.first_record + word.record_count++];
+      record = {.entry = reading.entry,
+                .meaning = reading.meaning,
+                .pos = reading.pos,
+                .addons = keepAddons(storage.text, reading.addons, reading.addonCount),
+                .addon_count = reading.addonCount,
+                .route = reading.route,
+                .spelling_rule = reading.spellingRule,
+                .first_form = result.form_count + i,
+                .form_count = 0};
+      if (reading.addonCount != 0 && record.addons == nullptr)
+        return false;
     }
-    out.count = kept;
-    if (kept != before) {
-      prependAddon(out, before, tackon);
-      return;
-    }
+    ++storage.records[word.first_record + word.record_count - 1].form_count;
+    storage.forms[result.form_count + i] = {.orth = reading.orth,
+                                            .ending = reading.ending,
+                                            .grammar = reading.grammar,
+                                            .inflection_age = reading.inflectionAge,
+                                            .inflection_frequency = reading.inflectionFrequency};
   }
+  ++result.word_count;
+  result.record_count += word.record_count;
+  result.form_count += count;
+  return true;
 }
 
-// INFO: Word: the Qu block, then the ordinary lookup, then the packon; a tickon reading does not stop the ordinary
-//  lookup. Try_Tackons runs only when all of that answered nothing.
-void addRawWord(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  const int before = out.count;
-  addTickon(out, text, word);
-  fillResult(out, text, word);
-  addPackon(out, text, word);
-  if (out.count == before)
-    addRegularTackon(out, text, word);
-}
-
-// INFO: Enclitic tries only -que when Word already answered, and all four special tackons for an unanswered word.
-void addEnclitic(WhitakerResult& out, Text& text, std::string_view word, bool wordAnswered,
-                 bool fixesOnly = false) noexcept {
-  for (const rel::Addon& tackon : rel::addonsOf(latin::AddonKind::Tackon).first(wordAnswered ? 1 : kEncliticTackons)) {
-    const std::string_view fix = tackon.fix;
-    if (fix.empty() || word.size() <= fix.size() || !foldedEquals(word.substr(word.size() - fix.size()), fix))
-      continue;
-    const int before = out.count;
-    const std::string_view base = word.substr(0, word.size() - fix.size());
-    // INFO: Base already failed ordinary lookup; addons only.
-    if (fixesOnly)
-      add(out, text, base, whitaker::addonFallback(base));
-    else
-      addRawWord(out, text, base);
-    if (out.count != before) {
-      prependAddon(out, before, tackon);
-      return;
-    }
-  }
-}
-
-// INFO: Pass skips syncope when any reading so far is a (5,1) verb.
-//  A V reading's Con is its entry's (Reduce_Stem_List).
-[[nodiscard]] bool hasConjugationFiveOne(const WhitakerResult& out) noexcept {
-  for (int i = 0; i < out.count; ++i) {
-    const WhitakerMatch& match = out.matches[i];
-    if (match.grammar.part == WHITAKER_PART_V && match.entry.part == WHITAKER_PART_V && match.entry.which == 5 &&
-        match.entry.variant == 1)
-      return true;
-  }
-  return false;
-}
-
-// INFO: Word re-enters itself after removing a tackon but never re-enters Parse's Enclitic loop, so the two calls stay
-//  separate.
-void addTackonWord(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  const int before = out.count;
-  addRawWord(out, text, word);
-  // INFO: Pass's "Pure SYNCOPE".
-  // FIXME: When the combined patched Ada version is pinned, fix this. Not ported: Enclitic's Syncope of the base
-  //  and the fixes-only pass's, where a restored spelling may take a prefix or suffix. Syncope looks up the image
-  //  only, not Word.
-  if (!hasConjugationFiveOne(out))
-    if (const std::string restored = whitaker::syncopeLookup(word); !restored.empty())
-      fillResult(out, text, restored);
-  addEnclitic(out, text, word, out.count != before);
-}
-
-// INFO: Addons on the word, then its enclitic bases.
-void addFallback(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  if (out.count != 0)
-    return;
-  add(out, text, word, whitaker::addonFallback(word));
-  if (out.count == 0)
-    addEnclitic(out, text, word, false, true);
-}
-
-void addRomanNumeral(WhitakerResult& out, Text& text, std::string_view word) noexcept {
-  const unsigned value = whitaker::romanValue(word);
-  if (value == 0)
-    return;
-
-  assert(out.count == 0);
-  char meaning[64];
-  std::snprintf(meaning, sizeof meaning, " %u  as a ROMAN NUMERAL;", value);
-  WhitakerMatch& match = out.matches[0];
-  match = {};
-  match.orth = text.keep(word);
-  match.meaning = text.keep(meaning);
-  match.pos = latin::name(latin::Part::NUM);
-  match.grammar = grammarOf({.part = latin::Part::NUM, .which = 2, .numeralSort = latin::NumeralSort::CARD});
-  match.entry.part = WHITAKER_PART_NUM;
-  match.entry.which = 2;
-  match.entry.numeral_sort = WHITAKER_NUMERAL_SORT_CARD;
-  // NOTE: romanValue stays below 5000, so the value fits; it is past Whitaker's 0..1000 NUMERAL_VALUE_TYPE for numerals
-  //  over M.
-  match.entry.numeral_value = static_cast<std::uint16_t>(value);
-  out.count = 1;
+[[nodiscard]] WhitakerStatus analyzeWord(const char* word, WhitakerResult* result, bool replace) {
+  if (word == nullptr || result == nullptr || result->storage == nullptr)
+    return WHITAKER_INVALID_ARGUMENT;
+  const std::size_t size = std::strlen(word);
+  if (size > WHITAKER_MAX_WORD_LENGTH)
+    return WHITAKER_INPUT_TOO_LONG;
+  // NOTE: Copied first: the word may live in the result, which this call may clear.
+  char copy[WHITAKER_MAX_WORD_LENGTH];
+  std::memcpy(copy, word, size);
+  if (replace)
+    whitaker_result_clear(result);
+  Arena& strings = result->storage->text;
+  const Arena::Mark mark = strings.mark();
+  if (readWord({copy, size}, strings) && appendWord(*result))
+    return WHITAKER_OK;
+  strings.rewind(mark);
+  return WHITAKER_OUT_OF_MEMORY;
 }
 
 } // namespace
 
 extern "C" {
 
-WhitakerStatus whitaker_init(void) { return WHITAKER_OK; }
-
-WhitakerStatus whitaker_analyze(const char* word, WhitakerResult* out) {
-  if (word == nullptr || out == nullptr)
-    return WHITAKER_INVALID_ARGUMENT;
-  const std::size_t size = std::strlen(word);
-  if (size > WHITAKER_MAX_WORD_LENGTH)
-    return WHITAKER_INPUT_TOO_LONG;
-  // NOTE: Copied first: the word may live in out->text, which the readings
-  //  overwrite.
-  char copy[WHITAKER_MAX_WORD_LENGTH];
-  std::memcpy(copy, word, size);
-  const std::string_view query{copy, size};
-
-  out->count = 0;
-  if (query.empty())
-    return WHITAKER_OK;
-  Text text{*out};
-  addRomanNumeral(*out, text, query);
-  addTackonWord(*out, text, query);
-  addFallback(*out, text, query);
-  return WHITAKER_OK;
+WhitakerResult* whitaker_result_new(void) {
+  auto* const result = new (std::nothrow) WhitakerResult{};
+  if (result == nullptr)
+    return nullptr;
+  result->storage = new (std::nothrow) WhitakerStorage{};
+  if (result->storage == nullptr) {
+    delete result;
+    return nullptr;
+  }
+  return result;
 }
 
-void whitaker_result_copy(WhitakerResult* dst, const WhitakerResult* src) {
-  if (dst == nullptr || src == nullptr || dst == src)
+void whitaker_result_free(WhitakerResult* result) {
+  if (result == nullptr)
     return;
-  std::memcpy(dst, src, sizeof *dst);
-  const std::less<const char*> before;
-  const auto rebase = [&](const char*& s) {
-    if (!before(s, src->text) && before(s, src->text + WHITAKER_TEXT_BYTES))
-      s = dst->text + (s - src->text);
-  };
-  for (int i = 0; i < dst->count; ++i) {
-    WhitakerMatch& m = dst->matches[i];
-    rebase(m.orth);
-    rebase(m.meaning);
-    rebase(m.pos);
+  delete result->storage;
+  delete result;
+}
+
+void whitaker_result_clear(WhitakerResult* result) {
+  if (result == nullptr || result->storage == nullptr)
+    return;
+  result->word_count = 0;
+  result->record_count = 0;
+  result->form_count = 0;
+  result->storage->text.rewind({});
+}
+
+// NOTE: Roman numeral meanings belong to the result; dictionary meanings are shared.
+WhitakerResult* whitaker_result_clone(const WhitakerResult* result) {
+  if (result == nullptr || result->storage == nullptr)
+    return nullptr;
+  WhitakerResult* const copy = whitaker_result_new();
+  if (copy == nullptr)
+    return nullptr;
+  Arena& strings = copy->storage->text;
+  bool copied = reserveFor(*copy, result->word_count, result->record_count, result->form_count);
+  for (std::size_t i = 0; copied && i < result->form_count; ++i) {
+    WhitakerForm& form = copy->storage->forms[i];
+    form = result->forms[i];
+    form.orth = keepText(strings, form.orth);
+    form.ending = keepText(strings, form.ending);
+    copied = form.orth != nullptr && form.ending != nullptr;
   }
+  for (std::size_t i = 0; copied && i < result->record_count; ++i) {
+    WhitakerRecord& record = copy->storage->records[i];
+    record = result->records[i];
+    if (record.entry.id == WHITAKER_NO_RECORD)
+      record.meaning = keepText(strings, record.meaning);
+    record.addons = keepAddons(strings, record.addons, record.addon_count);
+    copied = record.meaning != nullptr && (record.addon_count == 0 || record.addons != nullptr);
+  }
+  if (!copied) {
+    whitaker_result_free(copy);
+    return nullptr;
+  }
+  if (result->word_count != 0)
+    std::memcpy(copy->storage->words, result->words, result->word_count * sizeof(WhitakerWord));
+  copy->word_count = result->word_count;
+  copy->record_count = result->record_count;
+  copy->form_count = result->form_count;
+  return copy;
+}
+
+WhitakerStatus whitaker_analyze(const char* word, WhitakerResult* result) { return analyzeWord(word, result, true); }
+
+WhitakerStatus whitaker_analyze_append(const char* word, WhitakerResult* result) {
+  return analyzeWord(word, result, false);
 }
 
 const char* whitaker_addon_spelling(uint16_t id) { return rel::addon(id).fix.data(); }
 
 const char* whitaker_addon_meaning(uint16_t id) { return rel::addon(id).meaning; }
+
+WhitakerSpellingRule whitaker_spelling_rule(uint8_t rule) { return whitaker::parse::spellingRule(rule); }
 
 const char* whitaker_name(WhitakerField field, uint8_t value) {
   switch (field) {

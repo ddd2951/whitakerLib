@@ -19,15 +19,15 @@ contra
   contra | ADV POS
     facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
   contra | ADV POS
-    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
+    against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
   contra | ADV POS
-    ||otherwise, differently; conversely; on the contrary; vice versa;
+    otherwise, differently; conversely; on the contrary; vice versa;
   contra | PREP ACC
     against, facing, opposite; weighed against; as against; in resistance/reply to;
   contra | PREP ACC
-    |contrary to, not in conformance with; the reverse of; otherwise than;
+    contrary to, not in conformance with; the reverse of; otherwise than;
   contra | PREP ACC
-    ||towards/up to, in direction of;  directly over/level with; to detriment of;
+    towards/up to, in direction of;  directly over/level with; to detriment of;
 ventum
   vent | VPAR C3 V4 NOM S N PERF PASSIVE PPL
     come;
@@ -84,15 +84,15 @@ contra
   contra | ADV POS
     facing, face-to-face, in the eyes; towards/up to; across; in opposite direction;
   contra | ADV POS
-    |against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
+    against, opposite, opposed/hostile/contrary/in reply to; directly over/level;
   contra | ADV POS
-    ||otherwise, differently; conversely; on the contrary; vice versa;
+    otherwise, differently; conversely; on the contrary; vice versa;
   contra | PREP ACC
     against, facing, opposite; weighed against; as against; in resistance/reply to;
   contra | PREP ACC
-    |contrary to, not in conformance with; the reverse of; otherwise than;
+    contrary to, not in conformance with; the reverse of; otherwise than;
   contra | PREP ACC
-    ||towards/up to, in direction of;  directly over/level with; to detriment of;
+    towards/up to, in direction of;  directly over/level with; to detriment of;
 ventum
   vent | VPAR C3 V4 NOM S N PERF PASSIVE PPL
     come;
@@ -150,7 +150,7 @@ Populusque
   popul | N D2 V1 NOM S M | tackon que
     people, nation, State; public/populace/multitude/crowd; a following;
   popul | N D2 V1 NOM S M | tackon que
-    |members of a society/sex; region/district (L+S); army (Bee);
+    members of a society/sex; region/district (L+S); army (Bee);
   popul | N D2 V1 NOM S F | tackon que
     poplar tree; (long o);
 Romanus
@@ -170,9 +170,9 @@ Maximus
   maxi | ADJ D1 V1 NOM S M SUPER
     large/great/big/vast/huge; much; powerful; tall/long/broad; extensive/spacious;
   maxi | ADJ D1 V1 NOM S M SUPER
-    |great (achievement); mighty; distinguished; skilled; bold/confident; proud;
+    great (achievement); mighty; distinguished; skilled; bold/confident; proud;
   maxi | ADJ D1 V1 NOM S M SUPER
-    ||full/complete/utter/pure; intense; loud; at high price; notable/famous; old;
+    full/complete/utter/pure; intense; loud; at high price; notable/famous; old;
   maxi | ADJ D0 V0 NOM S M SUPER
     greatest/biggest/largest; longest; oldest; highest, utmost; leading, chief;
 Legio
@@ -233,15 +233,12 @@ succerealis
 magalia
   magal | ADJ D3 V2 NOM P N POS | suffix al
     wise/learned man; magician (Persian); astrologer;
-  magal | ADJ D3 V2 ACC P N POS | suffix al
-    wise/learned man; magician (Persian); astrologer;
   magal | ADJ D3 V2 VOC P N POS | suffix al
     wise/learned man; magician (Persian); astrologer;
+  magal | ADJ D3 V2 ACC P N POS | suffix al
+    wise/learned man; magician (Persian); astrologer;
 nequaquamcumque
-  qu | PRON D1 V0 NOM P N | tackon que | tackon cum | tickon ne | packon quam
-    (w/-quam) any, anyone (no pl.) (INDEF) anything; any man, any person;
-  qu | PRON D1 V0 ACC P N | tackon que | tackon cum | tickon ne | packon quam
-    (w/-quam) any, anyone (no pl.) (INDEF) anything; any man, any person;
+  no reading
 audiit
   audiv | V C4 V1 PERF ACTIVE IND 3 S
     hear, listen, accept, agree with; obey; harken, pay attention; be able to hear;

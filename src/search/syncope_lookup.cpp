@@ -2,10 +2,11 @@
 
 #include "facts.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string>
 #include <string_view>
 
 namespace whitaker {
@@ -85,15 +86,15 @@ inline constexpr std::uint8_t kPerfectStemColumn = 2;
 //   3  ar => aver, also er, or      amarunt   => amaverunt
 //   4  ier => iver                  audierunt => audiverunt
 //   5  s => sis, x => xis           admisse   => admisisse
-std::string syncopeLookup(std::string_view word) {
+Syncope syncopeLookup(std::string_view word) noexcept {
   if (word.size() > facts::kMaxWordCharacters)
     return {};
 
-  // NOTE: Lowercased only, not folded u/v and i/j, as WORDS does.
-  std::string lowered{word};
-  for (char& c : lowered)
-    if (c >= 'A' && c <= 'Z')
-      c = static_cast<char>(c - 'A' + 'a');
+  // NOTE: Lowercased only, not folded u/v and i/j, as WORDS does. Fixed buffers: this runs where nothing may throw.
+  std::array<char, facts::kMaxWordCharacters> lowerLetters{};
+  for (std::size_t i = 0; i < word.size(); ++i)
+    lowerLetters[i] = word[i] >= 'A' && word[i] <= 'Z' ? static_cast<char>(word[i] - 'A' + 'a') : word[i];
+  const std::string_view lowered{lowerLetters.data(), word.size()};
 
   for (std::uint8_t rule = 1; rule <= 5; ++rule) {
     for (std::size_t at = lowered.size(); at-- > 0;) {
@@ -102,15 +103,16 @@ std::string syncopeLookup(std::string_view word) {
       const std::string_view added = restoredLetters(rule);
       if (lowered.size() + added.size() > facts::kMaxWordCharacters)
         continue;
-      std::string restored{lowered};
-      restored.insert(at + 1, added);
-      const auto program = rel::lookup(restored);
+      Syncope found{.length = static_cast<std::uint8_t>(lowered.size() + added.size()), .rule = rule};
+      const auto tail = std::ranges::copy(lowered.substr(0, at + 1), found.letters.begin()).out;
+      std::ranges::copy(lowered.substr(at + 1), std::ranges::copy(added, tail).out);
+      const auto program = rel::lookup(found.restored());
       if (program.count == 0)
         continue;
-      // NOTE: WORDS returns rule 2 even when this test fails, and rule 5 drops its readings before testing, so its test
-      //  never fires.
-      if (rule == 2 || endsInPerfect(program))
-        return restored;
+      // NOTE: Rule 5 drops its readings before testing, so its test never fires. Rule 2 is tested like the others
+      //  since the quantasvis-syncope fix in the WORDS compared against.
+      if (endsInPerfect(program))
+        return found;
       break;
     }
   }

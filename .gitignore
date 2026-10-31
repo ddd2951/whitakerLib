@@ -16,3 +16,6 @@ compile_commands.json
 # Tool caches.
 __pycache__/
 *.py[cod]
+
+# The oracle's captures and reports (oracle/README.md).
+oracle/stored/

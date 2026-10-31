@@ -29,6 +29,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -170,9 +171,8 @@ using GrammarKey = std::array<std::uint16_t, 4>;
 }
 
 [[nodiscard]] latin::VerbKind entryVerbKind(const latin::Entry& grammar) noexcept {
-  if (const auto* verb = std::get_if<latin::Verb>(&grammar))
-    return verb->verbKind;
-  return latin::VerbKind::X;
+  const auto* verb = std::get_if<latin::Verb>(&grammar);
+  return verb != nullptr ? verb->verbKind : latin::VerbKind::X;
 }
 
 [[nodiscard]] std::uint16_t grammarRules(const latin::Entry& grammar, std::uint16_t packon) noexcept {
@@ -225,13 +225,13 @@ struct FormAddress {
 };
 
 [[nodiscard]] FormAddress addressOf(const expand::Origin& origin) {
-  constexpr std::uint32_t uniqueBase = word::kDictlineWords;
+  constexpr std::uint32_t kUniqueBase = word::kDictlineWords;
   return std::visit(
       []<typename T>(const T& value) -> FormAddress {
         if constexpr (std::is_same_v<T, expand::Joined>)
           return {value.entry.value, value.column.value};
         else
-          return {uniqueBase + value.entry.value, 1};
+          return {kUniqueBase + value.entry.value, 1};
       },
       origin);
 }
@@ -338,11 +338,11 @@ using EndingOrder = std::vector<std::pair<std::string, std::uint32_t>>;
   return static_cast<std::uint16_t>(description->second);
 }
 
-void fallbackRow(const latin::Entry& grammar, const word::InflectsEntry& inflection, std::uint32_t position,
-                 ImageData& image, DescriptionIds& descriptionIds) {
+void classRow(const latin::Entry& grammar, const word::InflectsEntry& inflection, std::uint32_t position,
+              ImageData& image, DescriptionIds& descriptionIds) {
   const latin::Analysis analysis = printed(analysisOf(grammar, inflection.grammar, inflection.stemKey));
   const std::uint16_t description = descriptionId(analysis, image, descriptionIds);
-  image.fallbackRows.push_back(rel::FallbackRowRecord{static_cast<std::uint16_t>(position), description});
+  image.classRows.push_back(rel::ClassRowRecord{static_cast<std::uint16_t>(position), description});
 }
 
 std::size_t internAddons(const AddonRows& addonRows, ImageData& image) {
@@ -384,16 +384,13 @@ void internEntries(ImageData& image) {
                                                       ImageData& image) {
   std::map<GrammarKey, std::uint16_t> classIds;
   std::vector<latin::Entry> classGrammars;
-  for (std::uint32_t index = 0; index < source::scheme::dictline::kEntriesPerFile; ++index) {
+  for (std::uint32_t index = 0; index < word::kDictlineWords; ++index) {
     const word::DictlineEntry& dictionary = word::entry(word::DictlineRow{index});
     std::uint16_t packon = 0;
     if (partOf(dictionary.grammar) == latin::Part::PACK) {
       const auto named = packons.find(normalize(dictionary.packon));
-      if (named != packons.end()) {
+      if (named != packons.end())
         packon = named->second;
-        // NOTE: A PACK entry produces no form, so its meaning is interned here.
-        image.dictionaries[index].meaning = image.strings.intern(dictionary.senses);
-      }
     }
     auto [entry, inserted] =
         classIds.emplace(grammarKey(dictionary.grammar, packon), static_cast<std::uint16_t>(classGrammars.size()));
@@ -403,6 +400,8 @@ void internEntries(ImageData& image) {
       classGrammars.push_back(dictionary.grammar);
       image.classes.push_back(rel::ClassRecord{.rules = grammarRules(dictionary.grammar, packon)});
     }
+    // NOTE: Also for an entry that produces no form of its own, which only an addon reaches: a PACK, audo (V 8 2).
+    image.dictionaries[index].meaning = image.strings.intern(dictionary.senses);
     image.dictionaries[index].age = dictionary.labels.age;
     image.dictionaries[index].frequency = dictionary.labels.frequency;
     image.dictionaries[index].classId =
@@ -421,6 +420,9 @@ void internEntries(ImageData& image) {
   source.reserve(expand::resultCount());
   StemPatternIds stemPatternIds{{"", std::uint16_t{0}}};
   image.stemPatterns.push_back(image.strings.intern(""));
+  // INFO: The inflection's labels by grammar and ending. Five pairs have two INFLECTS frequencies (A or B, which WORDS
+  //  never shows); the first reading's is kept.
+  std::map<std::pair<std::uint16_t, std::string>, std::pair<latin::Age, latin::Frequency>> labels;
 
   for (std::size_t index = 0; index < expand::resultCount(); ++index) {
     const expand::ResultIndex result{index};
@@ -469,12 +471,70 @@ void internEntries(ImageData& image) {
     const Analysis analysis{static_cast<std::uint16_t>(address.dictionary), static_cast<std::uint8_t>(slot),
                             descriptionId(rendered.analysis, image, descriptionIds)};
     source.push_back(SourceRow{normalize(spelling), analysis});
+    labels.try_emplace({analysis.description, source.back().word.substr(rendered.orth.size())}, reading.inflectionAge,
+                       reading.inflectionFrequency);
   }
+  // INFO: Try_Tackons sweeps only what a tackon accepts, and the regular tackons take PRON and ADJ: those readings
+  //  List_Sweep trimmed from a spelling alone are kept apart (familias' N is left out). Stems, descriptions and labels
+  //  only where no kept reading set them.
+  for (std::size_t index = 0; index < expand::resultCount(); ++index) {
+    const expand::ResultIndex result{index};
+    const expand::Fate fate = expand::fate(result);
+    if (fate == expand::Fate::kept || fate == expand::Fate::duplicate)
+      continue;
+    const expand::Reading reading = expand::reading(result);
+    const Rendered rendered = render(reading);
+    if (rendered.analysis.part != latin::Part::PRON && rendered.analysis.part != latin::Part::ADJ)
+      continue;
+    const FormAddress address = addressOf(expand::origin(result));
+    const std::size_t slot = std::size_t{address.column} - 1;
+    rel::DictionaryRecord& dictionary = image.dictionaries[address.dictionary];
+    const std::uint16_t stem = printedStem(rendered.orth, image, stemPatternIds, index);
+    if (!orthFirst[address.dictionary][slot]) {
+      dictionary.stems[slot] = stem;
+      orthFirst[address.dictionary][slot] = index;
+    } else if (dictionary.stems[slot] != stem) {
+      conflict("a trimmed reading renders another orthography", std::format("  orth: \"{}\"\n", rendered.orth),
+               *orthFirst[address.dictionary][slot], index);
+    }
+    if (!entryFirst[address.dictionary]) {
+      dictionary.meaning = image.strings.intern(rendered.meaning);
+      dictionary.age = reading.entryAge;
+      dictionary.frequency = reading.entryFrequency;
+      entryFirst[address.dictionary] = index;
+    }
+    const std::string word = normalize(expand::spelling(result));
+    const std::uint16_t description = descriptionId(rendered.analysis, image, descriptionIds);
+    labels.try_emplace({description, word.substr(rendered.orth.size())}, reading.inflectionAge,
+                       reading.inflectionFrequency);
+    image.trimmedReadings.push_back(rel::TrimmedReadingRecord{
+        .text = image.strings.intern(word),
+        .dictionary = static_cast<std::uint16_t>(address.dictionary),
+        .stem = static_cast<std::uint8_t>(slot),
+        .kind = fate == expand::Fate::stemNotAllowed ? rel::kTrimmedNotAllowed : rel::kTrimmedRare,
+        .description = description});
+  }
+  std::ranges::stable_sort(image.trimmedReadings,
+                           [&image](const rel::TrimmedReadingRecord& a, const rel::TrimmedReadingRecord& b) {
+                             return std::string_view(image.strings.blob().c_str() + a.text) <
+                                    std::string_view(image.strings.blob().c_str() + b.text);
+                           });
+  for (const auto& [key, value] : labels)
+    image.inflectionLabels.push_back(rel::InflectionLabelRecord{.ending = image.strings.intern(key.second),
+                                                                .description = key.first,
+                                                                .age = value.first,
+                                                                .frequency = value.second});
   return source;
 }
 
 // NOTE: Rows keep order from expansion.
 void groupSpellings(std::vector<SourceRow> source, ImageData& image) {
+  // INFO: List_Sweep's Trimmed: a reading left out for its stem, age or frequency; not a duplicate.
+  std::unordered_set<std::string> trimmed;
+  for (std::size_t index = 0; index < expand::resultCount(); ++index)
+    if (const expand::Fate fate = expand::fate(expand::ResultIndex{index});
+        fate != expand::Fate::kept && fate != expand::Fate::duplicate)
+      trimmed.insert(normalize(expand::spelling(expand::ResultIndex{index})));
   std::ranges::stable_sort(source, {}, &SourceRow::word);
   image.words.reserve(source.size());
   image.analyses.reserve(source.size());
@@ -485,16 +545,22 @@ void groupSpellings(std::vector<SourceRow> source, ImageData& image) {
     const std::size_t count = i - begin;
     if (count > rel::kMaximumResultsPerSpelling)
       error::fatal(std::format("image: a spelling with more than {} results", rel::kMaximumResultsPerSpelling));
-    image.words.push_back(
-        Word{source[begin].word, static_cast<std::uint32_t>(image.analyses.size()), static_cast<std::uint16_t>(count)});
+    image.words.push_back(Word{source[begin].word, static_cast<std::uint32_t>(image.analyses.size()),
+                               static_cast<std::uint16_t>(count), trimmed.contains(source[begin].word)});
+    trimmed.erase(source[begin].word);
     for (std::size_t row = begin; row < i; ++row)
       image.analyses.push_back(source[row].analysis);
   }
+  // INFO: A spelling whose every reading List_Sweep trims still answers with its "*" (seque: sequor's active
+  //  imperative; relin under relinque): a word with no readings.
+  for (const std::string& word : trimmed)
+    image.words.push_back(Word{word, static_cast<std::uint32_t>(image.analyses.size()), 0, true});
+  std::ranges::sort(image.words, {}, &Word::text);
 }
 
 // NOTE: A suffix can reach a stem no inflection joined.
-void listFallbackStems(ImageData& image) {
-  for (std::uint32_t index = 0; index < source::scheme::dictline::kEntriesPerFile; ++index) {
+void listStems(ImageData& image) {
+  for (std::uint32_t index = 0; index < word::kDictlineWords; ++index) {
     const word::DictlineEntry& entry = word::entry(word::DictlineRow{index});
     std::set<std::pair<std::string, std::uint8_t>> seen;
     for (std::uint8_t column = 1; column <= facts::kStemColumnCount; ++column) {
@@ -506,17 +572,15 @@ void listFallbackStems(ImageData& image) {
         continue;
       if (!seen.emplace(normalize(*text), key->value).second)
         continue;
-      image.fallbackStems.push_back(rel::FallbackStemRecord{image.strings.intern(normalize(*text)),
-                                                            static_cast<std::uint16_t>(index), key->value,
-                                                            partOf(entry.grammar)});
+      image.stems.push_back(rel::StemRecord{image.strings.intern(normalize(*text)), static_cast<std::uint16_t>(index),
+                                            key->value, partOf(entry.grammar)});
     }
   }
-  std::ranges::sort(image.fallbackStems,
-                    [&image](const rel::FallbackStemRecord& left, const rel::FallbackStemRecord& right) {
-                      const std::string_view a = image.strings.blob().c_str() + left.text;
-                      const std::string_view b = image.strings.blob().c_str() + right.text;
-                      return std::tie(a, left.dictionary, left.stemKey) < std::tie(b, right.dictionary, right.stemKey);
-                    });
+  std::ranges::sort(image.stems, [&image](const rel::StemRecord& left, const rel::StemRecord& right) {
+    const std::string_view a = image.strings.blob().c_str() + left.text;
+    const std::string_view b = image.strings.blob().c_str() + right.text;
+    return std::tie(a, left.dictionary, left.stemKey) < std::tie(b, right.dictionary, right.stemKey);
+  });
 }
 
 // INFO: Run_Inflections scans INFLECTS.LAT rows only, never the synthetic ones.
@@ -555,15 +619,15 @@ void licenseClasses(const std::vector<latin::Entry>& classGrammars, const Ending
     rel::ClassRecord& record = image.classes[id];
     const bool packon =
         partOf(grammar) == latin::Part::PACK && ((record.rules >> rel::kRulePackonShift) & rel::kRulePackonMask) != 0;
-    record.rowStart = static_cast<std::uint32_t>(image.fallbackRows.size());
+    record.rowStart = static_cast<std::uint32_t>(image.classRows.size());
     for (std::uint32_t position = 0; position < endingOrder.size(); ++position) {
       const word::InflectsEntry& inflection = word::entry(word::InflectsRow{endingOrder[position].second});
       if (!(packon ? expand::internal::packonLicenses(grammar, inflection.grammar)
                    : expand::internal::licenses(grammar, inflection.grammar)))
         continue;
-      fallbackRow(grammar, inflection, position, image, descriptionIds);
+      classRow(grammar, inflection, position, image, descriptionIds);
     }
-    record.rowCount = static_cast<std::uint16_t>(image.fallbackRows.size() - record.rowStart);
+    record.rowCount = static_cast<std::uint16_t>(image.classRows.size() - record.rowStart);
   }
 }
 
@@ -578,16 +642,16 @@ void licenseSuffixes(const AddonRows& addonRows, std::size_t suffixBase, const E
       continue;
     const latin::Part targetPart = partOf(*target);
     record.targetRules = static_cast<std::uint8_t>(grammarRules(*target, 0));
-    record.rowStart = static_cast<std::uint32_t>(image.fallbackRows.size());
+    record.rowStart = static_cast<std::uint32_t>(image.classRows.size());
     for (std::uint32_t position = 0; position < endingOrder.size(); ++position) {
       const word::InflectsEntry& inflection = word::entry(word::InflectsRow{endingOrder[position].second});
       if (!expand::internal::licenses(*target, inflection.grammar))
         continue;
       if (!latin::stemKeyAdmits(record.targetStemKey, inflection.stemKey.value, targetPart))
         continue;
-      fallbackRow(*target, inflection, position, image, descriptionIds);
+      classRow(*target, inflection, position, image, descriptionIds);
     }
-    record.rowCount = static_cast<std::uint16_t>(image.fallbackRows.size() - record.rowStart);
+    record.rowCount = static_cast<std::uint16_t>(image.classRows.size() - record.rowStart);
   }
 }
 
@@ -601,7 +665,7 @@ void licenseSuffixes(const AddonRows& addonRows, std::size_t suffixBase, const E
   const std::vector<latin::Entry> classGrammars = internClasses(packonOrdinals(addonRows), image);
   DescriptionIds descriptionIds;
   groupSpellings(collectReadings(image, descriptionIds), image);
-  listFallbackStems(image);
+  listStems(image);
   const EndingOrder endingOrder = orderInflections(image);
   licenseClasses(classGrammars, endingOrder, image, descriptionIds);
   licenseSuffixes(addonRows, suffixBase, endingOrder, image, descriptionIds);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "latin.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -37,8 +39,35 @@ inline constexpr std::size_t kMaxWordCharacters{24};
 }
 
 // Reference List_Sweep selection.
+// NOTE: Tickon, tackon and packon steps each remove at least two letters, and the library does not build otherwise;
+//  prefix and suffix steps come alone, two at most.
+inline constexpr std::size_t kMaxAddonSteps = kMaxWordCharacters / 2;
+
 inline constexpr bool kOmitArchaic{true};
 inline constexpr bool kOmitMedieval{false};
 inline constexpr bool kOmitUncommon{true};
+
+// NOTE: List_Sweep drops a rare reading only when one of the same group is not rare; a reading not allowed counts.
+struct RarityEvidence {
+  bool someNotArchaic{};
+  bool someNotMedieval{};
+  bool someNotUncommon{};
+
+  constexpr void count(latin::Age age, latin::Age entryAge, latin::Frequency frequency,
+                       latin::Frequency entryFrequency) noexcept {
+    someNotArchaic = someNotArchaic || (!latin::archaic(age) && !latin::archaic(entryAge));
+    someNotMedieval = someNotMedieval || (!latin::medieval(age) && !latin::medieval(entryAge));
+    someNotUncommon =
+        someNotUncommon || (!latin::uncommonInflection(frequency) && !latin::uncommonEntry(entryFrequency));
+  }
+
+  [[nodiscard]] constexpr bool drops(latin::Age age, latin::Frequency frequency) const noexcept {
+    return (someNotArchaic && kOmitArchaic && latin::archaic(age)) ||
+           (someNotMedieval && kOmitMedieval && latin::medieval(age)) ||
+           (someNotUncommon && kOmitUncommon && latin::uncommonInflection(frequency));
+  }
+};
+// Reference Try_Tricks: Do_Medieval_Tricks.
+inline constexpr bool kDoMedievalTricks{true};
 
 } // namespace facts

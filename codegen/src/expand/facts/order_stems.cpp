@@ -8,7 +8,6 @@
 
 #include "facts.hpp"
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
-#include "expand/common/quality.hpp"
 #include "expand/common/reading.hpp"
 #include "expand/facts/order_stems.hpp"
 #include "word/word.hpp"
@@ -40,7 +39,7 @@ struct Stem {
     return r.mnpc < l.mnpc;
   if (r.endingSize != l.endingSize)
     return r.endingSize < l.endingSize;
-  return quality::inflectionsLess(r.qual, l.qual);
+  return latin::inflectionsLess(r.qual, l.qual);
 }
 
 void orderGroup(std::vector<Form>& forms, std::size_t begin, std::size_t end, std::vector<Form>& out) {

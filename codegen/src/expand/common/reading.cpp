@@ -37,16 +37,6 @@ Reading from(const Unique& unique) {
                  .unique = true};
 }
 
-Reading from(const UniqueAdverb& a) {
-  Reading reading = from(Unique{a.entry});
-  const word::InflectsEntry& f = word::entry(a.inflection);
-  reading.key = f.stemKey;
-  reading.inflection = f.grammar;
-  reading.inflectionAge = f.age;
-  reading.inflectionFrequency = f.frequency;
-  return reading;
-}
-
 } // namespace
 
 expand::Reading expand::readingOf(const Origin& origin) {

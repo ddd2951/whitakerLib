@@ -13,9 +13,7 @@ namespace expand {
 enum class Fate : std::uint8_t {
   kept,
   stemNotAllowed,
-  onlyArchaic,
-  onlyMedieval,
-  onlyUncommon,
+  rare,
   duplicate,
 };
 

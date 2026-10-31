@@ -11,7 +11,6 @@
 #include "facts.hpp"
 #include "expand/common/reading.hpp"
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
-#include "expand/common/quality.hpp"
 #include "expand/facts/list_sweep.hpp"
 #include "word/word.hpp"
 
@@ -20,7 +19,7 @@
 namespace {
 
 using namespace expand;
-using quality::inflectionsLess;
+using latin::inflectionsLess;
 
 enum class DictionaryKind : unsigned char { General = 7, Unique = 10 };
 
@@ -41,23 +40,6 @@ struct Dropped {
   Fate fate;
 };
 
-[[nodiscard]] bool pronounOne(const latin::Analysis& qual) noexcept {
-  return qual.part == latin::Part::PRON && qual.which == 1;
-}
-
-// INFO: Switch's "<" and Equ.
-[[nodiscard]] bool switchLess(const latin::Analysis& left, const latin::Analysis& right) {
-  if (pronounOne(left) && right.part == latin::Part::PRON)
-    return left.variant.value < right.variant.value;
-  return inflectionsLess(left, right);
-}
-
-[[nodiscard]] bool equ(const latin::Analysis& left, const latin::Analysis& right) {
-  if (pronounOne(left) && right.part == latin::Part::PRON)
-    return left.variant == right.variant;
-  return left == right;
-}
-
 [[nodiscard]] bool sameRecord(const ParseRecord& a, const ParseRecord& b) {
   return a.dK == b.dK && a.mnpc == b.mnpc && a.stem == b.stem && a.qual == b.qual && a.key == b.key &&
          a.ending == b.ending && a.age == b.age && a.freq == b.freq;
@@ -69,13 +51,7 @@ struct Dropped {
     return r.dK > l.dK;
   if (r.mnpc != l.mnpc)
     return r.mnpc < l.mnpc;
-  if (switchLess(r.qual, l.qual))
-    return true;
-  if (!equ(r.qual, l.qual))
-    return false;
-  if (r.ending.size() != l.ending.size())
-    return r.ending.size() < l.ending.size();
-  return inflectionsLess(r.qual, l.qual);
+  return latin::listedBefore(r.qual, r.ending.size(), l.qual, l.ending.size());
 }
 
 bool allowedStem(const Reading& reading, std::string_view spelling) noexcept {
@@ -127,35 +103,30 @@ void orderParseArray(std::vector<ParseRecord>& sl, const std::vector<Form>& form
       }
   }
 
-  bool notOnlyArchaic = false, notOnlyMedieval = false, notOnlyUncommon = false;
-  for (const ParseRecord& pr : sl) {
-    if (pr.dK != DictionaryKind::General)
-      continue;
-    const Reading& reading = readings[pr.at];
-    if (!latin::archaic(pr.age) && !latin::archaic(reading.entryAge))
-      notOnlyArchaic = true;
-    if (!latin::medieval(pr.age) && !latin::medieval(reading.entryAge))
-      notOnlyMedieval = true;
-    if (!latin::uncommonInflection(pr.freq) && !latin::uncommonEntry(reading.entryFrequency))
-      notOnlyUncommon = true;
-  }
+  facts::RarityEvidence evidence;
+  for (const ParseRecord& pr : sl)
+    if (pr.dK == DictionaryKind::General)
+      evidence.count(pr.age, readings[pr.at].entryAge, pr.freq, readings[pr.at].entryFrequency);
 
   for (std::size_t i = sl.size(); i-- > 0;) {
     const ParseRecord& pr = sl[i];
     Fate fate = Fate::kept;
     if (pr.dK == DictionaryKind::General && !allowedStem(readings[pr.at], forms[pr.at].spelling))
       fate = Fate::stemNotAllowed;
-    else if (notOnlyArchaic && facts::kOmitArchaic && latin::archaic(pr.age))
-      fate = Fate::onlyArchaic;
-    else if (notOnlyMedieval && facts::kOmitMedieval && latin::medieval(pr.age))
-      fate = Fate::onlyMedieval;
-    else if (notOnlyUncommon && facts::kOmitUncommon && latin::uncommonInflection(pr.freq))
-      fate = Fate::onlyUncommon;
+    else if (evidence.drops(pr.age, pr.freq))
+      fate = Fate::rare;
     if (fate != Fate::kept) {
       dropped.push_back({pr.at, fate});
       sl.erase(sl.begin() + static_cast<std::ptrdiff_t>(i));
     }
   }
+}
+
+// INFO: A reading Fix_Adverb made: an adverb inflection the corrections add (adverb_corrections.cpp).
+[[nodiscard]] bool fixAdverb(const Form& form) {
+  const auto* joined = std::get_if<Joined>(&form.origin);
+  return joined != nullptr &&
+         (joined->inflection == word::kAdverbPositive || joined->inflection == word::kAdverbSuperlative);
 }
 
 // INFO: List_Sweep's last chance to weed out duplicates.
@@ -190,7 +161,14 @@ void sweepGroup(std::vector<Form>& forms, std::vector<Reading>& readings, std::s
     pa.push_back(record(forms[i], readings[i], i));
 
   std::vector<Dropped> dropped;
+  // INFO: Fix_Adverb's readings follow its SUFFIX record, which divides List_Sweep's subsets: they are ordered and
+  //  trimmed on their own, after the rest.
+  const auto rest = std::ranges::stable_partition(pa, [&](const ParseRecord& pr) { return !fixAdverb(forms[pr.at]); });
+  std::vector<ParseRecord> corrections(rest.begin(), rest.end());
+  pa.erase(rest.begin(), rest.end());
   orderParseArray(pa, forms, readings, dropped);
+  orderParseArray(corrections, forms, readings, dropped);
+  pa.insert(pa.end(), corrections.begin(), corrections.end());
   compress(pa, dropped);
 
   std::vector<Form> sweptForms;

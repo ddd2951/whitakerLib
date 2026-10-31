@@ -41,8 +41,8 @@ The build is Release unless another type is given. The `image` target builds
 `sha256sum data/whitaker.dat` with the pinned corpus should give:
 
 ```text
-size:    10,472,992 bytes
-SHA-256: 7e9ab3fbd8060b6a90946b819aceafe8c3adcb943ade0613f55f2c37020a7f6b
+size:    10,527,058 bytes
+SHA-256: 35fbe999b0100f62c2d3630bd62d93ca31670c7a76e220e3c2b48dc4d88a4630
 ```
 
 A warm Release run takes a median 3.4 seconds on an AMD Ryzen 5 5600X with
@@ -104,7 +104,7 @@ header, and the fork doesn't save annotation values in one, so they come back
 empty. With the fix, clangd is clean on gen except `src/types/latin_test.cpp`,
 where the fork rejects an enumerator reflection passed to `substitute` (GCC
 accepts it). The library itself is C++23 and has no reflection; only `gen`
-uses it.
+and the oracle's probe use it.
 
 ## Checks
 
@@ -116,8 +116,8 @@ uses it.
 - **Rows:** every row of each spelling, in order: its stem, meaning and grammar.
 - **Entries:** all 39,415 stored entries match the parsed DICTLINE and UNIQUES
   words.
-- **Fallback:** the records only the fallback reads stay inside their tables,
-  and the endings and fallback stems are sorted. Which rows they hold is
+- **Addon search:** the records only the addon search reads stay inside their tables,
+  and the endings and stems are sorted. Which rows they hold is
   pinned by the library's examples test (`examples/expected/c.txt`), not here.
 
 All but the first run on a temporary file beside the image

@@ -1,0 +1,446 @@
+#!/usr/bin/env bash
+# Measures a whitakerLib tree against WORDS (Ada): captures WORDS' answers per
+# book, keeps them, and compares the library with them field by field (lines).
+#
+#   oracle                    compare and write a report (stops if a capture is stale)
+#   oracle -r                 show the last report
+#   oracle -s WORD|FILE...    one word, every step (a file holds words, one a line)
+#   oracle -p [BOOK...]       probe: is every library field compared? (the probe books)
+#   oracle -c [-f]            capture what is missing or stale; -f: everything, anew
+#   oracle -a [-p] [-x] [-f] PATH...  add books (a .words file, or the .words
+#                             files in a folder) not added yet; -p: also a probe
+#                             book, -x: a fixture, -f: replace one already added
+#   oracle -b                 list the books and their capture state
+#
+# Long forms: --report --show --probe --capture --force --add --fixture --books.
+# Paths: --lib DIR (the tree oracle/ is in), --store DIR (stored/), --words BIN
+# and --data DIR (WORDS and its data; given once, kept in stored/words).
+set -euo pipefail
+
+here=$(dirname "$(realpath "$0")")
+lib=$here/..
+words= data=
+store=$here/stored
+
+die() { echo "oracle: $*" >&2; exit 1; }
+usage() { sed -n '4,17p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+
+mode=compare force=0 probe=- kind=book args=()
+while (($#)); do
+  case $1 in
+    -r | --report) mode=report ;;
+    -s | --show) mode=show ;;
+    -c | --capture) mode=capture ;;
+    -f | --force) force=1 ;;
+    -a | --add) mode=add ;;
+    -b | --books) mode=books ;;
+    -x | --fixture) kind=fixture ;;
+    -p | --probe) [[ $mode == add ]] && probe=y || mode=probe ;;
+    --lib) lib=$2; shift ;;
+    --words) words=$2; shift ;;
+    --data) data=$2; shift ;;
+    --store) store=$2; shift ;;
+    -h | --help) usage ;;
+    -*) die "unknown option $1" ;;
+    *) args+=("$1") ;;
+  esac
+  shift
+done
+mkdir -p "$store/captures" "$store/reports"
+if [[ -z $words && -z $data && -f $store/words ]]; then
+  { read -r words; read -r data; } <"$store/words"
+fi
+words=${words:-$here/../../words/current/bin/words}
+data=${data:-$here/../../words/data}
+[[ -x $words ]] || die "no WORDS binary at $words: give --words BIN"
+[[ -f $data/WORD.MDV ]] || die "no WORDS data at $data: give --data DIR"
+lib=$(realpath "$lib") words=$(realpath -s "$words") data=$(realpath "$data")
+printf '%s\n%s\n' "$words" "$data" >"$store/words"
+words=$(realpath "$words")
+books=$store/books.tsv
+[[ -f $books ]] || printf '# name\tkind\tprobe\tsha256\tpath\n' >"$books"
+
+developer=(
+  "PAUSE_IN_SCREEN_OUTPUT N" # NOTE: A pager would eat the next word as RETURN.
+  "SHOW_DICTIONARY Y"        # INFO: GEN>/UNI> before each entry number.
+  "SHOW_DICTIONARY_LINE Y"   # INFO: The entry numbers.
+  "DO_PEARSE_CODES N"
+  "HAVE_STATISTICS_FILE N"
+  "WRITE_STATISTICS_FILE N"
+  "UPDATE_LOCAL_DICTIONARY N"
+  "UPDATE_MEANINGS N"
+)
+modes=(
+  "TRIM_OUTPUT Y"
+  "HAVE_OUTPUT_FILE N"
+  "WRITE_OUTPUT_TO_FILE N"
+  "WRITE_UNKNOWNS_TO_FILE N"
+)
+setting() { printf '%-34s%s\n' "$1" "$2"; }
+
+prepare() {
+  local work=$1 mdv setting key value keys
+  cp "$data"/* "$work"/
+  mdv=$(cat "$work/WORD.MDV")
+  for setting in "${developer[@]}"; do
+    read -r key value <<<"$setting"
+    [[ $(grep -c "^$key " <<<"$mdv") == 1 ]] || die "WORD.MDV must hold $key exactly once"
+    mdv=$(sed "s/^$key .*/$(setting "$key" "$value")/" <<<"$mdv")
+  done
+  printf '%s\n' "$mdv" >"$work/WORD.MDV"
+  {
+    if [[ -f $work/WORD.MOD ]]; then
+      keys=$(printf '%s\n' "${modes[@]}" | cut -d' ' -f1 | paste -sd'|')
+      grep -Ev "^($keys) " "$work/WORD.MOD" || true
+    fi
+    for setting in "${modes[@]}"; do
+      read -r key value <<<"$setting"
+      setting "$key" "$value"
+    done
+  } >"$work/WORD.MOD.new"
+  mv "$work/WORD.MOD.new" "$work/WORD.MOD"
+}
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+mkdir "$tmp/data"
+prepare "$tmp/data"
+wordsSha=$(sha256sum "$words" | cut -d' ' -f1)
+dataSum=$( (cd "$tmp/data" && sha256sum -- *))
+dataSha=$(sha256sum <<<"$dataSum" | cut -d' ' -f1)
+
+currentSet() {
+  local s made best=
+  for s in "$store"/captures/*/set; do
+    [[ -f $s ]] || continue
+    grep -qx "words sha256: $wordsSha" "$s" && grep -qx "data sha256: $dataSha" "$s" || continue
+    made=$(sed -n 's/^made: //p' "$s")
+    [[ -n $best && ! $made > ${best%%$'\t'*} ]] && continue
+    best=$made$'\t'$(dirname "$s")
+  done
+  [[ -z $best ]] || echo "${best#*$'\t'}"
+}
+
+newSet() {
+  local name n=1 source
+  source=$(dirname "$words")/SOURCE
+  if [[ -f $source ]] && grep -q '^commit: ' "$source"; then
+    name=$(sed -n 's/^commit: \(.......\).*/\1/p' "$source")
+  else
+    name=sha-${wordsSha:0:12}
+  fi
+  [[ $force == 1 ]] && name=$name-$(date +%Y%m%dT%H%M)
+  local dir=$store/captures/$name
+  while [[ -e $dir ]]; do dir=$store/captures/$name-$((++n)); done
+  mkdir "$dir"
+  {
+    echo "words: $words"
+    echo "words sha256: $wordsSha"
+    echo "data: $data"
+    echo "data sha256: $dataSha"
+    echo "made: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } >"$dir/set"
+  echo "$dir"
+}
+
+registered() { grep -v '^#' "$books" || true; }
+
+state() {
+  local set=$1 name=$2 path=$3 info
+  [[ -n $set ]] || { echo "no capture by this WORDS"; return; }
+  info=$set/$name/info
+  [[ -f $info ]] || { echo "not captured"; return; }
+  [[ -f $path ]] || { echo "book gone: $path"; return; }
+  grep -m1 '^incomplete: ' "$info" && return
+  grep -qx "book sha256: $(sha256sum "$path" | cut -d' ' -f1)" "$info" || echo "book changed"
+}
+
+prepareBook() {
+  local set=$1 name=$2 path=$3 dir=$1/$2
+  [[ $name != answers && $name != .replaced ]] || die "reserved book name: $name"
+  if [[ -e $dir ]]; then
+    mkdir -p "$set/.replaced"
+    mv "$dir" "$set/.replaced/$name-$(date +%Y%m%dT%H%M%S)"
+  fi
+  mkdir "$dir"
+  tr -d '\r' <"$path" | grep -v '^$' >"$dir/tokens" || true
+  grep -qv '^[A-Za-z]\+$' "$dir/tokens" && die "$path: tokens must be ASCII letters only"
+  cp "$tmp/data/WORD.MDV" "$tmp/data/WORD.MOD" "$dir"/
+  {
+    echo "words: $words"
+    echo "data: $data"
+    echo "book: $path"
+    echo "book sha256: $(sha256sum "$path" | cut -d' ' -f1)"
+    echo "tokens: $(wc -l <"$dir/tokens")"
+    echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "words sha256: $wordsSha"
+    if [[ -f $(dirname "$words")/SOURCE ]]; then
+      echo "source:"
+      sed 's/^/  /' "$(dirname "$words")/SOURCE"
+    fi
+  } >"$dir/info"
+  printf '%s\n' "$dataSum" >"$dir/data.sha256"
+  echo "incomplete: waiting for shared answers" >>"$dir/info"
+}
+
+capturedSpellings() {
+  local f
+  for f in "$1"/answers/*/tokens; do
+    if [[ -f $f ]]; then cat "$f"; fi
+  done
+}
+
+# INFO: WORDS' Next_Word sees only the same input line, so spellings go on separate lines.
+captureAnswers() {
+  local set=$1 input=$2 work batch tokens answers stopped status
+  work=$(mktemp -d "$tmp/words-XXXXXX")
+  cp -r "$tmp/data"/. "$work"/
+  cp "$input" "$work/pending"
+  while [[ -s $work/pending ]]; do
+    batch=$(mktemp -d "$set/answers/.batch-XXXXXX")
+    cp "$work/pending" "$batch/tokens"
+    cp "$work/WORD.MDV" "$work/WORD.MOD" "$batch"/
+    status=0
+    { cat "$batch/tokens"; printf '\n\n'; } |
+      (cd "$work" && WHITAKERS_WORDS_DATADIR=. "$words") >"$batch/ada.out" 2>"$batch/ada.err" || status=$?
+    tokens=$(wc -l <"$batch/tokens") answers=$(grep -c '^=>' "$batch/ada.out" || true)
+    ((answers > 0)) || { echo "WORDS stopped before its first prompt: $batch/ada.err" >&2; return 1; }
+    answers=$((answers - 1))
+    ((answers <= tokens)) || { echo "too many WORDS prompts: $batch/ada.out" >&2; return 1; }
+    {
+      echo "tokens: $answers"
+      echo "exit: $status"
+      echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } >"$batch/info"
+    if ((answers < tokens)); then
+      stopped=$(sed -n "$((answers + 1))p" "$batch/tokens")
+      echo "incomplete: WORDS stopped at $stopped" | tee -a "$batch/info" >&2
+      mv "$batch/tokens" "$batch/input"
+      head -n "$answers" "$batch/input" >"$batch/tokens"
+    fi
+    mv "$batch" "$set/answers/${batch##*/.}"
+    tail -n +$((answers + 2)) "$work/pending" >"$work/remaining"
+    mv "$work/remaining" "$work/pending"
+  done
+  rm -rf "$work"
+}
+
+ready() {
+  local set=$1 want=$2 name kind probe sha path why bad=0
+  while IFS=$'\t' read -r name kind probe sha path; do
+    [[ $want == probe && $probe != y ]] && continue
+    [[ $want != probe && $kind != "$want" ]] && continue
+    why=$(state "$set" "$name" "$path")
+    if [[ -n $why ]]; then
+      echo "  $name: $why" >&2
+      bad=1
+    else
+      echo "$name"
+    fi
+  done < <(registered)
+  ((bad == 0)) || die "captures are missing or stale: run oracle -c"
+}
+
+booklist() {
+  local set=$1 out=$2 list=$lib/data/booklist.md name kind probe sha path
+  local counts
+  counts=$(
+    while IFS=$'\t' read -r name kind probe sha path; do
+      printf '%s\t%s\t%s\n' "$kind" "$name" "$set/$name/tokens"
+    done < <(registered) |
+      awk -F'\t' 'FILENAME == ARGV[1] { cut[$1] = $3 == "gaps" ? "gaps" : $4 == "trick" ? "trick" : "rest"; next }
+        FILENAME == "-" { kind[$3] = $1; name[$3] = $2; files[++n] = $3; next }
+        { t[FILENAME]++; if ($0 in cut) c[FILENAME, cut[$0]]++ }
+        END { for (i = 1; i <= n; i++) { f = files[i]
+            printf "%s\t%s\t%d\t%d\t%d\t%d\n", kind[f], name[f], t[f], c[f, "gaps"], c[f, "trick"], c[f, "rest"] } }' \
+        <(cat "$out/unmapped.tsv" "$out"/fixtures/unmapped.tsv 2>/dev/null) - $(while IFS=$'\t' read -r name kind probe sha path; do echo "$set/$name/tokens"; done < <(registered))
+  )
+  {
+    echo "# The books whitakerLib is compared with"
+    echo
+    echo "Written by \`oracle/oracle\` after each full comparison: every field WORDS"
+    echo "shows for a token, compared with the library's value. Do not edit by hand."
+    echo
+    echo "- WORDS: $(basename "$set")"
+    echo "- library: $(sed -n 's/^#define WHITAKER_VERSION_[A-Z]* //p' "$lib/include/whitaker.h" | paste -sd.)"
+    echo "- report: $(basename "$out")"
+    echo "- texts: Perseus Digital Library, canonical-latinLit (CC BY-SA 4.0); only"
+    echo "  their names and counts are listed here."
+    echo
+    echo "Maps: the share of tokens where every field WORDS shows is equal. Guesses:"
+    echo "tokens where WORDS guessed (two words, a bad Roman numeral), which the"
+    echo "library does not. Other: tokens that differ otherwise (the tail). Gaps:"
+    echo "tokens that map but for a field the library does not return."
+    local k
+    for k in book fixture; do
+      awk -F'\t' -v k=$k '$1 == k' <<<"$counts" | grep -q . || continue
+      echo
+      [[ $k == book ]] && echo "## Books" || echo "## Fixtures (generated words for rules the books never reach)"
+      echo
+      echo "| book | author | title | tokens | maps | guesses | other | gaps |"
+      echo "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |"
+      while IFS=$'\t' read -r kind name tokens gaps trick rest; do
+        path=$(registered | awk -F'\t' -v n="$name" '$1 == n { print $5 }')
+        local meta=$(dirname "$path")/BOOKS.tsv author= title=
+        [[ -f $meta ]] && IFS=$'\t' read -r author title < <(awk -F'\t' -v n="$name" '$1 == n { print $3 "\t" $4 }' "$meta")
+        printf '| %s | %s | %s | %s | %s | %s | %s | %s |\n' "$name" "$author" "$title" "$tokens" \
+          "$(awk -v a=$tokens -v b=$((gaps + trick + rest)) 'BEGIN { printf "%.2f%%", a ? 100 * (a - b) / a : 0 }')" \
+          "$trick" "$rest" "$gaps"
+      done < <(awk -F'\t' -v k=$k '$1 == k' <<<"$counts" | sort -t$'\t' -k2,2)
+      awk -F'\t' -v k=$k '$1 == k { t += $3; g += $4; x += $5; r += $6 }
+        END { printf "| all | | | %d | %.2f%% | %d | %d | %d |\n", t, t ? 100 * (t - g - x - r) / t : 0, x, r, g }' <<<"$counts"
+    done
+  } >"$list"
+  echo "book list: $list"
+}
+
+build() {
+  local dir=$here/build/self log
+  [[ $lib == "$(realpath "$here/..")" ]] || dir=$here/build/$(basename "$lib")
+  bin=$dir/lines
+  # Two trees may share a basename: configure again unless the cache names this tree.
+  if ! grep -qx "ADA_DATA_DIR:PATH=$data" "$dir/CMakeCache.txt" 2>/dev/null ||
+    ! grep -qx "WHITAKERLIB_DIR:PATH=$lib" "$dir/CMakeCache.txt"; then
+    log=$(cmake -S "$here" -B "$dir" -DWHITAKERLIB_DIR="$lib" -DADA_DATA_DIR="$data" 2>&1) || { echo "$log" >&2; die "configure failed"; }
+  fi
+  log=$(cmake --build "$dir" --target lines 2>&1) || { echo "$log" | tail -30 >&2; die "build failed"; }
+}
+
+case $mode in
+  add)
+    ((${#args[@]})) || usage
+    for arg in "${args[@]}"; do
+      if [[ -d $arg ]]; then files=("$arg"/*.words); else files=("$arg"); fi
+      for f in "${files[@]}"; do
+        [[ -f $f && $f == *.words ]] || die "not a .words file: $f"
+        f=$(realpath "$f") name=$(basename "$f" .words)
+        [[ $name != answers && $name != .replaced ]] || die "reserved book name: $name"
+        row=$(printf '%s\t%s\t%s\t%s\t%s' "$name" "$kind" "$probe" "$(sha256sum "$f" | cut -d' ' -f1)" "$f")
+        if ! registered | cut -f1 | grep -qx "$name"; then
+          echo "$row" >>"$books"
+          echo "$name: added"
+        elif [[ $force == 1 ]]; then
+          awk -F'\t' -v n="$name" -v r="$row" '$1 == n { $0 = r } 1' "$books" >"$books.new"
+          mv "$books.new" "$books"
+          echo "$name: replaced"
+        fi
+      done
+    done
+    ;;
+  books)
+    set=$(currentSet)
+    echo "WORDS: $words (captures: $([[ -n $set ]] && basename "$set" || echo none yet))"
+    while IFS=$'\t' read -r name kind probe sha path; do
+      why=$(state "$set" "$name" "$path")
+      [[ -f $path && $(sha256sum "$path" | cut -d' ' -f1) != "$sha" ]] && why="${why:+$why, }changed since added"
+      printf '%-28s %-7s %-5s %s\n' "$name" "$kind" "$([[ $probe == y ]] && echo probe)" "${why:-captured}"
+    done < <(registered)
+    ;;
+  capture)
+    set=$(currentSet)
+    [[ $force == 1 || -z $set ]] && set=$(newSet)
+    jobs=$(nproc)
+    failed=0
+    mkdir -p "$set/answers"
+    old=("$set"/*/ada.out)
+    if [[ -f ${old[0]} && ! -d $set/answers/imported ]]; then
+      build
+      imported=$(mktemp -d "$set/answers/.import-XXXXXX")
+      "$bin" --import "$set" "$imported"
+      mv "$imported" "$set/answers/imported"
+    fi
+    : >"$tmp/books"
+    : >"$tmp/needed"
+    while IFS=$'\t' read -r name kind probe sha path; do
+      [[ $force == 1 || -n $(state "$set" "$name" "$path") ]] || continue
+      [[ -f $path ]] || { echo "$name: book gone: $path" >&2; failed=1; continue; }
+      prepareBook "$set" "$name" "$path"
+      echo "$name" >>"$tmp/books"
+      cat "$set/$name/tokens" >>"$tmp/needed"
+    done < <(registered)
+    capturedSpellings "$set" | LC_ALL=C sort -u >"$tmp/known"
+    LC_ALL=C sort -u "$tmp/needed" >"$tmp/distinct"
+    LC_ALL=C comm -23 "$tmp/distinct" "$tmp/known" >"$tmp/missing"
+    echo "$(wc -l <"$tmp/missing") spellings to capture"
+    split -l 4096 "$tmp/missing" "$tmp/chunk-"
+    for chunk in "$tmp"/chunk-*; do
+      [[ -f $chunk ]] || continue
+      captureAnswers "$set" "$chunk" &
+      while (($(jobs -rp | wc -l) >= jobs)); do wait -n || failed=1; done
+    done
+    while (($(jobs -rp | wc -l))); do wait -n || failed=1; done
+    capturedSpellings "$set" | LC_ALL=C sort -u >"$tmp/known"
+    while read -r name; do
+      dir=$set/$name
+      LC_ALL=C sort -u "$dir/tokens" >"$tmp/distinct"
+      LC_ALL=C comm -23 "$tmp/distinct" "$tmp/known" >"$tmp/missing"
+      grep -v '^incomplete: ' "$dir/info" >"$dir/info.new"
+      if [[ -s $tmp/missing ]]; then
+        echo "incomplete: no answer for $(head -n 1 "$tmp/missing") ($(wc -l <"$tmp/missing") spellings missing)" | tee -a "$dir/info.new" >&2
+        failed=1
+      else
+        echo "$name: $(wc -l <"$dir/tokens") tokens, shared answers"
+      fi
+      mv "$dir/info.new" "$dir/info"
+    done <"$tmp/books"
+    for info in "$set"/*/info; do
+      [[ -f $info ]] || continue
+      printf '%s\t%s\n' "$(basename "$(dirname "$info")")" "$(sed -n 's/^book sha256: //p' "$info")"
+    done >"$tmp/shas"
+    awk -F'\t' -v OFS='\t' 'FILENAME == ARGV[1] { sha[$1] = $2; next } $1 in sha { $4 = sha[$1] } 1' "$tmp/shas" "$books" >"$books.new"
+    mv "$books.new" "$books"
+    ((failed == 0)) || die "some captures failed"
+    echo "captures: $set"
+    ;;
+  compare)
+    set=$(currentSet)
+    # NOTE: Process substitution hides ready's exit status; assign its output before mapfile.
+    got=$(ready "$set" book)
+    mapfile -t names <<<"$got"
+    got=$(ready "$set" fixture)
+    mapfile -t fixtures <<<"$got"
+    [[ -n ${names[0]} || -n ${fixtures[0]} ]] || die "no books: add some with oracle -a"
+    [[ -n ${names[0]} ]] || names=()
+    [[ -n ${fixtures[0]} ]] || fixtures=()
+    build
+    out=$store/reports/$(date +%Y%m%dT%H%M%S)
+    if ((${#names[@]})); then "$bin" "$set" "$out" "${names[@]}"; fi
+    if ((${#fixtures[@]})); then "$bin" "$set" "$out/fixtures" "${fixtures[@]}" >/dev/null; fi
+    {
+      echo "library: $lib ($(git -C "$lib" rev-parse --short HEAD)$(git -C "$lib" diff --quiet HEAD || echo ', changed'))"
+      echo "captures: $set"
+    } >"$out/oracle"
+    booklist "$set" "$out"
+    echo "report: $out"
+    ;;
+  report)
+    last=$(ls -d "$store"/reports/*/ 2>/dev/null | tail -1)
+    [[ -n $last ]] || die "no reports yet"
+    cat "$last/oracle" "$last/summary.txt"
+    [[ -f $last/fixtures/summary.txt ]] && { echo; echo "fixtures:"; cat "$last/fixtures/summary.txt"; }
+    echo "report: $last"
+    ;;
+  show)
+    ((${#args[@]})) || usage
+    set=$(currentSet)
+    [[ -n $set ]] || die "no capture by this WORDS: run oracle -c"
+    list=()
+    for arg in "${args[@]}"; do
+      if [[ -f $arg ]]; then mapfile -t -O "${#list[@]}" list < <(grep -v '^$' "$arg"); else list+=("$arg"); fi
+    done
+    build
+    "$bin" --show "$set" "${list[@]}"
+    ;;
+  probe)
+    set=$(currentSet)
+    if ((${#args[@]})); then
+      names=("${args[@]}")
+    else
+      got=$(ready "$set" probe)
+      mapfile -t names <<<"$got"
+    fi
+    [[ -n ${names[0]} ]] || die "no probe books: add some with oracle -a -p"
+    build
+    "$bin" --probe "$set" "${names[@]}"
+    ;;
+esac

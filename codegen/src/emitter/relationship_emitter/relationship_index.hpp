@@ -13,6 +13,7 @@ struct Word {
   std::string text;
   std::uint32_t analysisFirst{};
   std::uint16_t analysisCount{};
+  bool trimmed{};
 };
 
 struct Analysis {
@@ -25,6 +26,7 @@ struct ProgramWord {
   std::string text;
   std::uint32_t instruction{};
   std::uint16_t analysisCount{};
+  bool trimmed{};
 };
 
 struct Program {

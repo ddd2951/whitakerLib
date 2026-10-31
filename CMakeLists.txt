@@ -57,7 +57,12 @@ function(whitaker_sanitize target)
 endfunction()
 
 add_library(whitaker SHARED
-    src/search/addon_fallback.cpp
+    src/parse/adverb.cpp
+    src/parse/find_readings.cpp
+    src/parse/result.cpp
+    src/parse/respellings.cpp
+    src/parse/word_readings.cpp
+    src/search/addon_readings.cpp
     src/search/embedded_image.cpp
     src/search/relationship_image.cpp
     src/search/syncope_lookup.cpp
@@ -202,6 +207,7 @@ write_basic_package_version_file(
 install(TARGETS whitaker EXPORT WhitakerTargets)
 install(FILES
     include/whitaker.h
+    include/whitaker_types.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/whitaker.pc

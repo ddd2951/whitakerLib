@@ -19,10 +19,12 @@ struct ImageData {
   std::vector<rel::Entry> entries;
   std::vector<rel::AddonRecord> addons;
   std::vector<rel::ClassRecord> classes;
-  std::vector<rel::FallbackRowRecord> fallbackRows;
+  std::vector<rel::ClassRowRecord> classRows;
   std::vector<rel::InflectionRecord> inflections;
   std::vector<rel::EndingRecord> endings;
-  std::vector<rel::FallbackStemRecord> fallbackStems;
+  std::vector<rel::InflectionLabelRecord> inflectionLabels;
+  std::vector<rel::TrimmedReadingRecord> trimmedReadings;
+  std::vector<rel::StemRecord> stems;
   std::vector<Word> words;
   std::vector<Analysis> analyses;
   Program program;

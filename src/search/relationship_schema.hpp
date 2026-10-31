@@ -26,19 +26,21 @@ enum class Section : std::uint32_t {
   Dictionaries,
   Addons,
   Classes,
-  FallbackRows,
+  ClassRows,
   Inflections,
   Endings,
-  FallbackStems,
+  Stems,
   Strings,
   Grammars,
   Entries,
   StemPatterns,
+  InflectionLabels,
+  TrimmedReadings,
   count,
 };
 
 inline constexpr std::array<char, 8> kMagic{'W', 'H', 'I', 'T', 'R', 'E', 'L', '\0'};
-inline constexpr std::uint32_t kVersion = 7;
+inline constexpr std::uint32_t kVersion = 10;
 inline constexpr std::uint32_t kSectionCount = static_cast<std::uint32_t>(Section::count);
 
 // Record sizes. Every section but Strings is an array of one record.
@@ -555,7 +557,7 @@ struct ClassRecord {
   [[nodiscard]] constexpr Run rows() const noexcept { return {rowStart, rowCount}; }
 };
 
-struct FallbackRowRecord {
+struct ClassRowRecord {
   std::uint16_t inflect{};
   std::uint16_t description{};
   constexpr auto fields(this auto& self) noexcept { return std::tie(self.inflect, self.description); }
@@ -594,9 +596,11 @@ struct StateRecord {
   std::uint32_t firstTransition{};
   std::uint32_t letterMask{};
   std::uint8_t resultCount{};
-  std::array<std::uint8_t, 3> reserved{};
+  // 1 when List_Sweep left out a reading of this spelling, as WORDS' "*".
+  std::uint8_t trimmed{};
+  std::array<std::uint8_t, 2> reserved{};
   constexpr auto fields(this auto& self) noexcept {
-    return std::tie(self.firstTransition, self.letterMask, self.resultCount, self.reserved);
+    return std::tie(self.firstTransition, self.letterMask, self.resultCount, self.trimmed, self.reserved);
   }
 };
 
@@ -667,7 +671,34 @@ struct EndingRecord {
   [[nodiscard]] constexpr Run inflections() const noexcept { return {first, count}; }
 };
 
-struct FallbackStemRecord {
+// One per grammar and ending a reading has: the inflection's age and frequency. The ending is in the string pool,
+// shared with Inflections; records are sorted by description, then ending.
+struct InflectionLabelRecord {
+  std::uint32_t ending{};
+  std::uint16_t description{};
+  latin::Age age{};
+  latin::Frequency frequency{};
+  constexpr auto fields(this auto& self) noexcept {
+    return std::tie(self.ending, self.description, self.age, self.frequency);
+  }
+};
+
+// A PRON or ADJ reading List_Sweep trimmed from its spelling alone, kept for Try_Tackons, which sweeps only the
+// readings a tackon accepts (isdem: iisdem, trimmed from is beside the common is). Sorted by spelling.
+inline constexpr std::uint8_t kTrimmedNotAllowed = 1;
+inline constexpr std::uint8_t kTrimmedRare = 2;
+struct TrimmedReadingRecord {
+  std::uint32_t text{};
+  std::uint16_t dictionary{};
+  std::uint8_t stem{};
+  std::uint8_t kind{};
+  std::uint16_t description{};
+  constexpr auto fields(this auto& self) noexcept {
+    return std::tie(self.text, self.dictionary, self.stem, self.kind, self.description);
+  }
+};
+
+struct StemRecord {
   std::uint32_t text{};
   std::uint16_t dictionary{};
   std::uint8_t stemKey{};
@@ -740,12 +771,14 @@ inline constexpr std::size_t kLexemeBytes = recordBytes<LexemeRecord>();
 inline constexpr std::size_t kParadigmBytes = recordBytes<ParadigmRecord>();
 inline constexpr std::size_t kDirectoryBytes = recordBytes<DirectoryEntry>();
 inline constexpr std::size_t kClassBytes = recordBytes<ClassRecord>();
-inline constexpr std::size_t kFallbackRowBytes = recordBytes<FallbackRowRecord>();
+inline constexpr std::size_t kClassRowBytes = recordBytes<ClassRowRecord>();
 inline constexpr std::size_t kInflectionBytes = recordBytes<InflectionRecord>();
-inline constexpr std::size_t kFallbackStemBytes = recordBytes<FallbackStemRecord>();
+inline constexpr std::size_t kStemBytes = recordBytes<StemRecord>();
 inline constexpr std::size_t kDictionaryBytes = recordBytes<DictionaryRecord>();
 inline constexpr std::size_t kAddonBytes = recordBytes<AddonRecord>();
 inline constexpr std::size_t kEndingBytes = recordBytes<EndingRecord>();
+inline constexpr std::size_t kInflectionLabelBytes = recordBytes<InflectionLabelRecord>();
+inline constexpr std::size_t kTrimmedReadingBytes = recordBytes<TrimmedReadingRecord>();
 
 // One byte for the instruction stream and the string pool: their directory counts are not records.
 [[nodiscard]] constexpr std::size_t widthOf(Section section) noexcept {
@@ -769,20 +802,24 @@ inline constexpr std::size_t kEndingBytes = recordBytes<EndingRecord>();
     return kAddonBytes;
   case Section::Classes:
     return kClassBytes;
-  case Section::FallbackRows:
-    return kFallbackRowBytes;
+  case Section::ClassRows:
+    return kClassRowBytes;
   case Section::Inflections:
     return kInflectionBytes;
   case Section::Endings:
     return kEndingBytes;
-  case Section::FallbackStems:
-    return kFallbackStemBytes;
+  case Section::Stems:
+    return kStemBytes;
   case Section::Grammars:
     return kGrammarBytes;
   case Section::Entries:
     return kEntryBytes;
   case Section::StemPatterns:
     return kStemPatternBytes;
+  case Section::InflectionLabels:
+    return kInflectionLabelBytes;
+  case Section::TrimmedReadings:
+    return kTrimmedReadingBytes;
   case Section::count:
     break;
   }

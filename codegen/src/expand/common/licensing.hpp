@@ -18,11 +18,16 @@ using namespace latin;
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant) &&
          genderMatches(d.gender, i.gender);
 }
-// INFO: Process_Qu_Pronouns wants the exact declension.
+// INFO: Process_Qu_Pronouns and Process_Packons want the exact declension: the inflection's declension and
+//  variant must be the entry's.
+[[nodiscard]] constexpr bool exactDeclension(auto declension, auto variant, auto inflectionDeclension,
+                                             auto inflectionVariant) noexcept {
+  return declension == inflectionDeclension && variant == inflectionVariant;
+}
 [[nodiscard]] constexpr bool licenses(const Pronoun& d, const inflected::Pronoun& i) noexcept {
-  if (d.declension.value == 1)
-    return d.declension == i.declension && d.declensionVariant == i.declensionVariant;
-  return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant);
+  return d.declension.value == 1
+             ? exactDeclension(d.declension, d.declensionVariant, i.declension, i.declensionVariant)
+             : declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant);
 }
 [[nodiscard]] constexpr bool licenses(const Adjective& d, const inflected::Adjective& i) noexcept {
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant) &&
@@ -70,8 +75,8 @@ concept MayPair = requires(const D& d, const I& i) { licenses(d, i); };
   const auto* packon = std::get_if<latin::Packon>(&dictionary);
   const auto* pronoun = std::get_if<latin::inflected::Pronoun>(&inflection);
   return packon != nullptr && pronoun != nullptr &&
-         declensionMatches(packon->declension, packon->declensionVariant, pronoun->declension,
-                           pronoun->declensionVariant);
+         exactDeclension(packon->declension, packon->declensionVariant, pronoun->declension,
+                         pronoun->declensionVariant);
 }
 
 inline constexpr std::size_t kGrammarCount = std::variant_size_v<latin::Entry>;

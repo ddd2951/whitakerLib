@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cstddef>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 
 // WORDS' terms, as ADDONS.LAT and DICTLINE use them:
@@ -361,11 +363,113 @@ struct Analysis {
   return rootAdmits(root, part) || (part == Part::PACK && root == Part::PRON);
 }
 
+// INFO: Part_Of_Speech_Type's order.
+[[nodiscard]] constexpr unsigned pofsPos(Part part) noexcept {
+  switch (part) {
+  case Part::X:
+    return 0;
+  case Part::N:
+    return 1;
+  case Part::PRON:
+    return 2;
+  case Part::PACK:
+    return 3;
+  case Part::ADJ:
+    return 4;
+  case Part::NUM:
+    return 5;
+  case Part::ADV:
+    return 6;
+  case Part::V:
+    return 7;
+  case Part::VPAR:
+    return 8;
+  case Part::SUPINE:
+    return 9;
+  case Part::PREP:
+    return 10;
+  case Part::CONJ:
+    return 11;
+  case Part::INTERJ:
+    return 12;
+  case Part::NONE:
+    return 13;
+  }
+  return 13;
+}
+
+template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexcept {
+  if constexpr (std::is_enum_v<T>)
+    return std::to_underlying(value);
+  else
+    return value.value;
+}
+
+[[nodiscard]] inline auto sortFields(const Analysis& q) {
+  using enum Part;
+  const unsigned none = 0;
+  switch (q.part) {
+  case N:
+  case PRON:
+  case PACK:
+  case VPAR:
+  case SUPINE:
+    return std::tuple{unsigned{q.which},
+                      sortValue(q.variant),
+                      sortValue(q.number),
+                      sortValue(q.caseOf),
+                      sortValue(q.gender),
+                      none,
+                      none};
+  case ADJ:
+    return std::tuple{unsigned{q.which},
+                      sortValue(q.variant),
+                      sortValue(q.number),
+                      sortValue(q.caseOf),
+                      sortValue(q.gender),
+                      sortValue(q.comparison),
+                      none};
+  case NUM:
+    return std::tuple{unsigned{q.which},
+                      sortValue(q.variant),
+                      sortValue(q.number),
+                      sortValue(q.caseOf),
+                      sortValue(q.gender),
+                      sortValue(q.numeralSort),
+                      none};
+  case V:
+    return std::tuple{unsigned{q.which},  sortValue(q.variant), sortValue(q.number), sortValue(q.tense),
+                      sortValue(q.voice), sortValue(q.mood),    sortValue(q.person)};
+  case ADV:
+    return std::tuple{sortValue(q.comparison), none, none, none, none, none, none};
+  case PREP:
+    return std::tuple{sortValue(q.caseOf), none, none, none, none, none, none};
+  default:
+    return std::tuple{none, none, none, none, none, none, none};
+  }
+}
+
+// INFO: Inflections_Package."<" on Quality_Record.
+[[nodiscard]] inline bool inflectionsLess(const Analysis& left, const Analysis& right) {
+  return left.part != right.part ? pofsPos(left.part) < pofsPos(right.part) : sortFields(left) < sortFields(right);
+}
+
+// NOTE: The order WORDS lists one record's readings in. A qu- pronoun orders by its variant alone, as the left one's
+//  declension decides.
+[[nodiscard]] inline bool listedBefore(const Analysis& left, std::size_t leftEnding, const Analysis& right,
+                                       std::size_t rightEnding) {
+  const bool quPronouns = left.part == Part::PRON && left.which == 1 && right.part == Part::PRON;
+  if (quPronouns ? left.variant != right.variant : !(left == right))
+    return quPronouns ? left.variant.value < right.variant.value : inflectionsLess(left, right);
+  if (leftEnding != rightEnding)
+    return leftEnding < rightEnding;
+  return inflectionsLess(left, right);
+}
+
 // INFO: Reduce_Stem_List's "<=" on stem keys and its key-0 exception; the asymmetry is Whitaker's.
 [[nodiscard]] constexpr bool stemKeyAdmits(unsigned char dictKey, unsigned char wanted, Part part) noexcept {
-  if (dictKey == wanted || wanted == 0)
-    return true;
-  return dictKey == 0 && wanted >= 1 && wanted <= 2 && (part == Part::N || part == Part::ADJ || part == Part::V);
+  return dictKey == wanted || wanted == 0 ||
+         (dictKey == 0 && wanted >= 1 && wanted <= 2 && (part == Part::N || part == Part::ADJ || part == Part::V));
 }
 
 // INFO: Whitaker's matching predicates, dictionary on the left, inflection on
@@ -373,11 +477,8 @@ struct Analysis {
 // INFO: Inflections_Package's "<=" on Decn_Record, which holds a declension or a conjugation.
 [[nodiscard]] constexpr bool numberMatches(unsigned char left, unsigned char leftVariant, unsigned char right,
                                            unsigned char rightVariant) noexcept {
-  if (right == left && rightVariant == leftVariant)
-    return true;
-  if (right == 0 && rightVariant == 0 && left != 9)
-    return true;
-  return right == left && rightVariant == 0;
+  return (right == left && rightVariant == leftVariant) || (right == 0 && rightVariant == 0 && left != 9) ||
+         (right == left && rightVariant == 0);
 }
 
 [[nodiscard]] constexpr bool declensionMatches(Declension left, Variant leftVariant, Declension right,

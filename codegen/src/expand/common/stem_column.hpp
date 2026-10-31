@@ -46,9 +46,7 @@ inline constexpr latin::StemKey kNoColumn{0};
 }
 [[nodiscard]] constexpr latin::StemKey column(const latin::Verb&, const word::DictlineEntry& e,
                                               latin::StemKey key) noexcept {
-  if (firstTwoEqual(e))
-    return (key.value == 1 || key.value == 2) ? latin::StemKey{1} : key;
-  return key;
+  return firstTwoEqual(e) && (key.value == 1 || key.value == 2) ? latin::StemKey{1} : key;
 }
 [[nodiscard]] constexpr latin::StemKey column(const latin::Numeral& d, const word::DictlineEntry&,
                                               latin::StemKey key) noexcept {
@@ -115,12 +113,12 @@ inline constexpr latin::StemKey kNoColumn{0};
 namespace expand {
 
 [[nodiscard]] constexpr word::Stem stemAt(const word::DictlineEntry& entry, latin::StemKey column) {
-  constexpr std::array stems{&word::DictlineEntry::stem1, &word::DictlineEntry::stem2, &word::DictlineEntry::stem3,
+  constexpr std::array kStems{&word::DictlineEntry::stem1, &word::DictlineEntry::stem2, &word::DictlineEntry::stem3,
                              &word::DictlineEntry::stem4};
   const std::size_t at = column.value;
-  if (at < 1 || at > stems.size())
+  if (at < 1 || at > kStems.size())
     return std::nullopt;
-  return entry.*stems[at - 1];
+  return entry.*kStems[at - 1];
 }
 
 } // namespace expand

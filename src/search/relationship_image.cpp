@@ -43,8 +43,9 @@ Program lookup(std::string_view word) noexcept {
     state = edge.target;
     output += edge.output;
   }
-  const std::uint8_t count = read<StateRecord>(Section::States, state).resultCount;
-  return count == 0 ? Program{} : Program{output, count};
+  const StateRecord last = read<StateRecord>(Section::States, state);
+  // INFO: A word whose every reading was trimmed has no readings but its "*".
+  return last.resultCount == 0 && last.trimmed == 0 ? Program{} : Program{output, last.resultCount, last.trimmed != 0};
 }
 
 Result next(std::uint32_t& cursor, std::uint16_t& lexeme) noexcept {
@@ -60,8 +61,33 @@ Result next(std::uint32_t& cursor, std::uint16_t& lexeme) noexcept {
       read16(at(Section::Targets, paradigm.firstTarget + (operation & kRelationshipMask)));
   const std::uint16_t printed = dictionary(record.dictionary).stems[record.stem];
   return {static_cast<std::uint8_t>(printed & ((1u << kStemLengthBits) - 1)),
-          stringAt(read32(at(Section::StemPatterns, printed >> kStemLengthBits))), grammar(description),
-          record.dictionary, record.stem};
+          stringAt(read32(at(Section::StemPatterns, printed >> kStemLengthBits))),
+          grammar(description),
+          description,
+          record.dictionary,
+          record.stem};
+}
+
+TrimmedReadingRecord trimmedReading(std::uint32_t index) noexcept {
+  return read<TrimmedReadingRecord>(Section::TrimmedReadings, index);
+}
+
+Run trimmedReadingRange(std::string_view folded) noexcept {
+  const auto all =
+      std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::TrimmedReadings).count));
+  const auto found = std::ranges::equal_range(
+      all, folded, {}, [](std::uint32_t i) { return std::string_view{stringAt(trimmedReading(i).text)}; });
+  return {static_cast<std::uint32_t>(found.begin() - all.begin()), static_cast<std::uint32_t>(found.size())};
+}
+
+Result resultOf(const TrimmedReadingRecord& record) noexcept {
+  const std::uint16_t printed = dictionary(record.dictionary).stems[record.stem];
+  return {static_cast<std::uint8_t>(printed & ((1u << kStemLengthBits) - 1)),
+          stringAt(read32(at(Section::StemPatterns, printed >> kStemLengthBits))),
+          grammar(record.description),
+          record.description,
+          record.dictionary,
+          record.stem};
 }
 
 Entry entry(std::uint16_t dictionary) noexcept {
@@ -80,24 +106,34 @@ latin::Analysis grammar(std::uint16_t description) noexcept {
   return sImage->grammars.empty() ? decodeGrammar(*sImage, description) : sImage->grammars[description];
 }
 
-FallbackRowRecord fallbackRow(std::uint32_t index) noexcept {
-  return read<FallbackRowRecord>(Section::FallbackRows, index);
-}
+ClassRowRecord classRow(std::uint32_t index) noexcept { return read<ClassRowRecord>(Section::ClassRows, index); }
 
 InflectionRecord inflection(std::uint16_t index) noexcept {
   return read<InflectionRecord>(Section::Inflections, index);
 }
 
-FallbackStemRecord fallbackStem(std::uint32_t index) noexcept {
-  return read<FallbackStemRecord>(Section::FallbackStems, index);
+StemRecord stemRecord(std::uint32_t index) noexcept { return read<StemRecord>(Section::Stems, index); }
+
+Run stemRange(std::string_view text) noexcept {
+  const auto stems = std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::Stems).count));
+  const auto found = std::ranges::equal_range(
+      stems, text, {}, [](std::uint32_t i) { return std::string_view{stringAt(stemRecord(i).text)}; });
+  return {static_cast<std::uint32_t>(found.begin() - stems.begin()), static_cast<std::uint32_t>(found.size())};
 }
 
-Run fallbackStemRange(std::string_view text) noexcept {
-  const auto stems =
-      std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::FallbackStems).count));
-  const auto found = std::ranges::equal_range(
-      stems, text, {}, [](std::uint32_t i) { return std::string_view{stringAt(fallbackStem(i).text)}; });
-  return {static_cast<std::uint32_t>(found.begin() - stems.begin()), static_cast<std::uint32_t>(found.size())};
+StemEntry stemEntry(std::uint32_t index) noexcept {
+  const StemRecord stem = stemRecord(index);
+  const DictionaryRecord entry = dictionary(stem.dictionary);
+  const ClassRecord grammar = dictionaryClass(entry.classId & kClassIdMask);
+  return StemEntry{.dictionary = stem.dictionary,
+                   .stemKey = stem.stemKey,
+                   .part = stem.part,
+                   .verbKind = latin::VerbKind{static_cast<std::uint8_t>((entry.classId >> kClassVerbKindShift) &
+                                                                         kClassVerbKindMask)},
+                   .rules = grammar.rules,
+                   .age = entry.age,
+                   .frequency = entry.frequency,
+                   .rows = grammar.rows()};
 }
 
 Run endingRun(std::string_view text) noexcept {
@@ -108,6 +144,49 @@ Run endingRun(std::string_view text) noexcept {
   if (found == endings.end() || std::string_view{stringAt(ending(*found).text)} != text)
     return {};
   return ending(*found).inflections();
+}
+
+std::pair<latin::Age, latin::Frequency> inflectionLabels(std::uint16_t description, std::string_view ending) noexcept {
+  constexpr std::size_t kCacheSize = 4096;
+  constexpr std::uint32_t kDescriptionMultiplier = 2654435761u;
+  constexpr std::uint32_t kEndingMultiplier = 16777619u;
+
+  struct Cached {
+    const Image* image = nullptr;
+    std::uint16_t description = 0;
+    std::uint32_t ending = 0;
+    latin::Age age{};
+    latin::Frequency frequency{};
+  };
+  static thread_local std::array<Cached, kCacheSize> cache{};
+
+  Cached* saved = nullptr;
+  // NOTE: Only embedded images have predecoded grammars; loaded images reuse one Image object.
+  if (!sImage->grammars.empty()) {
+    std::uint32_t hash = description * kDescriptionMultiplier;
+    for (char c : ending)
+      hash = (hash ^ static_cast<unsigned char>(c)) * kEndingMultiplier;
+    saved = &cache[hash & (kCacheSize - 1)];
+    if (saved->image == sImage && saved->description == description &&
+        std::string_view{stringAt(saved->ending)} == ending)
+      return {saved->age, saved->frequency};
+  }
+
+  const auto labels =
+      std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::InflectionLabels).count));
+  const auto label = [](std::uint32_t i) { return read<InflectionLabelRecord>(Section::InflectionLabels, i); };
+  const auto key = [&](std::uint32_t i) {
+    const InflectionLabelRecord r = label(i);
+    return std::pair<std::uint16_t, std::string_view>{r.description, stringAt(r.ending)};
+  };
+  const std::pair<std::uint16_t, std::string_view> wanted{description, ending};
+  const auto found = std::ranges::lower_bound(labels, wanted, {}, key);
+  if (found == labels.end() || key(*found) != wanted)
+    return {};
+  const InflectionLabelRecord record = label(*found);
+  if (saved != nullptr)
+    *saved = {sImage, description, record.ending, record.age, record.frequency};
+  return {record.age, record.frequency};
 }
 
 Addon addon(std::uint16_t id) noexcept { return id < addonCount() ? decodeAddon(*sImage, id) : Addon{}; }
