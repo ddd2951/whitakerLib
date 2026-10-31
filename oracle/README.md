@@ -18,10 +18,12 @@ benchmark. No comparable Ada timing was recorded.
 I've mostly increased the accuracy by slowly looking at the biggest mismatches and figuring out what caused them.
 We have now reached the point where every mismatch in the pinned collection of books has a known cause.
 We also ended up finding 20 bugs in the original WORDS along the way, some of which would crash the program.
-For now, I'm comparing against a local build with my fixes applied.
+The comparisons use a patched WORDS build. All 19 completed fixes and their
+regression tests are available in my [combined_fixes branch][combined-fixes].
 
 The [book list](../data/booklist.md) records the texts and per-book results.
-The saved answers use a local patched WORDS build, `5dd8ca5` (see below).
+The saved answers record the local build as `5dd8ca5`; its Ada source matches
+the published revision linked below.
 
 ## Run it
 
@@ -135,16 +137,18 @@ So far, I've found 20. Some give incorrect readings, others silently drop answer
 
 If WORDS has a bug, I don't really want to reproduce that bug in whitakerLib just to get a matching result.
 
-Five fixes have been submitted to the upstream project. The remaining fixes
-are local and have not been published yet.
+Five fixes have been submitted to the upstream project. All 19 completed fixes
+and their regression tests are available in the [combined_fixes branch][combined-fixes].
+For a fixed source revision, pin to
+[`da6b35f`](https://github.com/ddd2951/whitakers-words/commit/da6b35fc862f1019720993dcddf7fd9d62ecc080).
+Its Ada source is identical to the local build used for the saved captures;
+the captures retain their original source revision and build details.
 
-The comparisons currently use my local patched WORDS build, `5dd8ca5`.
-Its source revision and build details are saved with the captures, so I can
-track exactly what produced each answer. The link to the full patched source
-will be posted this weekend, sorry for the wait.
+The [WORDS fix notes](WORDS_FIXES.md) give a short overview with regression
+examples and links to the tests. The cases use WORDS' existing five test folders.
 
-The posted fixes come first, in pull-request order. The build includes fixes
-for all findings except #20, which is still being investigated.
+The first five entries below follow upstream pull-request order. The combined
+branch includes fixes #1–#19; #20 remains open and is excluded.
 
 | # | Finding | Cause | Patch |
 | --- | --- | --- | --- |
@@ -153,21 +157,21 @@ for all findings except #20, which is still being investigated.
 | 3 | Comment reader | A short line is tested using stale buffer text. | [#153](https://github.com/mk270/whitakers-words/pull/153) |
 | 4 | Slur and tackon state | Failed slur or rejected tackon attempts overwrite candidates. | [#154](https://github.com/mk270/whitakers-words/pull/154) |
 | 5 | vis syncope | The rule accepts verbs outside the perfect system. | [#155](https://github.com/mk270/whitakers-words/pull/155) |
-| 6 | Enclitic state | Failed attempts lose candidates; fixes-only lookup misses the base. | Not posted yet |
-| 7 | Unique part | The part is read from the uninitialized destination qualifier. | Not posted yet |
-| 8 | Compound numbers | Numeral-hit flags survive failed word splits and can cause a crash. | Not posted yet |
-| 9 | Repeated PACK/UNIQUES | The fixes-only pass repeats the ordinary unique and Qu lookups. | Not posted yet |
-| 10 | Repeated adverbs | Fix_Adverb derives multiple adverbs from the same adjective record. | Not posted yet |
-| 11 | Unique adverb ending | Fix_Adverb adds an ending absent from the unique's spelling. | Not posted yet |
-| 12 | Full enclitic result | Inserting a marker overruns a full 40-record trick array. | Not posted yet |
-| 13 | Packon boundary | A prefix match confuses the names cum and cumque. | Not posted yet |
-| 14 | Suffix fallback | A later suffix miss erases evidence of an earlier hit. | Not posted yet |
-| 15 | Qu grouping | Plain readings get sorted into the preceding add-on group. | Not posted yet |
-| 16 | Orphan add-ons | Trimming removes all readings but leaves their add-on markers. | Not posted yet |
-| 17 | Qu folding | The qu/cu test does not fold v to u. | Not posted yet |
-| 18 | Nested tackons | The outer tackon sweep drops an accepted inner tackon marker. | Not posted yet |
-| 19 | Ending lookup | The ending index uses the raw final letter, so final v finds none. | Not posted yet |
-| 20 | Lost full results (open) | Fixed parse arrays overflow; the exception is swallowed as UNKNOWN. | Not posted yet |
+| 6 | Enclitic state | Failed attempts lose candidates; fixes-only lookup misses the base. | [Combined fixes][combined-fixes] |
+| 7 | Unique part | The part is read from the uninitialized destination qualifier. | [Combined fixes][combined-fixes] |
+| 8 | Compound numbers | Numeral-hit flags survive failed word splits and can cause a crash. | [Combined fixes][combined-fixes] |
+| 9 | Repeated PACK/UNIQUES | The fixes-only pass repeats the ordinary unique and Qu lookups. | [Combined fixes][combined-fixes] |
+| 10 | Repeated adverbs | Fix_Adverb derives multiple adverbs from the same adjective record. | [Combined fixes][combined-fixes] |
+| 11 | Unique adverb ending | Fix_Adverb adds an ending absent from the unique's spelling. | [Combined fixes][combined-fixes] |
+| 12 | Full enclitic result | Inserting a marker overruns a full 40-record trick array. | [Combined fixes][combined-fixes] |
+| 13 | Packon boundary | A prefix match confuses the names cum and cumque. | [Combined fixes][combined-fixes] |
+| 14 | Suffix fallback | A later suffix miss erases evidence of an earlier hit. | [Combined fixes][combined-fixes] |
+| 15 | Qu grouping | Plain readings get sorted into the preceding add-on group. | [Combined fixes][combined-fixes] |
+| 16 | Orphan add-ons | Trimming removes all readings but leaves their add-on markers. | [Combined fixes][combined-fixes] |
+| 17 | Qu folding | The qu/cu test does not fold v to u. | [Combined fixes][combined-fixes] |
+| 18 | Nested tackons | The outer tackon sweep drops an accepted inner tackon marker. | [Combined fixes][combined-fixes] |
+| 19 | Ending lookup | The ending index uses the raw final letter, so final v finds none. | [Combined fixes][combined-fixes] |
+| 20 | Lost full results (open) | Fixed parse arrays overflow; the exception is swallowed as UNKNOWN. | Open; excluded |
 
 The first fix for #20 answered pilula and seconda but crashed on roboraria while grouping the output.
 It is excluded from the comparison build and remains under investigation.
@@ -191,10 +195,10 @@ Of the remaining 12 word occurrences, we've found the cause of each:
 | Words | Occurrences | Cause |
 | --- | ---: | --- |
 | Seven run-together words over 24 letters (eosdemiuvencosetquattuoriugerum, ...) | 7 | The library's input limit; WORDS answers UNKNOWN. |
-| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. The first fix gave regressions WORDS crashed on another word in the books. |
+| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. Our first fix gave regressions (WORDS crashed on another word in the books), so we are still looking at it. |
 | basa, basin | 2 | WORDS prints a reading again for a second dictionary record that shares the stem; this grouping rule is not ported. |
 
-The current accuracy only reflects the books tested so far. As more texts are added, the percentage may go down as we uncover new differences.
+The current accuracy only reflects the books tested so far. As more texts are added, the percentage may go down as we uncover new differences, not necessarily because the library has gotten worse.
 
 If you'd like to add another text or book, feel free to open an issue. As long as it's publicly available and not behind a paywall, I'm happy to add it.
 
@@ -206,7 +210,6 @@ A few things I'd like to add over time:
 - **More constructed words:** Test words built from WORDS' rules, not just words found in books.
 - **More books:** Keep expanding the corpus to find new differences.
 - **Lib against Lib:** Compare two versions of whitakerLib to catch changes between releases.
-- **WORDS regression tests:** Add regression tests for the bugs found in WORDS, as a secondary check alongside the oracle.
 
 ## Reports
 
@@ -254,3 +257,5 @@ source. Keep their saved answers and provenance intact. Texts come from the
 Perseus Digital Library's canonical-latinLit collection (CC BY-SA 4.0);
 the book list identifies the selection. The WORDS revision and fixes are
 recorded above so results can be tied to the reference actually tested.
+
+[combined-fixes]: https://github.com/ddd2951/whitakers-words/tree/combined_fixes
