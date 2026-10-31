@@ -65,4 +65,4 @@ jobs:
         if: matrix.sanitize == 'OFF'
         run: |
           nm -D --defined-only prefix/lib/libwhitaker.so | awk '$2 == "T" {print $3}' | sed 's/@@.*//' | sort > exported.txt
-          printf 'whitaker_addon_meaning\nwhitaker_addon_spelling\nwhitaker_analyze\nwhitaker_describe\nwhitaker_init\nwhitaker_name\nwhitaker_result_copy\n' | diff - exported.txt
+          printf 'whitaker_addon_meaning\nwhitaker_addon_spelling\nwhitaker_analyze\nwhitaker_analyze_append\nwhitaker_describe\nwhitaker_name\nwhitaker_result_clear\nwhitaker_result_clone\nwhitaker_result_free\nwhitaker_result_new\nwhitaker_spelling_rule\n' | diff - exported.txt
