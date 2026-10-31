@@ -231,7 +231,6 @@ For readers of the Ada source:
 
 ## Roadmap
 
-- **0.3.0:** the tooling, and a better percentage that the tooling proves.
 - **0.3.1:** Python, WebAssembly and Lua bindings.
 - **0.3.2:** macrons, and WORDS' guesses (word splits and bad Roman numerals).
 - **0.3.3:** more books, and more of their words sorted out.
