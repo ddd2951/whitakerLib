@@ -187,13 +187,6 @@ the [oracle README](oracle/README.md#where-we-are-now) explains the remaining
 differences. That comparison uses the patched WORDS revision `5dd8ca5`,
 described in the [oracle README](oracle/README.md#bugs-found-in-words).
 
-Five fixes have been sent upstream
-([#151](https://github.com/mk270/whitakers-words/pull/151),
-[#152](https://github.com/mk270/whitakers-words/pull/152),
-[#153](https://github.com/mk270/whitakers-words/pull/153),
-[#154](https://github.com/mk270/whitakers-words/pull/154),
-[#155](https://github.com/mk270/whitakers-words/pull/155)).
-
 ## Inside
 
 The steps a word goes through, in WORDS' order:
@@ -229,12 +222,6 @@ For readers of the Ada source:
 | List_Sweep, Order_Parse_Array | [facts.hpp](src/facts.hpp), [latin.hpp](latin/latin.hpp) |
 | Handle_Adverb, Fix_Adverb | [adverb.cpp](src/parse/adverb.cpp) |
 
-## Roadmap
-
-- **0.3.1:** Python, WebAssembly and Lua bindings.
-- **0.3.2:** macrons, and WORDS' guesses (word splits and bad Roman numerals).
-- **0.3.3:** more books, and more of their words sorted out.
-
 ## Build
 
 Tested on Linux only. It needs CMake 3.21, GCC 15 or Clang 20 (for `#embed`
@@ -267,7 +254,7 @@ against an install and compares their output with `examples/expected/`.
 ## Contributing
 
 It isn't an easy project to jump into yet, but I want it to become one people
-can join. From 0.3.0 on, the work goes in as many small commits instead of a
+can join. From 0.4.0 on, the work goes in as many small commits instead of a
 few big ones, which should make it easier to follow.
 
 **Words.** If the library reads a word from a book differently than WORDS
