@@ -14,7 +14,7 @@ both generated from the C++ header.
 - **99.58% of words answered exactly as the Ada WORDS answers them**, every
   reading, record and add-on, in WORDS' order. The [oracle](oracle/README.md)
   explains the comparison.
-- **[Try it in your browser](#the-inspector)** and see every reading of a text,
+- **[Try it in your browser](https://ddd2951.github.io/whitakerLib/)** and see every reading of a text,
   as the API returns it and as the lookup's trace.
 
 ## Why?
@@ -51,8 +51,9 @@ debugging and exploration tool, not primarily a tool for reading Latin, even if
 it works for that. A rewrite of the page is planned, to try a few different
 things with it, so don't build anything that depends on it.
 
-It runs fully in the page, the library compiled to WebAssembly, and sends
-nothing. It's a 3.8 MB download, about 1.2–1.6 MB over the network depending on
+It's online at [ddd2951.github.io/whitakerLib](https://ddd2951.github.io/whitakerLib/), rebuilt from `main` on
+every push. It runs fully in the page, the library compiled to WebAssembly, and
+sends nothing. It's a 3.8 MB download, about 1.2–1.6 MB over the network depending on
 the server's compression. It needs WebAssembly, so browsers such as the Kindle
 Paperwhite's can't run it.
 
@@ -74,7 +75,7 @@ Paperwhite's can't run it.
 - **Search** (`/`). Grammar (`abl pl`), a route (`syncope`), `unknown` for words
   with no reading, or part of a spelling. ↑ ↓ step through the matches.
 
-To build and serve it.
+To build and serve it yourself.
 
 ```sh
 source ~/emsdk/emsdk_env.sh

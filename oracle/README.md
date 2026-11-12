@@ -146,7 +146,8 @@ Its source revision and build details are saved with the captures, so I can
 track exactly what produced each answer. Its full source, every fix combined,
 is the pinned `combined_fixes` branch of my fork,
 [`ddd2951/whitakers-words`](https://github.com/ddd2951/whitakers-words/tree/combined_fixes),
-at `da6b35f`.
+at `da6b35f`. The [WORDS fix notes](WORDS_FIXES.md) give each fix with regression
+examples from WORDS' own test folders.
 
 The findings keep the numbers they were given when found. The build includes
 fixes for all findings except #20, which is still being investigated.

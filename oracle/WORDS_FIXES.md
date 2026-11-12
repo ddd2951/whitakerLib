@@ -5,8 +5,8 @@ A quick list of Ada WORDS bugs found while developing whitakerLib.
 - [Oracle README](https://github.com/ddd2951/whitakerLib/blob/main/oracle/README.md): comparison method, results and remaining differences.
 - [combined_fixes branch](https://github.com/ddd2951/whitakers-words/tree/combined_fixes): the Ada code and regression tests for fixes #1–#19, published as one combined commit.
 
-Numbering follows the oracle README. The first five fix names link to their
-upstream pull requests.
+Numbering follows the oracle README. The fixes sent upstream link to their pull
+requests.
 
 | # | Fix | What changes | Regression examples |
 | --- | --- | --- | --- |
@@ -15,14 +15,14 @@ upstream pull requests.
 | 3 | [Comment reader][pr153] | Ignore stale buffer text when reading comments. | [qualicumque][30] |
 | 4 | [Slur and tackon state][pr154] | Restore candidates after failed slur or rejected tackon attempts. | [inminet cotto][05]; [egomet aequicum][30] |
 | 5 | [vis syncope][pr155] | Accept vis-syncope only for perfect-system verbs. | [amasti; reseret][05] |
-| 6 | Enclitic state | Restore failed-attempt state and freshly look up the enclitic base. | [attene; traque][05] |
-| 7 | Unique part | Keep the correct part of speech for unique entries. | [eadem; vis][10] |
-| 8 | [Compound-number crash][issue70] | Reset numeral flags between word splits, fixing the #70 reproducer. | [bestiasviginti; unietvicensimae][05] |
+| 6 | [Enclitic state][pr157] | Restore failed-attempt state and freshly look up the enclitic base. | [attene; traque][05] |
+| 7 | [Unique part][pr159] | Keep the correct part of speech for unique entries. | [eadem; vis][10] |
+| 8 | [Compound-number crash][pr156] | Reset numeral flags between word splits, fixing the [#70][issue70] reproducer. | [bestiasviginti; unietvicensimae][05] |
 | 9 | Repeated PACK/UNIQUES | Prevent fixes-only passes from repeating PACK/UNIQUES readings. | [quoque; quicumque][05] |
 | 10 | Repeated adverbs | Derive one adverb per qualifying record, preserving its meaning. | [die; magneque][05] |
 | 11 | Unique adverb ending | Skip regular adverb derivation for unique adjectives. | [mi][05] |
 | 12 | Full enclitic result | Keep all 40 trick readings plus their outer enclitic marker. | [famamnotaque][05] |
-| 13 | Packon boundary | Match the full packon name: cum and cumque are distinct. | [quocumque; quibuscum][05] |
+| 13 | [Packon boundary][pr158] | Match the full packon name: cum and cumque are distinct. | [quocumque; quibuscum][05] |
 | 14 | Suffix fallback | Use accumulated suffix results when deciding prefix fallback. | [admetus; appius][05] |
 | 15 | Qu grouping | Keep direct readings outside Qu addon groups. | [nequiquam; ecquid][05] |
 | 16 | Orphan add-ons | Remove addon markers when all their readings are trimmed. | [tuscis; nune][05] |
@@ -45,4 +45,8 @@ An initial repair regressed on `roboraria` and is excluded from the branch.
 [pr153]: https://github.com/mk270/whitakers-words/pull/153
 [pr154]: https://github.com/mk270/whitakers-words/pull/154
 [pr155]: https://github.com/mk270/whitakers-words/pull/155
+[pr156]: https://github.com/mk270/whitakers-words/pull/156
+[pr157]: https://github.com/mk270/whitakers-words/pull/157
+[pr158]: https://github.com/mk270/whitakers-words/pull/158
+[pr159]: https://github.com/mk270/whitakers-words/pull/159
 [issue70]: https://github.com/mk270/whitakers-words/issues/70
