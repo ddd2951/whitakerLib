@@ -933,6 +933,9 @@ void counts() {
   constexpr std::string_view kFields[] = {"part", "case",  "number", "gender",   "tense",   "voice",
                                           "mood", "route", "add-on", "spelling", "readings"};
   std::vector<std::vector<Tally>> tallies(std::size(kFields));
+  // NOTE: Each value's place in its list, found by hash: a book's spellings, looked for one by one in the list itself,
+  //  took 4.7 s for Livy.
+  std::vector<std::unordered_map<std::string, std::size_t>> places(std::size(kFields));
   std::size_t occurrences = 0;
   for (const Group& g : selectedGroups) {
     occurrences += g.count;
@@ -950,11 +953,12 @@ void counts() {
         continue;
       seen.emplace_back(field, v.value);
       std::vector<Tally>& list = tallies[field];
-      auto at = std::ranges::find(list, v.value, &Tally::value);
-      if (at == list.end())
-        at = list.insert(at, Tally{std::move(v.value), 0, 0});
-      at->occurrences += g.count;
-      ++at->distinct;
+      const auto [place, added] = places[field].try_emplace(v.value, list.size());
+      if (added)
+        list.push_back(Tally{std::move(v.value), 0, 0});
+      Tally& tally = list[place->second];
+      tally.occurrences += g.count;
+      ++tally.distinct;
     }
   }
   h.element("div", "block-head",

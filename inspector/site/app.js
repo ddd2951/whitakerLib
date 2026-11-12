@@ -8,6 +8,7 @@ import { renderPassage, withoutGutenberg, wordsOf } from './text.js';
 import { render, VIEWS } from './views.js';
 
 const $ = id => document.getElementById(id);
+const PROMPT = 'Ctrl+V anywhere to inspect a Latin text, or type it here and press Enter';
 
 let library;
 let words = [];
@@ -21,6 +22,7 @@ let matches = [];
 let dragging = false;
 let sampling = null;
 let drawn = 0;
+let loading = false;
 
 const range = () => [Math.min(anchor, focus), Math.max(anchor, focus)];
 const wholeText = () => range()[0] === 0 && range()[1] === words.length - 1;
@@ -117,11 +119,32 @@ function stepMatch(direction) {
                        : matches.findLast(i => i < focus) ?? matches.at(-1));
 }
 
-function start(source) {
-  const text = withoutGutenberg(source);
-  words = wordsOf(text);
-  const known = library.load(words.map(o => o.spelling));
-  spans = renderPassage($('passage'), text, words, known);
+// NOTE: The library takes the new text before the passage is drawn. If anything after that fails, both are emptied,
+//  so no word on screen shows another word's readings, and the text box says what failed.
+// NOTE: A book takes seconds, so the text box says so first, drawn before the work starts; a text that comes in
+//  meanwhile is left alone.
+async function start(source) {
+  if (loading) return;
+  loading = true;
+  try {
+    const text = withoutGutenberg(source);
+    const next = wordsOf(text);
+    $('source').placeholder = `Looking up ${next.length.toLocaleString('en')} words …`;
+    await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    words = next;
+    const known = library.load(words.map(o => o.spelling));
+    spans = renderPassage($('passage'), text, words, known);
+    $('source').placeholder = PROMPT;
+  } catch (error) {
+    words = [];
+    spans = [];
+    library.load([]);
+    $('passage').replaceChildren();
+    $('word').textContent = '';
+    $('view').replaceChildren();
+    $('source').placeholder = `Could not take that text: ${error.message}`;
+  }
+  loading = false;
   anchor = focus = 0;
   marked = [0, -1];
   sampling = null;
@@ -215,8 +238,9 @@ function take(source) {
 }
 
 function wire() {
+  // NOTE: A paste is a new text only in the text box or outside any field; every other field takes it as its own.
   document.addEventListener('paste', e => {
-    if (e.target.id === 'search' || e.target.id === 'sample-count') return;
+    if (e.target.closest('input, textarea') && e.target.id !== 'source') return;
     e.preventDefault();
     take(e.clipboardData.getData('text'));
   });
@@ -226,11 +250,13 @@ function wire() {
     else return;
     e.preventDefault();
   });
+  // NOTE: Several files are one text, in the order the browser lists them, a blank line between; each loses its
+  //  Project Gutenberg header and footer on its own.
   $('open-file').addEventListener('change', async e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = [...e.target.files];
+    if (!files.length) return;
     e.target.value = '';
-    start(await file.text());
+    start((await Promise.all(files.map(file => file.text()))).map(withoutGutenberg).join('\n\n'));
   });
   $('sample').addEventListener('change', () => {
     if ($('sample').checked && words.length) startSampling();
@@ -293,7 +319,7 @@ try {
   });
   wire();
   $('source').disabled = false;
-  $('source').placeholder = 'Ctrl+V anywhere to inspect a Latin text, or type it here and press Enter';
+  $('source').placeholder = PROMPT;
   $('source').focus();
 } catch (error) {
   $('source').placeholder = `Could not load the dictionary: ${error.message}`;
