@@ -1,16 +1,6 @@
-WHITAKER_0.3 {
+WHITAKER_0.4 {
     global:
-        whitaker_analyze;
-        whitaker_result_new;
-        whitaker_result_free;
-        whitaker_result_clear;
-        whitaker_result_clone;
-        whitaker_analyze_append;
-        whitaker_name;
-        whitaker_describe;
-        whitaker_addon_spelling;
-        whitaker_addon_meaning;
-        whitaker_spelling_rule;
-    local:
-        *;
+        extern "C++" { whitaker::*; };
+        whitaker_*;
+    local: *;
 };

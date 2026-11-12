@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- NOTE: The page may load only its own files and contact nothing else; the browser enforces it. No report-uri:
+     a report would itself be a request. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self';
+               img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>whitakerLib inspector</title>
+<link rel="stylesheet" href="style.css">
+<!-- NOTE: An empty icon, or the browser asks the server for /favicon.ico on its own. -->
+<link rel="icon" href="data:,">
+</head>
+<body>
+<main id="main">
+  <section id="text-pane">
+    <div id="entry">
+      <textarea id="source" rows="1" spellcheck="false" disabled
+                placeholder="Loading the dictionary …"></textarea>
+    </div>
+    <div id="passage"></div>
+    <div id="search-bar">
+      <input id="search" type="search" spellcheck="false" autocomplete="off"
+             placeholder="/ search: abl pl · syncope · unknown · que">
+      <span id="search-count"></span>
+      <button id="search-prev" title="previous match (↑)">↑</button>
+      <button id="search-next" title="next match (↓)">↓</button>
+      <button id="select-all" title="select the whole text (a)">Select all</button>
+      <label class="samples" title="time the text this many times, for Statistics (t)"><input type="checkbox"
+             id="sample"> ×</label><input type="number" id="sample-count" min="1" max="1000" value="100">
+      <label class="open" title="open a text file (o)">Open .txt<input type="file" id="open-file"
+             accept=".txt,text/plain" hidden></label>
+    </div>
+  </section>
+
+  <section id="inspector">
+    <h2 id="word"></h2>
+    <div id="view"></div>
+    <nav id="views">
+      <button data-view="readable" title="Readable (1)">Readable</button>
+      <button data-view="api" title="API: C++, C or Python (2; b switches)">API</button>
+      <button data-view="trace" title="Trace (3)">Trace</button>
+      <button data-view="statistics" title="Statistics (4)">Statistics</button>
+    </nav>
+  </section>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

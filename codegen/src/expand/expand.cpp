@@ -1,79 +1,50 @@
 #include "expand.hpp"
 
-#include "facts.hpp"
-#include "expand/facts/adverb_corrections.hpp"
-#include "expand/facts/candidates.hpp"
-#include "expand/facts/forms.hpp"
-#include "expand/facts/order_stems.hpp"
-#include "expand/facts/readings.hpp"
-#include "expand/facts/sorted.hpp"
-#include "expand/facts/list_sweep.hpp"
-#include "expand/facts/uniques.hpp"
+#include "execution_steps/steps.hpp"
+#include "storage/kept.hpp"
+#include "storage/starts.hpp"
+#include "storage/total.hpp"
 
 #include <algorithm>
-#include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace {
 
-struct Kept {
-  // NOTE: Form::spelling depends on this, don't let it dangle.
-  expand::Candidates candidates;
-  expand::Forms forms;
-  expand::Readings readings;
-  expand::Swept swept;
-};
+using storage::kept;
 
-Kept kept;
-
-std::array<std::size_t, facts::kLetterCount> starts{};
-std::size_t total = 0;
+using storage::starts;
+using storage::total;
 
 struct At {
-  std::uint8_t letter;
-  std::size_t position;
+  std::uint8_t letter{};
+  std::size_t position{};
 };
+static_assert(std::is_trivially_copyable_v<At>);
 
-At at(expand::ResultIndex index) {
+At at(const expand::ResultIndex index) {
   const auto letter = static_cast<std::uint8_t>(std::ranges::upper_bound(starts, index.value) - starts.begin() - 1);
   return {letter, index.value - starts[letter]};
 }
 
 } // namespace
 
-void expand::init() {
-  kept.candidates = candidates();
-  Sorted sorted = expand::sorted(kept.candidates, uniques());
-  orderStems(sorted);
-  kept.forms = forms(sorted, adverbCorrections(sorted));
-  kept.readings = readings(kept.forms);
-  kept.swept = listSweep(kept.forms, kept.readings);
-
-  for (std::uint8_t letter = 0; letter < facts::kLetterCount; ++letter) {
-    const std::size_t count = kept.forms.byLetter[letter].size();
-    assert(kept.readings.byLetter[letter].size() == count && kept.swept.byLetter[letter].size() == count);
-    starts[letter] = total;
-    total += count;
-  }
-}
-
 std::size_t expand::resultCount() { return total; }
 
-std::string_view expand::spelling(ResultIndex result) {
+std::string_view expand::spelling(const ResultIndex result) {
   const At a = at(result);
   return kept.forms.byLetter[a.letter][a.position].spelling;
 }
-expand::Origin expand::origin(ResultIndex result) {
+expand::Origin expand::origin(const ResultIndex result) {
   const At a = at(result);
   return kept.forms.byLetter[a.letter][a.position].origin;
 }
-expand::Reading expand::reading(ResultIndex result) {
+expand::Reading expand::reading(const ResultIndex result) {
   const At a = at(result);
   return kept.readings.byLetter[a.letter][a.position];
 }
-expand::Fate expand::fate(ResultIndex result) {
+expand::Fate expand::fate(const ResultIndex result) {
   const At a = at(result);
   return kept.swept.byLetter[a.letter][a.position];
 }

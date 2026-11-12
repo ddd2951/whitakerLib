@@ -11,7 +11,7 @@
 namespace expand {
 
 struct Readings {
-  std::array<std::vector<Reading>, facts::kLetterCount> byLetter;
+  std::array<std::vector<Reading>, facts::kLetterCount> byLetter{};
 };
 
 Readings readings(const Forms& listed);

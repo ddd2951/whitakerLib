@@ -4,8 +4,8 @@ Written by `oracle/oracle` after each full comparison: every field WORDS
 shows for a token, compared with the library's value. Do not edit by hand.
 
 - WORDS: 5dd8ca5
-- library: 0.3.0
-- report: 20261030T211216
+- library: 0.4.0
+- report: 20261111T190001
 - texts: Perseus Digital Library, canonical-latinLit (CC BY-SA 4.0); only
   their names and counts are listed here.
 
@@ -121,10 +121,3 @@ tokens that map but for a field the library does not return.
 | stoa0261.stoa002 | Sidonius Apollinaris | Epistulae | 48831 | 99.56% | 215 | 0 | 0 |
 | stoa0275.stoa009 | Tertullian | Apologeticum | 19969 | 99.67% | 65 | 0 | 0 |
 | all | | | 4662505 | 99.58% | 19559 | 12 | 0 |
-
-## Fixtures (generated words for rules the books never reach)
-
-| book | author | title | tokens | maps | guesses | other | gaps |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| medieval-affix |  |  | 5407 | 98.98% | 14 | 41 | 0 |
-| all | | | 5407 | 98.98% | 14 | 41 | 0 |

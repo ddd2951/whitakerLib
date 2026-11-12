@@ -6,7 +6,7 @@
 namespace expand {
 
 struct Uniques {
-  ByLetter byLetter;
+  ByLetter byLetter{};
 };
 
 Uniques uniques();

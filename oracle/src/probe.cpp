@@ -52,8 +52,8 @@ constexpr std::array kMappings{
     Mapping{"record.form_count", "inflection", "which forms the record holds"},
 };
 
-consteval void fieldPaths(std::meta::info type, std::string_view prefix, std::vector<std::string>& out) {
-  for (auto m : std::meta::nonstatic_data_members_of(type, std::meta::access_context::unchecked())) {
+consteval void fieldPaths(const std::meta::info type, const std::string_view prefix, std::vector<std::string>& out) {
+  for (const auto m : std::meta::nonstatic_data_members_of(type, std::meta::access_context::unchecked())) {
     std::string path(prefix);
     if (!path.empty())
       path += '.';
@@ -97,7 +97,7 @@ template <typename Root> Mutation changing(std::function<void(Root&)> change) {
 }
 
 template <typename Root, typename T>
-void mutations(std::string_view prefix, std::function<T&(Root&)> get,
+void mutations(const std::string_view prefix, std::function<T&(Root&)> get,
                std::vector<std::pair<std::string, Mutation>>& out) {
   template for (constexpr auto m : kMembersOf<T>) {
     using M = typename[:std::meta::type_of(m):];
@@ -157,11 +157,11 @@ int probe(const fs::path& captures, std::vector<std::string> names) {
     compare(word, seen.response, &counting);
   }
   struct Row {
-    bool alone;
-    std::string path;
-    const Mutation* mutate;
+    bool alone{};
+    std::string path{};
+    const Mutation* mutate{};
     std::uint64_t tried = 0, noticed = 0;
-    std::map<std::string, std::uint64_t> where;
+    std::map<std::string, std::uint64_t> where{};
   };
   std::vector<Row> rows;
   for (const bool alone : {false, true})
@@ -203,7 +203,7 @@ int probe(const fs::path& captures, std::vector<std::string> names) {
       std::cout << std::format("{:<22} {:<24} {:>15}  {}\n", "library field", "mapped to", "noticed/tried",
                                alone ? "where (changes)" : "where (spellings)");
     }
-    const auto* row = std::ranges::find(kMappings, std::string_view(path), &Mapping::field);
+    const auto* const row = std::ranges::find(kMappings, std::string_view(path), &Mapping::field);
     std::vector<std::pair<std::string, std::uint64_t>> sorted(where.begin(), where.end());
     std::ranges::stable_sort(sorted, std::greater{}, &std::pair<std::string, std::uint64_t>::second);
     std::string top;

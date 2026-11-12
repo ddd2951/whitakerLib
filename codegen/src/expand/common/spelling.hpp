@@ -13,12 +13,12 @@ namespace expand {
 using ByLetter = std::array<std::vector<Form>, facts::kLetterCount>;
 
 // INFO: Same spelling, and which comes first, compared over the folded letter, so `iam` and `jam` are one spelling.
-[[nodiscard]] constexpr unsigned keyCharacter(char c) noexcept {
+[[nodiscard]] constexpr unsigned keyCharacter(const char c) {
   const int index = facts::letterIndex(c);
   return index < 0 ? 0u : static_cast<unsigned>(index) + 1u;
 }
 
-[[nodiscard]] constexpr bool spellingLess(std::string_view a, std::string_view b) noexcept {
+[[nodiscard]] constexpr bool spellingLess(const std::string_view a, const std::string_view b) {
   const std::size_t n = a.size() < b.size() ? a.size() : b.size();
   for (std::size_t i = 0; i < n; ++i) {
     const unsigned ca = keyCharacter(a[i]), cb = keyCharacter(b[i]);
@@ -28,7 +28,7 @@ using ByLetter = std::array<std::vector<Form>, facts::kLetterCount>;
   return a.size() < b.size();
 }
 
-[[nodiscard]] constexpr bool spellingEqual(std::string_view a, std::string_view b) noexcept {
+[[nodiscard]] constexpr bool spellingEqual(const std::string_view a, const std::string_view b) {
   if (a.size() != b.size())
     return false;
   for (std::size_t i = 0; i < a.size(); ++i)

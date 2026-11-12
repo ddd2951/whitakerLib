@@ -2,27 +2,33 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstring>
 #include <utility>
+#include <type_traits>
 
 namespace whitaker::parse {
 namespace {
 
-void addPackonReadings(Work& out, Text& text, std::string_view word) noexcept {
-  addAddonReadings(out, text, word, whitaker::packonReadings(word));
-}
+void addPackonReadings(Work& out, const std::string_view word) { whitaker::packonReadings(out, word); }
 
-[[nodiscard]] bool foldedEquals(std::string_view text, std::string_view fix) noexcept {
+[[nodiscard]] bool foldedEquals(const std::string_view text, const std::string_view fix) {
   return std::ranges::equal(text, fix, {}, facts::foldLetter);
 }
 
-[[nodiscard]] bool isDictionaryQuPronoun(const rel::Result& reading) noexcept {
-  return reading.grammar.part == latin::Part::PRON && reading.grammar.which == 1 &&
-         reading.dictionary < WHITAKER_GENERAL_RECORDS;
+[[nodiscard]] bool isDictionaryQuPronoun(const Reading& reading) {
+  return part(reading) == latin::Part::PRON && (reading.g[0] >> 4) == 1 &&
+         reading.entry < std::to_underlying(kFirstUnique);
 }
 
-void addQuPronounAfterTickon(Work& out, Text& text, std::string_view word) noexcept {
-  for (const rel::Addon& tickon : rel::addonsOf(latin::AddonKind::Tickon)) {
+void addQuPronounAfterTickon(Work& out, const std::string_view word) {
+  // NOTE: Every tickon starts with e, n or s (ec, ne, nescio, neu, seu, si); the return below relies on it.
+  // TODO: Have gen derive the tickons' first letters.
+  if (word.empty())
+    return;
+  if (const char first = facts::foldLetter(word[0]); first != 'e' && first != 'n' && first != 's')
+    return;
+  for (const rel::Addon& tickon : rel::addonsOf(latin::AddonKind::tickon)) {
     const std::string_view fix = tickon.fix;
     if (fix.empty() || word.size() <= fix.size() || !foldedEquals(word.substr(0, fix.size()), fix))
       continue;
@@ -32,9 +38,9 @@ void addQuPronounAfterTickon(Work& out, Text& text, std::string_view word) noexc
       continue;
 
     const int before = out.count;
-    addDictionaryReadings(out, text, base, isDictionaryQuPronoun);
+    addDictionaryReadings(out, base, isDictionaryQuPronoun);
     if (out.count == before)
-      addPackonReadings(out, text, base);
+      addPackonReadings(out, base);
     if (out.count != before) {
       prependAddon(out, before, tickon);
       return;
@@ -42,99 +48,116 @@ void addQuPronounAfterTickon(Work& out, Text& text, std::string_view word) noexc
   }
 }
 
-[[nodiscard]] bool declensionWithin(const WhitakerGrammar& g, const rel::Addon& tackon) noexcept {
+[[nodiscard]] bool declensionWithin(const latin::Analysis& g, const rel::Addon& tackon) {
   const auto which = tackon.target[0], variant = tackon.target[1];
-  return (g.which == which && (g.variant == variant || variant == 0)) || (which == 0 && variant == 0 && g.which != 9);
+  return (g.which.value == which && (g.variant.value == variant || variant == 0)) ||
+         (which == 0 && variant == 0 && g.which.value != 9);
 }
 
-[[nodiscard]] bool tackonAccepts(const Match& match, const rel::Addon& tackon) noexcept {
-  const bool samePart = match.grammar.part == std::to_underlying(tackon.targetPart);
+[[nodiscard]] bool tackonAccepts(const Match& match, const rel::Addon& tackon) {
+  const bool samePart = part(match) == tackon.targetPart;
   switch (tackon.targetPart) {
-  case latin::Part::X:
-    return true;
-  case latin::Part::ADJ:
-    return samePart;
-  case latin::Part::N:
-  case latin::Part::PRON:
-    return samePart && declensionWithin(match.grammar, tackon);
-  default:
-    return false;
+    case latin::Part::X:
+      return true;
+    case latin::Part::ADJ:
+      return samePart;
+    case latin::Part::N:
+    case latin::Part::PRON:
+      return samePart && declensionWithin(grammar(match), tackon);
+    case latin::Part::V:
+    case latin::Part::ADV:
+    case latin::Part::PREP:
+    case latin::Part::NUM:
+    case latin::Part::CONJ:
+    case latin::Part::INTERJ:
+    case latin::Part::PACK:
+    case latin::Part::SUPINE:
+    case latin::Part::VPAR:
+    case latin::Part::NONE:
+      break;
   }
+  return false;
 }
 
 struct Labels {
-  latin::Age age;
-  latin::Age entryAge;
-  latin::Frequency frequency;
-  latin::Frequency entryFrequency;
+  latin::Age age{};
+  latin::Age entryAge{};
+  latin::Frequency frequency{};
+  latin::Frequency entryFrequency{};
 };
+static_assert(std::is_trivially_copyable_v<Labels>);
 
-[[nodiscard]] Labels labelsOf(const Match& m) noexcept {
-  return {latin::Age{m.inflectionAge}, latin::Age{m.entry.age}, latin::Frequency{m.inflectionFrequency},
-          latin::Frequency{m.entry.frequency}};
+[[nodiscard]] Labels labelsOf(const Work& out, const Match& m) {
+  const auto d = rel::dictionary(m.entry);
+  return {age(out, m), d.age, frequency(out, m), d.frequency};
 }
 
 // NOTE: Returns whether it trimmed one.
-bool sweepOnlyWhatTackonTakes(Work& out, Text& text, std::string_view base, int before,
-                              const rel::Addon& tackon) noexcept {
+bool sweepOnlyWhatTackonTakes(Work& out, const std::string_view base, const int before, const rel::Addon& tackon) {
   std::array<char, facts::kMaxWordCharacters> folded{};
   for (std::size_t i = 0; i < base.size(); ++i)
     folded[i] = facts::foldLetter(base[i]);
   const rel::Run run = rel::trimmedReadingRange({folded.data(), base.size()});
-  if (run.empty())
+  if (rel::empty(run))
     return false;
   const int kept = out.count;
-  const Text::Checkpoint checkpoint = text.checkpoint();
-  for (std::uint32_t r = run.first; r < run.end(); ++r) {
+  std::array<bool, 256> notAllowed{};
+  for (std::uint32_t r = run.first; r < rel::end(run); ++r) {
     const rel::TrimmedReadingRecord record = rel::trimmedReading(r);
     Match match;
-    fillFromImage(match, text, base, rel::resultOf(record));
+    fillFromImage(out, match, base, rel::resultOf(record));
     if (!tackonAccepts(match, tackon))
       continue;
-    Match* added = newMatch(out);
+    Match* const added = newMatch(out);
     if (!added)
       break;
     *added = match;
-    added->whyTrimmed = record.kind;
+    notAllowed[static_cast<unsigned>(out.count - kept - 1)] = record.kind == rel::kTrimmedNotAllowed;
   }
-  facts::RarityEvidence evidence;
+  facts::RarityEvidence evidence{};
   for (int i = before; i < out.count; ++i) {
-    if (out.matches[i].entry.id >= WHITAKER_GENERAL_RECORDS)
+    if (out.matches[i].entry >= std::to_underlying(kFirstUnique))
       continue;
-    const Labels l = labelsOf(out.matches[i]);
+    const Labels l = labelsOf(out, out.matches[i]);
     evidence.count(l.age, l.entryAge, l.frequency, l.entryFrequency);
   }
   bool trimmed = false;
-  keepOnly(out, text, checkpoint, kept, [&](int i) {
-    const Labels l = labelsOf(out.matches[i]);
-    const bool drop = out.matches[i].whyTrimmed == rel::kTrimmedNotAllowed || evidence.drops(l.age, l.frequency);
+  keepOnly(out, kept, [&](const int i) {
+    const Labels l = labelsOf(out, out.matches[i]);
+    const bool drop = notAllowed[static_cast<unsigned>(i - kept)] || evidence.drops(l.age, l.frequency);
     trimmed = trimmed || drop;
     return !drop;
   });
   if (out.count != kept)
-    std::stable_sort(out.matches + before, out.matches + out.count, [](const Match& a, const Match& b) {
-      if (a.entry.id != b.entry.id)
-        return a.entry.id < b.entry.id;
-      return latin::listedBefore(analysisOf(a.grammar), std::strlen(a.ending), analysisOf(b.grammar),
-                                 std::strlen(b.ending));
+    std::stable_sort(out.matches + before, out.matches + out.count, [&out](const Match& a, const Match& b) {
+      if (a.entry != b.entry)
+        return a.entry < b.entry;
+      return latin::listedBefore(grammar(a), endingLength(out, a), grammar(b), endingLength(out, b));
     });
   return trimmed;
 }
 
-void addTackonReadings(Work& out, Text& text, std::string_view word, Stage stage) noexcept {
-  for (const rel::Addon& tackon : rel::addonsOf(latin::AddonKind::Tackon).subspan(kEncliticTackons)) {
+void addTackonReadings(Work& out, const std::string_view word, const Stage stage) {
+  if (word.empty())
+    return;
+  // INFO: withoutTackon compares the folded word with the fix as stored, so only fixes ending in the folded last
+  //  letter.
+  const auto tackons = rel::addonsOf(latin::AddonKind::tackon);
+  std::uint64_t todo = rel::kTackonsEndingIn[static_cast<unsigned char>(facts::foldLetter(word.back()))] &
+                       ~((std::uint64_t{1} << kEncliticTackons) - 1);
+  for (; todo; todo &= todo - 1) {
+    const rel::Addon& tackon = tackons[static_cast<std::size_t>(std::countr_zero(todo))];
     const std::string_view base = withoutTackon(word, tackon);
     if (base.empty())
       continue;
     const int before = out.count;
     const std::uint8_t trimmed = out.trimmed;
-    const Text::Checkpoint checkpoint = text.checkpoint();
-    addWordReadings(out, text, base, stage);
-    keepOnly(out, text, checkpoint, before, [&](int i) { return tackonAccepts(out.matches[i], tackon); });
+    addWordReadings(out, base, stage);
+    keepOnly(out, before, [&](const int i) { return tackonAccepts(out.matches[i], tackon); });
     // NOTE: The image keeps trimmed readings for PRON and ADJ only.
     const bool sweeps =
-        stage == Stage::Dictionary && (tackon.targetPart == latin::Part::PRON || tackon.targetPart == latin::Part::ADJ);
-    const bool swept = sweeps && sweepOnlyWhatTackonTakes(out, text, base, before, tackon);
+        stage == Stage::dictionary && (tackon.targetPart == latin::Part::PRON || tackon.targetPart == latin::Part::ADJ);
+    const bool swept = sweeps && sweepOnlyWhatTackonTakes(out, base, before, tackon);
     // NOTE: Readings the tackon rejects are not trimmed: no "*" from them.
     if (out.count == before) {
       out.trimmed = trimmed;
@@ -149,24 +172,24 @@ void addTackonReadings(Work& out, Text& text, std::string_view word, Stage stage
 
 } // namespace
 
-[[nodiscard]] std::string_view withoutTackon(std::string_view word, const rel::Addon& tackon) noexcept {
+[[nodiscard]] std::string_view withoutTackon(const std::string_view word, const rel::Addon& tackon) {
   const std::string_view fix = tackon.fix;
   if (fix.empty() || word.size() <= fix.size() || !foldedEquals(word.substr(word.size() - fix.size()), fix))
     return {};
   return word.substr(0, word.size() - fix.size());
 }
 
-void addWordReadings(Work& out, Text& text, std::string_view word, Stage stage) noexcept {
+void addWordReadings(Work& out, const std::string_view word, const Stage stage) {
   const int before = out.count;
-  if (stage == Stage::Dictionary) {
-    addDictionaryReadings(out, text, word);
-    addQuPronounAfterTickon(out, text, word);
-    addPackonReadings(out, text, word);
+  if (stage == Stage::dictionary) {
+    addDictionaryReadings(out, word);
+    addQuPronounAfterTickon(out, word);
+    addPackonReadings(out, word);
   } else {
-    addAddonReadings(out, text, word, whitaker::affixReadings(word));
+    whitaker::affixReadings(out, word);
   }
   if (out.count == before)
-    addTackonReadings(out, text, word, stage);
+    addTackonReadings(out, word, stage);
 }
 
 } // namespace whitaker::parse

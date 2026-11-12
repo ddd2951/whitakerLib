@@ -20,7 +20,7 @@ void write(const fs::path& path, const std::function<void(std::ostream&)>& fill)
 
 namespace {
 
-std::vector<std::string> responses(const std::string& out, std::size_t tokens) {
+std::vector<std::string> responses(const std::string& out, const std::size_t tokens) {
   std::vector<std::string> got;
   auto at = out.find("\n=>");
   while (at != std::string::npos && got.size() < tokens) {
@@ -59,7 +59,7 @@ std::map<std::string, std::string> readSharedAnswers(const fs::path& captures) {
 } // namespace
 
 std::map<std::string, Seen> load(const fs::path& captures, std::vector<std::string>& names, std::uint64_t& bookTokens,
-                                 bool skipIncomplete) {
+                                 const bool skipIncomplete) {
   if (names.empty())
     for (const auto& e : fs::directory_iterator(captures))
       if (fs::is_regular_file(e.path() / "tokens"))

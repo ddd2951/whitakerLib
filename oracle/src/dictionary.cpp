@@ -28,7 +28,7 @@ std::string readFile(const fs::path& path) {
 }
 
 std::vector<std::string_view> fileLines(std::string_view text) {
-  std::vector<std::string_view> out;
+  std::vector<std::string_view> out{};
   while (!text.empty()) {
     const auto end = text.find('\n');
     out.push_back(text.substr(0, end));
@@ -45,7 +45,7 @@ std::string trim(std::string_view s) {
   return std::string(s);
 }
 
-std::pair<std::size_t, std::size_t> token(std::string_view s, std::size_t at) {
+std::pair<std::size_t, std::size_t> token(const std::string_view s, std::size_t at) {
   while (at < s.size() && s[at] == ' ')
     ++at;
   auto end = at;
@@ -56,7 +56,7 @@ std::pair<std::size_t, std::size_t> token(std::string_view s, std::size_t at) {
   return {at, end};
 }
 
-int number(std::string_view s) {
+int number(const std::string_view s) {
   int n = 0;
   if (std::from_chars(s.data(), s.data() + s.size(), n).ec != std::errc{})
     throw std::runtime_error("not a number: " + std::string(s));
@@ -65,8 +65,8 @@ int number(std::string_view s) {
 
 // INFO: makedict: the four stem columns, then Part_Entry_IO.Get, the five codes, a spacer and the meaning (Head (S (L +
 //  2 .. Last), 80): blanks after the spacer are kept).
-Record dictlineRecord(std::string_view line) {
-  Record r;
+Record dictlineRecord(const std::string_view line) {
+  Record r{};
   for (std::size_t k = 0; k < 4; ++k)
     r.stems[k] = trim(line.substr(std::min(line.size(), k * (kStemSize + 1)), kStemSize));
   auto at = std::min(line.size(), kPartColumn);
@@ -104,8 +104,8 @@ Record dictlineRecord(std::string_view line) {
 
 // INFO: Load_Uniques (support_utils-line_stuff.adb): the word as the only stem, the part entry from the qualifier and
 //  kind; codes and meaning as DICTLINE has them.
-Record uniqueRecord(std::string_view word, std::string_view qualifier, std::string_view meaning) {
-  Record r;
+Record uniqueRecord(const std::string_view word, const std::string_view qualifier, const std::string_view meaning) {
+  Record r{};
   r.stems[0] = trim(word);
   std::size_t at = 0;
   const auto next = [&] {
@@ -141,32 +141,32 @@ Record uniqueRecord(std::string_view word, std::string_view qualifier, std::stri
 
 Dictionary::Dictionary(const fs::path& data) {
   const auto dictline = readFile(data / "DICTLINE.GEN");
-  for (auto line : fileLines(dictline))
+  for (const auto line : fileLines(dictline))
     // INFO: makedict skips blank lines only
     if (!trim(line).empty())
-      m_records.push_back(dictlineRecord(line));
+      records.push_back(dictlineRecord(line));
   // INFO: makedict's ESSE, after DICTLINE: (V, Be_Ve), stems s, -, fu, fut.
-  Record esse;
+  Record esse{};
   esse.stems = {"s", "", "fu", "fut"};
   esse.part = "V", esse.which = 5, esse.variant = 1, esse.kind = "TO_BE", esse.codes = "XXXAX";
   esse.meaning = "be; exist; (also used to form verb perfect passive tenses) with NOM PERF PPL";
-  m_records.push_back(esse);
-  m_general = m_records.size();
+  records.push_back(esse);
+  generalCount = records.size();
   // INFO: UNIQUES.LAT: the word, its qualifier, kind and codes, its meaning.
   const auto uniqueText = readFile(data / "UNIQUES.LAT");
   const auto uniques = fileLines(uniqueText);
   for (std::size_t i = 0; i + 2 < uniques.size(); i += 3)
-    m_records.push_back(uniqueRecord(uniques[i], uniques[i + 1], uniques[i + 2]));
+    records.push_back(uniqueRecord(uniques[i], uniques[i + 1], uniques[i + 2]));
 }
 
-const Record* Dictionary::record(std::uint16_t id) const { return id < m_records.size() ? &m_records[id] : nullptr; }
+const Record* Dictionary::record(const std::uint16_t id) const { return id < records.size() ? &records[id] : nullptr; }
 
 // INFO: Support_Utils.Dictionary_Form (support_utils-dictionaryForm.adb), line for line: Ox (1 .. 4) are the principal
 //  parts, "" for Null_Ox; Not_Found is "".
 std::string dictionaryForm(const Record& de) {
-  std::array<std::string, 4> ox;
+  std::array<std::string, 4> ox{};
   // INFO: Add: Head (Trim (Stem) & Trim (Infl), 24)
-  const auto add = [](std::string_view stem, std::string_view infl) {
+  const auto add = [](const std::string_view stem, const std::string_view infl) {
     auto s = trim(stem) + trim(infl);
     if (s.size() > 24)
       s.resize(24);
@@ -175,8 +175,8 @@ std::string dictionaryForm(const Record& de) {
   const auto& st = de.stems;
   const auto& p = de.part;
   const int w = de.which, v = de.variant;
-  const std::string none;
-  static constexpr std::array<std::string_view, 5> kFst{"1st", "2nd", "3rd", "4th", "5th"};
+  const std::string none{};
+  static constexpr std::array<std::string_view, 5> ordinals{"1st", "2nd", "3rd", "4th", "5th"};
 
   if (p == "PREP")
     return st[0] + "  PREP  " + de.object;
@@ -187,105 +187,105 @@ std::string dictionaryForm(const Record& de) {
 
   if (p == "N") {
     switch (w) {
-    case 1:
-      if (v == 1)
-        ox[0] = add(st[0], "a"), ox[1] = add(st[1], "ae");
-      else if (v == 6)
-        ox[0] = add(st[0], "e"), ox[1] = add(st[1], "es");
-      else if (v == 7)
-        ox[0] = add(st[0], "es"), ox[1] = add(st[1], "ae");
-      else if (v == 8)
-        ox[0] = add(st[0], "as"), ox[1] = add(st[1], "ae");
-      break;
-    case 2:
-      switch (v) {
       case 1:
-        ox[0] = add(st[0], "us"), ox[1] = add(st[1], "i");
+        if (v == 1)
+          ox[0] = add(st[0], "a"), ox[1] = add(st[1], "ae");
+        else if (v == 6)
+          ox[0] = add(st[0], "e"), ox[1] = add(st[1], "es");
+        else if (v == 7)
+          ox[0] = add(st[0], "es"), ox[1] = add(st[1], "ae");
+        else if (v == 8)
+          ox[0] = add(st[0], "as"), ox[1] = add(st[1], "ae");
         break;
       case 2:
-        ox[0] = add(st[0], "um"), ox[1] = add(st[1], "i");
+        switch (v) {
+          case 1:
+            ox[0] = add(st[0], "us"), ox[1] = add(st[1], "i");
+            break;
+          case 2:
+            ox[0] = add(st[0], "um"), ox[1] = add(st[1], "i");
+            break;
+          case 3:
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "i");
+            break;
+          case 4:
+            ox[0] = add(st[0], de.gender == "N" ? "um" : "us"), ox[1] = add(st[1], "(i)");
+            break;
+          case 5:
+            ox[0] = add(st[0], "us"), ox[1] = add(st[1], "");
+            break;
+          case 6:
+            ox[0] = add(st[0], "os"), ox[1] = add(st[1], "i");
+            break;
+          case 7:
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "yos/i");
+            break;
+          case 8:
+            ox[0] = add(st[0], "on"), ox[1] = add(st[1], "i");
+            break;
+          case 9:
+            ox[0] = add(st[0], "us"), ox[1] = add(st[1], "i");
+            break;
+          default:
+            break;
+        }
         break;
       case 3:
-        ox[0] = add(st[0], ""), ox[1] = add(st[1], "i");
+        ox[0] = add(st[0], "");
+        ox[1] = add(st[1], v == 7 || v == 9 ? "os/is" : "is");
         break;
       case 4:
-        ox[0] = add(st[0], de.gender == "N" ? "um" : "us"), ox[1] = add(st[1], "(i)");
+        if (v == 1)
+          ox[0] = add(st[0], "us"), ox[1] = add(st[1], "us");
+        else if (v == 2)
+          ox[0] = add(st[0], "u"), ox[1] = add(st[1], "us");
+        else if (v == 3)
+          ox[0] = add(st[0], "us"), ox[1] = add(st[1], "u");
+        else if (v == 4)
+          ox[0] = add(st[0], ""), ox[1] = add(st[1], "u");
         break;
       case 5:
-        ox[0] = add(st[0], "us"), ox[1] = add(st[1], "");
-        break;
-      case 6:
-        ox[0] = add(st[0], "os"), ox[1] = add(st[1], "i");
-        break;
-      case 7:
-        ox[0] = add(st[0], ""), ox[1] = add(st[1], "yos/i");
-        break;
-      case 8:
-        ox[0] = add(st[0], "on"), ox[1] = add(st[1], "i");
+        ox[0] = add(st[0], "es"), ox[1] = add(st[1], "ei");
         break;
       case 9:
-        ox[0] = add(st[0], "us"), ox[1] = add(st[1], "i");
+        if (v == 8)
+          ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
+        else if (v == 9)
+          ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
         break;
       default:
-        break;
-      }
-      break;
-    case 3:
-      ox[0] = add(st[0], "");
-      ox[1] = add(st[1], v == 7 || v == 9 ? "os/is" : "is");
-      break;
-    case 4:
-      if (v == 1)
-        ox[0] = add(st[0], "us"), ox[1] = add(st[1], "us");
-      else if (v == 2)
-        ox[0] = add(st[0], "u"), ox[1] = add(st[1], "us");
-      else if (v == 3)
-        ox[0] = add(st[0], "us"), ox[1] = add(st[1], "u");
-      else if (v == 4)
-        ox[0] = add(st[0], ""), ox[1] = add(st[1], "u");
-      break;
-    case 5:
-      ox[0] = add(st[0], "es"), ox[1] = add(st[1], "ei");
-      break;
-    case 9:
-      if (v == 8)
-        ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
-      else if (v == 9)
-        ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
-      break;
-    default:
-      return "";
+        return "";
     }
   } else if (p == "PRON") {
     switch (w) {
-    case 3:
-      ox[0] = add(st[0], "ic"), ox[1] = add(st[0], "aec");
-      if (v == 1)
-        ox[2] = add(st[0], "oc");
-      else if (v == 2)
-        ox[2] = add(st[0], "uc");
-      break;
-    case 4:
-      if (v == 1)
-        ox[0] = add(st[0], "s"), ox[1] = add(st[1], "a"), ox[2] = add(st[0], "d");
-      else if (v == 2)
-        ox[0] = add(st[0], "dem"), ox[1] = add(st[1], "adem"), ox[2] = add(st[0], "dem");
-      break;
-    case 6:
-      ox[0] = add(st[0], "e"), ox[1] = add(st[0], "a");
-      if (v == 1)
-        ox[2] = add(st[0], "ud");
-      else if (v == 2)
-        ox[2] = add(st[0], "um");
-      break;
-    case 9:
-      if (v == 8)
-        ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
-      else if (v == 9)
-        ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
-      break;
-    default:
-      return "";
+      case 3:
+        ox[0] = add(st[0], "ic"), ox[1] = add(st[0], "aec");
+        if (v == 1)
+          ox[2] = add(st[0], "oc");
+        else if (v == 2)
+          ox[2] = add(st[0], "uc");
+        break;
+      case 4:
+        if (v == 1)
+          ox[0] = add(st[0], "s"), ox[1] = add(st[1], "a"), ox[2] = add(st[0], "d");
+        else if (v == 2)
+          ox[0] = add(st[0], "dem"), ox[1] = add(st[1], "adem"), ox[2] = add(st[0], "dem");
+        break;
+      case 6:
+        ox[0] = add(st[0], "e"), ox[1] = add(st[0], "a");
+        if (v == 1)
+          ox[2] = add(st[0], "ud");
+        else if (v == 2)
+          ox[2] = add(st[0], "um");
+        break;
+      case 9:
+        if (v == 8)
+          ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
+        else if (v == 9)
+          ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
+        break;
+      default:
+        return "";
     }
   } else if (p == "ADJ") {
     if (de.comparison == "COMP") {
@@ -295,63 +295,63 @@ std::string dictionaryForm(const Record& de) {
     } else if (de.comparison == "POS") {
       if (w == 1) {
         switch (v) {
-        case 1:
-          ox[0] = add(st[0], "us"), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um");
-          break;
-        case 2:
-          ox[0] = add(st[0], ""), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um");
-          break;
-        case 3:
-          ox[0] = add(st[0], "us"), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um (gen -ius)");
-          break;
-        case 4:
-          ox[0] = add(st[0], ""), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um");
-          break;
-        case 5:
-          ox[0] = add(st[0], "us"), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "ud");
-          break;
-        default:
-          return "";
+          case 1:
+            ox[0] = add(st[0], "us"), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um");
+            break;
+          case 2:
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um");
+            break;
+          case 3:
+            ox[0] = add(st[0], "us"), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um (gen -ius)");
+            break;
+          case 4:
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "um");
+            break;
+          case 5:
+            ox[0] = add(st[0], "us"), ox[1] = add(st[1], "a"), ox[2] = add(st[1], "ud");
+            break;
+          default:
+            return "";
         }
       } else if (w == 2) {
         switch (v) {
-        case 1:
-          ox[0] = add(none, "-"), ox[1] = add(st[0], "e"), ox[2] = add(none, "-");
-          break;
-        case 2:
-          ox[0] = add(none, "-"), ox[1] = add(none, "a"), ox[2] = add(none, "-");
-          break;
-        case 3:
-          ox[0] = add(st[0], "es"), ox[1] = add(st[0], "es"), ox[2] = add(st[0], "es");
-          break;
-        case 6:
-          ox[0] = add(st[0], "os"), ox[1] = add(st[0], "os"), ox[2] = add(none, "-");
-          break;
-        case 7:
-          ox[0] = add(st[0], "os"), ox[1] = add(none, "-"), ox[2] = add(none, "-");
-          break;
-        case 8:
-          ox[0] = add(none, "-"), ox[1] = add(none, "-"), ox[2] = add(st[1], "on");
-          break;
-        default:
-          break;
+          case 1:
+            ox[0] = add(none, "-"), ox[1] = add(st[0], "e"), ox[2] = add(none, "-");
+            break;
+          case 2:
+            ox[0] = add(none, "-"), ox[1] = add(none, "a"), ox[2] = add(none, "-");
+            break;
+          case 3:
+            ox[0] = add(st[0], "es"), ox[1] = add(st[0], "es"), ox[2] = add(st[0], "es");
+            break;
+          case 6:
+            ox[0] = add(st[0], "os"), ox[1] = add(st[0], "os"), ox[2] = add(none, "-");
+            break;
+          case 7:
+            ox[0] = add(st[0], "os"), ox[1] = add(none, "-"), ox[2] = add(none, "-");
+            break;
+          case 8:
+            ox[0] = add(none, "-"), ox[1] = add(none, "-"), ox[2] = add(st[1], "on");
+            break;
+          default:
+            break;
         }
       } else if (w == 3) {
         switch (v) {
-        case 1:
-          ox[0] = add(st[0], ""), ox[1] = add(none, "(gen.)"), ox[2] = add(st[1], "is");
-          break;
-        case 2:
-          ox[0] = add(st[0], "is"), ox[1] = add(st[1], "is"), ox[2] = add(st[1], "e");
-          break;
-        case 3:
-          ox[0] = add(st[0], ""), ox[1] = add(st[1], "is"), ox[2] = add(st[1], "e");
-          break;
-        case 6:
-          ox[0] = add(st[0], ""), ox[1] = add(none, "(gen.)"), ox[2] = add(st[1], "os");
-          break;
-        default:
-          break;
+          case 1:
+            ox[0] = add(st[0], ""), ox[1] = add(none, "(gen.)"), ox[2] = add(st[1], "is");
+            break;
+          case 2:
+            ox[0] = add(st[0], "is"), ox[1] = add(st[1], "is"), ox[2] = add(st[1], "e");
+            break;
+          case 3:
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "is"), ox[2] = add(st[1], "e");
+            break;
+          case 6:
+            ox[0] = add(st[0], ""), ox[1] = add(none, "(gen.)"), ox[2] = add(st[1], "os");
+            break;
+          default:
+            break;
         }
       } else if (w == 9 && v == 8) {
         ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
@@ -362,28 +362,28 @@ std::string dictionaryForm(const Record& de) {
       }
     } else if (de.comparison == "X") {
       switch (w) {
-      case 1:
-        if (v == 1 || v == 2) {
-          ox[0] = add(st[0], v == 1 ? "us" : ""), ox[1] = add(st[1], "a -um");
+        case 1:
+          if (v == 1 || v == 2) {
+            ox[0] = add(st[0], v == 1 ? "us" : ""), ox[1] = add(st[1], "a -um");
+            ox[2] = add(st[2], "or -or -us"), ox[3] = add(st[3], "mus -a -um");
+          }
+          break;
+        case 3:
+          if (v == 1)
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "is (gen.)");
+          else if (v == 2)
+            ox[0] = add(st[0], "is"), ox[1] = add(st[1], "e");
+          else if (v == 3)
+            ox[0] = add(st[0], ""), ox[1] = add(st[1], "is -e");
+          if (v >= 1 && v <= 3)
+            ox[2] = add(st[2], "or -or -us"), ox[3] = add(st[3], "mus -a -um");
+          break;
+        case 9:
+          ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
           ox[2] = add(st[2], "or -or -us"), ox[3] = add(st[3], "mus -a -um");
-        }
-        break;
-      case 3:
-        if (v == 1)
-          ox[0] = add(st[0], ""), ox[1] = add(st[1], "is (gen.)");
-        else if (v == 2)
-          ox[0] = add(st[0], "is"), ox[1] = add(st[1], "e");
-        else if (v == 3)
-          ox[0] = add(st[0], ""), ox[1] = add(st[1], "is -e");
-        if (v >= 1 && v <= 3)
-          ox[2] = add(st[2], "or -or -us"), ox[3] = add(st[3], "mus -a -um");
-        break;
-      case 9:
-        ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
-        ox[2] = add(st[2], "or -or -us"), ox[3] = add(st[3], "mus -a -um");
-        break;
-      default:
-        return "";
+          break;
+        default:
+          return "";
       }
     }
   } else if (p == "ADV" && de.comparison == "X") {
@@ -427,49 +427,49 @@ std::string dictionaryForm(const Record& de) {
         ox[0] = add(st[0], "o");
       }
       switch (w) {
-      case 1:
-        ox[1] = add(st[1], "are");
-        break;
-      case 2:
-        ox[1] = add(st[1], "ere");
-        break;
-      case 3:
-        if (v == 2)
-          ox[1] = add(st[1], "re");
-        else if (v == 3)
-          ox[1] = add(st[1], st[1] == "f" ? "ieri" : "eri");
-        else if (v == 4)
-          ox[1] = add(st[1], "ire");
-        else
+        case 1:
+          ox[1] = add(st[1], "are");
+          break;
+        case 2:
           ox[1] = add(st[1], "ere");
-        break;
-      case 5:
-        if (v == 1)
-          ox[1] = add(st[1], "esse");
-        else if (v == 2)
-          ox[1] = add(st[0], "e");
-        break;
-      case 6:
-        if (v == 1)
-          ox[1] = add(st[1], "re");
-        else if (v == 2)
-          ox[1] = add(st[1], "le");
-        break;
-      case 7:
-        if (v == 3)
-          ox[1] = add(st[1], "se");
-        break;
-      case 8:
-        ox[1] = add(st[1], v == 1 ? "are" : v == 4 ? "ire" : "ere");
-        break;
-      case 9:
-        if (v == 8)
-          ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
-        else if (v == 9)
-          ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
-        break;
-      default:
-        break;
+          break;
+        case 3:
+          if (v == 2)
+            ox[1] = add(st[1], "re");
+          else if (v == 3)
+            ox[1] = add(st[1], st[1] == "f" ? "ieri" : "eri");
+          else if (v == 4)
+            ox[1] = add(st[1], "ire");
+          else
+            ox[1] = add(st[1], "ere");
+          break;
+        case 5:
+          if (v == 1)
+            ox[1] = add(st[1], "esse");
+          else if (v == 2)
+            ox[1] = add(st[0], "e");
+          break;
+        case 6:
+          if (v == 1)
+            ox[1] = add(st[1], "re");
+          else if (v == 2)
+            ox[1] = add(st[1], "le");
+          break;
+        case 7:
+          if (v == 3)
+            ox[1] = add(st[1], "se");
+          break;
+        case 8:
+          ox[1] = add(st[1], v == 1 ? "are" : v == 4 ? "ire" : "ere");
+          break;
+        case 9:
+          if (v == 8)
+            ox[0] = add(st[0], "."), ox[1] = add(none, "abb.");
+          else if (v == 9)
+            ox[0] = add(st[0], ""), ox[1] = add(none, "undeclined");
+          break;
+        default:
+          break;
       }
       if (k == "IMPERS") {
         if (!ox[2].starts_with("PERFDEF"))
@@ -492,7 +492,7 @@ std::string dictionaryForm(const Record& de) {
       ox[2] = add(ox[2], " (ii)");
   } else if (p == "NUM" && de.kind == "X") {
     if (w == 1) {
-      static constexpr std::array<std::array<std::string_view, 4>, 4> kEnd{{
+      static constexpr std::array<std::array<std::string_view, 4>, 4> endings{{
           {"us -a -um", "us -a -um", "i -ae -a", ""},
           {"o -ae o", "us -a -um", "i -ae -a", ""},
           {"es -es -ia", "us -a -um", "i -ae -a", ""},
@@ -500,14 +500,14 @@ std::string dictionaryForm(const Record& de) {
       }};
       if (v >= 1 && v <= 4)
         for (std::size_t i = 0; i < 4; ++i)
-          ox[i] = add(st[i], kEnd[static_cast<std::size_t>(v - 1)][i]);
+          ox[i] = add(st[i], endings[static_cast<std::size_t>(v - 1)][i]);
     } else if (w == 2) {
       ox[0] = add(st[0], ""), ox[1] = add(st[1], "us -a -um"), ox[2] = add(st[2], "i -ae -a"),
       ox[3] = add(st[3], "ie (n)s");
     }
   } else if (p == "NUM" && de.kind == "CARD") {
     if (w == 1) {
-      static constexpr std::array<std::array<std::string_view, 3>, 4> kEnd{{
+      static constexpr std::array<std::array<std::string_view, 3>, 4> endings{{
           {"us", "a", "um"},
           {"o", "ae", "o"},
           {"es", "es", "ia"},
@@ -515,7 +515,7 @@ std::string dictionaryForm(const Record& de) {
       }};
       if (v >= 1 && v <= 4)
         for (std::size_t i = 0; i < 3; ++i)
-          ox[i] = add(st[0], kEnd[static_cast<std::size_t>(v - 1)][i]);
+          ox[i] = add(st[0], endings[static_cast<std::size_t>(v - 1)][i]);
     } else if (w == 2) {
       ox[0] = add(st[0], "");
     }
@@ -529,13 +529,13 @@ std::string dictionaryForm(const Record& de) {
 
   // INFO: Now clean up and output. Add_Up trims what it adds, Add_To does not; both trim the form first, which may hold
   //  at most 100 characters.
-  std::string form;
+  std::string form{};
   const auto cap = [&] {
     if (form.size() > 100)
       form.resize(100);
   };
-  const auto addUp = [&](std::string_view factor) { form = trim(form) + trim(factor), cap(); };
-  const auto addTo = [&](std::string_view factor) { form = trim(form) + std::string(factor), cap(); };
+  const auto addUp = [&](const std::string_view factor) { form = trim(form) + trim(factor), cap(); };
+  const auto addTo = [&](const std::string_view factor) { form = trim(form) + std::string(factor), cap(); };
   if (ox[0].starts_with("zzz"))
     addUp(" - ");
   else if (!ox[0].empty())
@@ -558,19 +558,19 @@ std::string dictionaryForm(const Record& de) {
   addTo("  " + p + "  ");
   if (p == "N") {
     if (w >= 1 && w <= 5 && v >= 1 && v <= 5)
-      addTo(std::format(" ({})", kFst[static_cast<std::size_t>(w - 1)]));
+      addTo(std::format(" ({})", ordinals[static_cast<std::size_t>(w - 1)]));
     addTo(" " + de.gender + "  ");
   }
   if (p == "V") {
     if (w >= 1 && w <= 3) {
       if (v == 1)
-        addTo(std::format(" ({})", kFst[static_cast<std::size_t>(w - 1)]));
+        addTo(std::format(" ({})", ordinals[static_cast<std::size_t>(w - 1)]));
       else if (w == 3 && v == 4)
         addTo(" (4th)");
     }
-    static constexpr std::array<std::string_view, 9> kShown{"GEN",    "DAT", "ABL",     "TRANS",  "INTRANS",
-                                                            "IMPERS", "DEP", "SEMIDEP", "PERFDEF"};
-    if (std::ranges::contains(kShown, std::string_view(de.kind)))
+    static constexpr std::array<std::string_view, 9> shownKinds{"GEN",    "DAT", "ABL",     "TRANS",  "INTRANS",
+                                                                "IMPERS", "DEP", "SEMIDEP", "PERFDEF"};
+    if (std::ranges::contains(shownKinds, std::string_view(de.kind)))
       addTo(" " + de.kind + "  ");
   }
   return trim(form);

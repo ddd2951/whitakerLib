@@ -1,6 +1,7 @@
 #pragma once
 
 #include "facts.hpp"
+#include "src/search/two_ended_schema.hpp"
 #include "expand/common/reading.hpp"
 #include "expand/common/stem_column.hpp"
 #include "latin.hpp"
@@ -15,42 +16,42 @@
 
 namespace emitter {
 
-[[nodiscard]] inline std::string normalize(std::string_view text) {
+[[nodiscard]] inline std::string normalize(const std::string_view text) {
   std::string result{text};
   for (char& c : result)
     c = facts::foldLetter(c);
   return result;
 }
 
-[[nodiscard]] inline latin::Comparison advComparisonFromKey(latin::StemKey key) noexcept {
+[[nodiscard]] inline latin::Comparison advComparisonFromKey(const latin::StemKey key) {
   switch (key.value) {
-  case 1:
-    return latin::Comparison::POS;
-  case 2:
-    return latin::Comparison::COMP;
-  case 3:
-    return latin::Comparison::SUPER;
-  default:
-    return latin::Comparison::X;
+    case 1:
+      return latin::Comparison::POS;
+    case 2:
+      return latin::Comparison::COMP;
+    case 3:
+      return latin::Comparison::SUPER;
+    default:
+      return latin::Comparison::X;
   }
 }
 
-[[nodiscard]] inline latin::NumeralSort numeralSortFromKey(latin::StemKey key) noexcept {
+[[nodiscard]] inline latin::NumeralSort numeralSortFromKey(const latin::StemKey key) {
   switch (key.value) {
-  case 1:
-    return latin::NumeralSort::CARD;
-  case 2:
-    return latin::NumeralSort::ORD;
-  case 3:
-    return latin::NumeralSort::DIST;
-  case 4:
-    return latin::NumeralSort::ADVERB;
-  default:
-    return latin::NumeralSort::X;
+    case 1:
+      return latin::NumeralSort::CARD;
+    case 2:
+      return latin::NumeralSort::ORD;
+    case 3:
+      return latin::NumeralSort::DIST;
+    case 4:
+      return latin::NumeralSort::ADVERB;
+    default:
+      return latin::NumeralSort::X;
   }
 }
 
-[[nodiscard]] inline bool isDegree(latin::Comparison comparison) noexcept {
+[[nodiscard]] inline bool isDegree(const latin::Comparison comparison) {
   return comparison == latin::Comparison::POS || comparison == latin::Comparison::COMP ||
          comparison == latin::Comparison::SUPER;
 }
@@ -59,17 +60,17 @@ using latin::partOf;
 
 // INFO: Wildcard matches retain the dictionary's concrete grammar values.
 [[nodiscard]] inline latin::Analysis analysisOf(const latin::Entry& dictionary, const latin::Inflection& inflection,
-                                                latin::StemKey key) {
+                                                const latin::StemKey key) {
   latin::Analysis analysis{.part = partOf(inflection)};
   const bool adverbFix = analysis.part == latin::Part::ADV && partOf(dictionary) != latin::Part::ADV;
   if (!adverbFix)
     std::visit(
         [&](const auto& value) {
           if constexpr (requires { value.declension; }) {
-            analysis.which = value.declension.value;
+            analysis.which = {value.declension.value};
             analysis.variant = value.declensionVariant;
           } else if constexpr (requires { value.conjugation; }) {
-            analysis.which = value.conjugation.value;
+            analysis.which = {value.conjugation.value};
             analysis.variant = value.conjugationVariant;
           }
         },
@@ -87,39 +88,39 @@ using latin::partOf;
       inflection);
 
   switch (analysis.part) {
-  case latin::Part::N:
-    analysis.gender = std::get<latin::Noun>(dictionary).gender;
-    break;
-  case latin::Part::ADJ:
-    analysis.comparison = expand::internal::adjectiveDegree(std::get<latin::Adjective>(dictionary), key);
-    break;
-  case latin::Part::NUM: {
-    const latin::NumeralSort declared = std::get<latin::Numeral>(dictionary).numeralSort;
-    analysis.numeralSort = declared == latin::NumeralSort::X ? numeralSortFromKey(key) : declared;
-    break;
-  }
-  case latin::Part::ADV:
-    if (!adverbFix) {
-      const latin::Comparison declared = std::get<latin::Adverb>(dictionary).comparison;
-      analysis.comparison = isDegree(declared) ? declared : advComparisonFromKey(key);
+    case latin::Part::N:
+      analysis.gender = std::get<latin::Noun>(dictionary).gender;
+      break;
+    case latin::Part::ADJ:
+      analysis.comparison = expand::internal::adjectiveDegree(std::get<latin::Adjective>(dictionary), key);
+      break;
+    case latin::Part::NUM: {
+      const latin::NumeralSort declared = std::get<latin::Numeral>(dictionary).numeralSort;
+      analysis.numeralSort = declared == latin::NumeralSort::X ? numeralSortFromKey(key) : declared;
+      break;
     }
-    break;
-  default:
-    break;
+    case latin::Part::ADV:
+      if (!adverbFix) {
+        const latin::Comparison declared = std::get<latin::Adverb>(dictionary).comparison;
+        analysis.comparison = isDegree(declared) ? declared : advComparisonFromKey(key);
+      }
+      break;
+    case latin::Part::X:
+    case latin::Part::PRON:
+    case latin::Part::V:
+    case latin::Part::PREP:
+    case latin::Part::CONJ:
+    case latin::Part::INTERJ:
+    case latin::Part::PACK:
+    case latin::Part::SUPINE:
+    case latin::Part::VPAR:
+    case latin::Part::NONE:
+      break;
   }
   return analysis;
 }
 
-// INFO: List_Sweep's last loop.
-[[nodiscard]] inline latin::Analysis printed(latin::Analysis analysis) noexcept {
-  if (analysis.part == latin::Part::PRON && analysis.which == 1)
-    analysis.variant = {};
-  if (analysis.part == latin::Part::V && analysis.which == 3 && analysis.variant.value == 4) {
-    analysis.which = 4;
-    analysis.variant.value = 1;
-  }
-  return analysis;
-}
+using whitaker::two_ended::printed;
 
 [[nodiscard]] inline std::string describe(const latin::Analysis& analysis) {
   std::string text(latin::describe(analysis, nullptr, 0), '\0');
@@ -128,10 +129,11 @@ using latin::partOf;
 }
 
 struct Rendered {
-  std::string_view orth;
-  std::string_view meaning;
-  latin::Analysis analysis;
+  std::string_view orth{};
+  std::string_view meaning{};
+  latin::Analysis analysis{};
 };
+static_assert(std::is_trivially_copyable_v<Rendered>);
 
 [[nodiscard]] inline Rendered render(const expand::Reading& reading) {
   const latin::Analysis analysis = printed(analysisOf(reading.entry, reading.inflection, reading.key));

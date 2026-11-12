@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <meta>
 #include <optional>
@@ -11,19 +13,45 @@
 
 namespace util {
 
+// INFO: A number as decimal text, at compile time.
+consteval std::string decimal(unsigned value) {
+  std::string out{};
+  do {
+    out += static_cast<char>('0' + value % 10);
+    value /= 10;
+  } while (value);
+  std::ranges::reverse(out);
+  return out;
+}
+
 template <typename E> inline constexpr auto kEnumerators = std::define_static_array(std::meta::enumerators_of(^^E));
 
-template <typename E> [[nodiscard]] constexpr std::string_view enumToSv(E value) noexcept {
+template <typename E> [[nodiscard]] constexpr std::string_view enumToSv(const E value) {
   template for (constexpr auto e : kEnumerators<E>) if ([:e:] == value) return std::meta::identifier_of(e);
   return {};
 }
 
-template <typename E> [[nodiscard]] constexpr std::optional<E> trySvToEnum(std::string_view name) noexcept {
+template <typename E> [[nodiscard]] constexpr std::optional<E> trySvToEnum(const std::string_view name) {
   template for (constexpr auto e : kEnumerators<E>) if (std::meta::identifier_of(e) == name) return [:e:];
   return std::nullopt;
 }
 
+template <auto V> inline constexpr long long kValue = static_cast<long long>(V);
+
+// INFO: An enumerator's value, whatever its enum.
+consteval long long valueOf(const std::meta::info enumerator) {
+  const std::array arguments{enumerator};
+  return std::meta::extract<long long>(std::meta::substitute(^^kValue, arguments));
+}
+
 template <typename T> void appendValue(std::string& out, const T& value);
+
+template <typename T> consteval std::optional<T> tag(const std::meta::info member) {
+  const auto found = std::meta::annotations_of_with_type(member, ^^T);
+  if (found.empty())
+    return std::nullopt;
+  return std::meta::extract<T>(found[0]);
+}
 
 template <typename T>
 inline constexpr auto kMembers =
@@ -84,13 +112,13 @@ template <typename T> void appendValue(std::string& out, const T& value) {
 }
 
 template <typename T> [[nodiscard]] std::string describe(const T& value) {
-  std::string out;
+  std::string out{};
   appendValue(out, value);
   return out;
 }
 
 template <typename T> [[nodiscard]] std::string differences(const T& before, const T& after) {
-  std::string out;
+  std::string out{};
   template for (constexpr auto member : kMembers<T>) {
     if (before.[:member:] != after.[:member:]) {
       out += "  ";

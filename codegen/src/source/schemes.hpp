@@ -5,5 +5,5 @@
 #include "source/inflects_scheme.hpp"
 #include "source/uniques_scheme.hpp"
 
-// INFO: The original WORDS files the readers construct from, vendored under data/source/ with the hashes in its
-//  MANIFEST.sha256. Each scheme names its file in kPath.
+// INFO: The original WORDS files the readers construct from, fetched into data/source/ and checked by the hashes
+//  in its MANIFEST.sha256 (codegen/README.md). Each scheme names its file in kPath.

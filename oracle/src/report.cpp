@@ -104,7 +104,7 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
         }
         continue;
       }
-      for (auto r : p.rules) {
+      for (const auto r : p.rules) {
         auto& g = rules[std::to_underlying(r)];
         ++g.lines;
         if (used.insert(r).second) {
@@ -121,7 +121,7 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
       for (const auto& p : s.pairs) {
         const char mark = p.differs ? '!' : p.rules.empty() ? ' ' : '~';
         std::string notes;
-        for (auto r : p.rules)
+        for (const auto r : p.rules)
           notes += std::string(notes.empty() ? "  {" : ", ") + std::string(kRules[std::to_underlying(r)].name);
         if (!notes.empty())
           notes += '}';
@@ -135,20 +135,22 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
   }
 
   const auto total = spellings.size();
-  const auto pct = [](std::uint64_t part, std::uint64_t whole) { return whole ? 100.0 * part / whole : 0.0; };
+  const auto pct = [](const std::uint64_t part, const std::uint64_t whole) {
+    return whole ? 100.0 * part / whole : 0.0;
+  };
   std::ostringstream sum;
   sum << std::format("library {}\ncaptures {} ({} books)\n{} spellings, {} tokens\n\n", WHITAKERLIB_DIR,
                      fs::absolute(captures).string(), names.size(), total, bookTokens);
-  constexpr std::array kVerdictNames{"maps: every field WORDS shows is equal", "maps but for gaps", "differs"};
+  constexpr std::array verdictNames{"maps: every field WORDS shows is equal", "maps but for gaps", "differs"};
   for (std::size_t i = 0; i < verdicts.size(); ++i)
-    sum << std::format("  {:<40} {:>7} spellings ({:6.2f}%)  {:>8} tokens ({:6.2f}%)\n", kVerdictNames[i],
+    sum << std::format("  {:<40} {:>7} spellings ({:6.2f}%)  {:>8} tokens ({:6.2f}%)\n", verdictNames[i],
                        verdicts[i].spellings, pct(verdicts[i].spellings, total), verdicts[i].tokens,
                        pct(verdicts[i].tokens, bookTokens));
   sum << std::format("  {:<40} {:>7} spellings ({:6.2f}%)  {:>8} tokens ({:6.2f}%)\n", "  of which WORDS used a trick",
                      tricks.spellings, pct(tricks.spellings, total), tricks.tokens, pct(tricks.tokens, bookTokens));
   sum << std::format("\n{:<24} {:>9} {:>9} {:>12}   {:>9} {:>9}\n", "field (lines)", "equal", "differs", "not returned",
                      "spellings", "tokens");
-  for (auto name : fieldOrder) {
+  for (const auto name : fieldOrder) {
     const auto& t = fields[name];
     sum << std::format("  {:<22} {:>9} {:>9} {:>12}   {:>9} {:>9}\n", name, t.equal, t.differs, t.gap, t.spellings,
                        t.tokens);

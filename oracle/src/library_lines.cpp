@@ -4,18 +4,42 @@ namespace lines {
 
 namespace {
 
-std::string name(WhitakerField field, std::uint8_t value) {
-  const char* n = whitaker_name(field, value);
+template <typename E> std::string name(const std::uint8_t value) {
+  const char* const n = latin::name(E{value});
   return n ? n : "?";
 }
 
+// INFO: The oracle's route codes: ReadingDetail's route, with a syncope's rule (II to IS) from its Derivation.
+inline constexpr std::uint8_t kRouteDirect = 0, kRouteSyncopeII = 1, kRouteSyncopeS = 2, kRouteSyncopeR = 3,
+                              kRouteSyncopeIer = 4, kRouteSyncopeIs = 5, kRouteAdverb = 6, kRouteSlur = 7,
+                              kRouteWordMod = 8;
+
+static_assert(kRouteSyncopeII == std::to_underlying(latin::Syncope::II) &&
+              kRouteSyncopeIs == std::to_underlying(latin::Syncope::IS));
+
+[[nodiscard]] std::uint8_t oracleRoute(const whitaker::ReadingDetail& d) {
+  switch (d.route) {
+    case latin::Route::direct:
+      return kRouteDirect;
+    case latin::Route::syncope:
+      return std::to_underlying(d.form.derivation.syncope);
+    case latin::Route::adverb:
+      return kRouteAdverb;
+    case latin::Route::slur:
+      return kRouteSlur;
+    case latin::Route::wordMod:
+      return kRouteWordMod;
+  }
+  return kRouteDirect;
+}
+
 // INFO: Support_Utils.Dictionary_Form after the principal parts, from the library's entry.
-std::string libraryForm(const WhitakerEntry& e, std::string_view grammar) {
-  static constexpr std::array kOrdinal{"", "1st", "2nd", "3rd", "4th", "5th"};
-  const auto part = name(WHITAKER_FIELD_PART, e.part);
+std::string libraryForm(const WhitakerEntry& e, const std::string_view grammar) {
+  static constexpr std::array ordinals{"", "1st", "2nd", "3rd", "4th", "5th"};
+  const auto part = name<latin::Part>(e.part);
   // INFO: A unique has one stem: "stem  PART", but for the forms Dictionary_Form builds from one stem.
-  const auto comparison = name(WHITAKER_FIELD_COMPARISON, e.comparison);
-  if (e.id >= WHITAKER_GENERAL_RECORDS && e.id != WHITAKER_NO_RECORD &&
+  const auto comparison = name<latin::Comparison>(e.comparison);
+  if (e.id >= std::to_underlying(whitaker::kFirstUnique) && e.id != std::to_underlying(whitaker::kNoDictionaryWord) &&
       !((part == "N" && e.which == 9) ||
         (part == "ADJ" && (e.which == 9 || comparison == "COMP" || comparison == "SUPER")) ||
         (part == "V" && e.which == 9 && (e.variant == 8 || e.variant == 9))))
@@ -27,16 +51,16 @@ std::string libraryForm(const WhitakerEntry& e, std::string_view grammar) {
   auto out = part;
   if (part == "N") {
     if (e.which >= 1 && e.which <= 5 && e.variant >= 1 && e.variant <= 5)
-      out += std::format(" ({})", kOrdinal[e.which]);
-    out += ' ' + name(WHITAKER_FIELD_GENDER, e.gender);
+      out += std::format(" ({})", ordinals[e.which]);
+    out += ' ' + name<latin::Gender>(e.gender);
   } else if (part == "V") {
     if (e.which >= 1 && e.which <= 3) {
       if (e.variant == 1)
-        out += std::format(" ({})", kOrdinal[e.which]);
+        out += std::format(" ({})", ordinals[e.which]);
       else if (e.which == 3 && e.variant == 4)
         out += " (4th)";
     }
-    if (const auto k = name(WHITAKER_FIELD_VERB_KIND, e.kind); std::ranges::contains(
+    if (const auto k = name<latin::VerbKind>(e.kind); std::ranges::contains(
             std::array{"GEN", "DAT", "ABL", "TRANS", "INTRANS", "IMPERS", "DEP", "SEMIDEP", "PERFDEF"}, k))
       out += ' ' + k;
   }
@@ -45,38 +69,38 @@ std::string libraryForm(const WhitakerEntry& e, std::string_view grammar) {
 
 // INFO: Put_Dictionary_Flags: the entry's age unless X, its frequency from D on.
 std::string dictionaryLabels(const WhitakerEntry& e) {
-  static const std::map<std::string, std::string> kAge{{"A", "Archaic"},  {"B", "Early"}, {"C", "Classic"},
-                                                       {"D", "Late"},     {"E", "Later"}, {"F", "Medieval"},
-                                                       {"G", "NeoLatin"}, {"H", "Modern"}};
-  static const std::map<std::string, std::string> kFrequency{{"D", "lesser"},   {"E", "uncommon"}, {"F", "veryrare"},
-                                                             {"I", "inscript"}, {"J", "graffiti"}, {"N", "Pliny"}};
+  static const std::map<std::string, std::string> ageLabels{{"A", "Archaic"},  {"B", "Early"}, {"C", "Classic"},
+                                                            {"D", "Late"},     {"E", "Later"}, {"F", "Medieval"},
+                                                            {"G", "NeoLatin"}, {"H", "Modern"}};
+  static const std::map<std::string, std::string> frequencyLabels{
+      {"D", "lesser"}, {"E", "uncommon"}, {"F", "veryrare"}, {"I", "inscript"}, {"J", "graffiti"}, {"N", "Pliny"}};
   std::string out;
-  if (auto a = kAge.find(name(WHITAKER_FIELD_AGE, e.age)); a != kAge.end())
+  if (const auto a = ageLabels.find(name<latin::Age>(e.age)); a != ageLabels.end())
     out = a->second;
-  if (auto f = kFrequency.find(name(WHITAKER_FIELD_FREQUENCY, e.frequency)); f != kFrequency.end())
+  if (const auto f = frequencyLabels.find(name<latin::Frequency>(e.frequency)); f != frequencyLabels.end())
     out += (out.empty() ? "" : " ") + f->second;
   return out;
 }
 
 // INFO: Put_Inflection_Flags: the inflection's age unless X, its frequency from C on (list_package.adb's Inflection_Age
 //  and Inflection_Frequency).
-std::string inflectionLabels(std::uint8_t age, std::uint8_t frequency) {
-  static const std::map<std::string, std::string> kAge{{"A", "Archaic"}, {"B", "Early"}, {"C", "Classic"},
-                                                       {"D", "Late"},    {"E", "Later"}, {"F", "Medieval"},
-                                                       {"G", "Scholar"}, {"H", "Modern"}};
-  static const std::map<std::string, std::string> kFrequency{
+std::string inflectionLabels(const std::uint8_t age, const std::uint8_t frequency) {
+  static const std::map<std::string, std::string> ageLabels{{"A", "Archaic"}, {"B", "Early"}, {"C", "Classic"},
+                                                            {"D", "Late"},    {"E", "Later"}, {"F", "Medieval"},
+                                                            {"G", "Scholar"}, {"H", "Modern"}};
+  static const std::map<std::string, std::string> frequencyLabels{
       {"C", "uncommon"}, {"D", "infreq"}, {"E", "rare"}, {"F", "veryrare"}, {"I", "inscript"}};
   std::string out;
-  if (auto a = kAge.find(name(WHITAKER_FIELD_AGE, age)); a != kAge.end())
+  if (const auto a = ageLabels.find(name<latin::Age>(age)); a != ageLabels.end())
     out = a->second;
-  if (auto f = kFrequency.find(name(WHITAKER_FIELD_FREQUENCY, frequency)); f != kFrequency.end())
+  if (const auto f = frequencyLabels.find(name<latin::Frequency>(frequency)); f != frequencyLabels.end())
     out += (out.empty() ? "" : " ") + f->second;
   return out;
 }
 
 // INFO: Constructed_Meaning (list_package.adb): what WORDS prints for a numeral with a value instead of its meaning,
 //  from the value and the first reading's part and sort; Integer'Image puts a blank before the number.
-std::string constructedMeaning(unsigned value, std::string_view part, std::string_view sort) {
+std::string constructedMeaning(const unsigned value, const std::string_view part, const std::string_view sort) {
   const auto n = std::format(" {}", value);
   std::string out;
   if (part != "NUM")
@@ -92,9 +116,9 @@ std::string constructedMeaning(unsigned value, std::string_view part, std::strin
   return collapsed(std::string_view(out).substr(0, 80));
 }
 
-// INFO: whitaker_describe's "N D2 V2 NOM P N" as WORDS' qualifier "N 2 2 NOM P N".
-std::string qualifier(std::string_view described) {
-  auto words = tester::wordsOf(described);
+// INFO: latin::describe's "N D2 V2 NOM P N" as WORDS' qualifier "N 2 2 NOM P N".
+std::string qualifier(const std::string_view described) {
+  const auto words = tester::wordsOf(described);
   std::string out;
   for (std::size_t i = 0; i < words.size(); ++i) {
     auto w = words[i];
@@ -106,20 +130,20 @@ std::string qualifier(std::string_view described) {
   return out;
 }
 
-const char* printedKind(std::uint8_t kind) {
+const char* printedKind(const std::uint8_t kind) {
   switch (kind) {
-  case WHITAKER_ADDON_PREFIX:
-  case WHITAKER_ADDON_TICKON:
-    return "PREFIX";
-  case WHITAKER_ADDON_SUFFIX:
-    return "SUFFIX";
-  // INFO: WORDS prints a packon on a TACKON line.
-  default:
-    return "TACKON";
+    case std::to_underlying(latin::AddonKind::prefix):
+    case std::to_underlying(latin::AddonKind::tickon):
+      return "PREFIX";
+    case std::to_underlying(latin::AddonKind::suffix):
+      return "SUFFIX";
+    // INFO: WORDS prints a packon on a TACKON line.
+    default:
+      return "TACKON";
   }
 }
 
-Line meaningLine(std::string_view meaning) {
+Line meaningLine(const std::string_view meaning) {
   Line l;
   l.kind = Kind::Meaning;
   l.raw = std::string(meaning);
@@ -133,7 +157,7 @@ Line meaningLine(std::string_view meaning) {
 const Dictionary& wordsDictionary() {
   static const Dictionary dictionary = [] {
     const fs::path words = ADA_DATA_DIR, library = fs::path(WHITAKERLIB_DIR) / "data/source";
-    for (const auto* file : {"DICTLINE.GEN", "UNIQUES.LAT"}) {
+    for (const auto* const file : {"DICTLINE.GEN", "UNIQUES.LAT"}) {
       std::ifstream a(words / file, std::ios::binary), b(library / file, std::ios::binary);
       if (!a || !b || !std::equal(std::istreambuf_iterator<char>(a), {}, std::istreambuf_iterator<char>(b), {}))
         throw std::runtime_error(std::format("WORDS' {} is not the library's", file));
@@ -143,25 +167,66 @@ const Dictionary& wordsDictionary() {
   return dictionary;
 }
 
-std::vector<Line> libraryLines(const std::string& word, std::string& status, const Mutation* mutate, std::size_t only) {
-  thread_local const std::unique_ptr<WhitakerResult, decltype(&whitaker_result_free)> result{whitaker_result_new(),
-                                                                                             whitaker_result_free};
-  if (!result)
-    throw std::runtime_error("whitaker_result_new: out of memory");
-  if (const auto s = whitaker_analyze(word.c_str(), result.get()); s != WHITAKER_OK) {
-    status = s == WHITAKER_INPUT_TOO_LONG ? "InputTooLong" : std::format("status {}", +s);
+std::vector<Line> libraryLines(const std::string& word, std::string& status, const Mutation* const mutate,
+                               const std::size_t only) {
+  thread_local whitaker::Result result;
+  if (const auto s = whitaker::analyze(result, word); s != whitaker::Status::ok) {
+    status = s == whitaker::Status::inputTooLong ? "InputTooLong" : std::format("status {}", +std::to_underlying(s));
     return {};
   }
-  // NOTE: A copy of the records, their add-on steps and their forms, which --probe changes; one spare zero step past
-  //  each count, as a raised addon_count reads it.
-  std::vector<WhitakerRecord> records(result->records, result->records + result->record_count);
-  std::vector<WhitakerForm> forms(result->forms, result->forms + result->form_count);
-  std::vector<std::vector<WhitakerAddonStep>> steps(records.size());
-  for (std::size_t k = 0; k < records.size(); ++k) {
-    steps[k].assign(records[k].addons, records[k].addons + records[k].addon_count);
-    steps[k].push_back({});
-    records[k].addons = steps[k].data();
+  const whitaker::WordId analyzed{0};
+  const auto readings = whitaker::readings(result, analyzed);
+  // INFO: A record is a run of readings with one entry, part, route, spelling rule and add-ons.
+  const auto sameRecord = [](const whitaker::ReadingDetail& a, const whitaker::ReadingDetail& b) {
+    return a.dictionaryWordId == b.dictionaryWordId && a.form.grammar.part == b.form.grammar.part &&
+           a.route == b.route && a.form.spellingRuleId == b.form.spellingRuleId && a.addonCount == b.addonCount &&
+           std::ranges::equal(std::span(a.addons, a.addonCount), std::span(b.addons, b.addonCount),
+                              [](const auto& x, const auto& y) { return x.id == y.id && x.kind == y.kind; });
+  };
+  // NOTE: Copies of the records, their add-on steps and their forms, which --probe changes; one spare zero step past
+  //  each count, as a raised addon_count reads it. The details hold the text the copies point at.
+  std::vector<whitaker::ReadingDetail> details(readings.size());
+  std::vector<WhitakerRecord> records;
+  std::vector<WhitakerForm> forms;
+  std::vector<std::vector<WhitakerAddonStep>> steps;
+  for (std::size_t i = 0; i < readings.size(); ++i) {
+    auto& d = details[i];
+    d = whitaker::decode(result, analyzed, readings[i]);
+    const auto& e = d.dictionaryWord;
+    const auto& f = d.form;
+    const auto& g = f.grammar;
+    if (i == 0 || !sameRecord(details[i - 1], d)) {
+      records.push_back(
+          {.entry = {std::to_underlying(e.part), e.which.value, e.variant.value, std::to_underlying(e.gender),
+                     e.kind.value, std::to_underlying(e.comparison), std::to_underlying(e.numeralSort),
+                     std::to_underlying(e.area), std::to_underlying(e.geography), std::to_underlying(e.source),
+                     e.numeralValue.value, std::to_underlying(e.age), std::to_underlying(e.frequency),
+                     std::to_underlying(d.dictionaryWordId)},
+           .meaning = d.meaning,
+           .pos = d.partName,
+           .addons = nullptr,
+           .addon_count = d.addonCount,
+           .route = oracleRoute(d),
+           .spelling_rule = f.spellingRuleId,
+           .first_form = i,
+           .form_count = 0});
+      steps.emplace_back();
+      for (unsigned a = 0; a < d.addonCount; ++a)
+        steps.back().push_back({d.addons[a].id, std::to_underlying(d.addons[a].kind)});
+      steps.back().push_back({});
+    }
+    ++records.back().form_count;
+    forms.push_back({f.stemSpelling,
+                     f.ending,
+                     {std::to_underlying(g.part), g.which.value, g.variant.value, std::to_underlying(g.caseOf),
+                      std::to_underlying(g.number), std::to_underlying(g.gender), std::to_underlying(g.comparison),
+                      std::to_underlying(g.numeralSort), std::to_underlying(g.tense), std::to_underlying(g.voice),
+                      std::to_underlying(g.mood), g.person.value},
+                     std::to_underlying(f.inflectionAge),
+                     std::to_underlying(f.inflectionFrequency)});
   }
+  for (std::size_t k = 0; k < records.size(); ++k)
+    records[k].addons = steps[k].data();
   if (mutate && mutate->record && only == kAll)
     std::ranges::for_each(records, mutate->record);
   // NOTE: One record changed alone: its entry goes to every record of its id, as the library gives one id one entry.
@@ -180,14 +245,14 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   if (records.empty()) {
     Line l;
     l.kind = Kind::Unknown, l.stem = word, l.text = word + " ======== UNKNOWN";
-    if (!result->words[0].trimmed)
+    if (!whitaker::trimmed(result, analyzed))
       return {l};
     Line star;
     star.kind = Kind::Trimmed, star.text = "*";
     return {l, star};
   }
   // INFO: WhitakerWord::trimmed: WORDS' "*" after the answer (List_Stems).
-  const bool trimmed = result->words[0].trimmed != 0;
+  const bool trimmed = whitaker::trimmed(result, analyzed);
   struct Entry {
     std::vector<Line> readings;
     const WhitakerRecord* first = nullptr;
@@ -198,7 +263,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     // INFO: WORDS prints a line for each ADDONS record: two records that read the same (ell, ell) print twice
     std::vector<std::uint16_t> addonIds;
     bool roman = false;
-    std::uint8_t route = WHITAKER_ROUTE_DIRECT;
+    std::uint8_t route = kRouteDirect;
   };
   std::vector<Entry> entries;
   std::map<std::uint16_t, WhitakerEntry> byId;
@@ -213,12 +278,12 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     e.first = &m;
     e.firstForm = begin < end && begin < forms.size() ? &forms[begin] : nullptr;
     for (int a = 0; a < m.addon_count; ++a) {
-      const char* s = whitaker_addon_spelling(m.addons[a].id);
-      const char* mean = whitaker_addon_meaning(m.addons[a].id);
+      const char* const s = whitaker::addonSpelling(m.addons[a].id);
+      const char* const mean = whitaker::addonMeaning(m.addons[a].id);
       e.addons.emplace_back(std::string(s ? s : "?") + ' ' + printedKind(m.addons[a].kind), mean ? mean : "");
       e.addonIds.push_back(m.addons[a].id);
     }
-    e.roman = m.entry.id == WHITAKER_NO_RECORD;
+    e.roman = m.entry.id == std::to_underlying(whitaker::kNoDictionaryWord);
     e.route = m.route;
     e.record = wordsDictionary().record(m.entry.id);
     if (e.record)
@@ -231,7 +296,20 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
         continue;
       }
       const WhitakerForm& form = forms[f];
-      whitaker_describe(&form.grammar, described.data(), described.size());
+      const auto& g = form.grammar;
+      latin::describe(latin::Analysis{.part = latin::Part{g.part},
+                                      .which = g.which,
+                                      .variant = {g.variant},
+                                      .caseOf = latin::Case{g.case_of},
+                                      .number = latin::Number{g.number},
+                                      .gender = latin::Gender{g.gender},
+                                      .comparison = latin::Comparison{g.comparison},
+                                      .numeralSort = latin::NumeralSort{g.numeral_sort},
+                                      .tense = latin::Tense{g.tense},
+                                      .voice = latin::Voice{g.voice},
+                                      .mood = latin::Mood{g.mood},
+                                      .person = {g.person}},
+                      described.data(), described.size());
       Line l;
       l.kind = Kind::Inflection;
       l.stem = form.orth ? form.orth : "";
@@ -239,8 +317,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
       l.pos = m.pos ? m.pos : "";
       l.qual = qualifier(described.data());
       l.labels = inflectionLabels(form.inflection_age, form.inflection_frequency);
-      l.deponent =
-          name(WHITAKER_FIELD_PART, m.entry.part) == "V" && name(WHITAKER_FIELD_VERB_KIND, m.entry.kind) == "DEP";
+      l.deponent = name<latin::Part>(m.entry.part) == "V" && name<latin::VerbKind>(m.entry.kind) == "DEP";
       l.text = l.stem + (l.ending.empty() ? "" : "." + l.ending) + ' ' + l.qual;
       e.readings.push_back(std::move(l));
     }
@@ -248,9 +325,9 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   }
   // INFO: The addons an entry starts with: those not carried by the entry before it. A prefix inside a suffix
   //  (Apply_Suffix's else arm) prints again with each suffix record: appenninum.
-  const auto newAddons = [&](std::size_t j) {
+  const auto newAddons = [&](const std::size_t j) {
     const auto& addons = entries[j].addons;
-    const auto kind = [&](std::size_t a) {
+    const auto kind = [&](const std::size_t a) {
       return std::string_view(addons[a].first).substr(addons[a].first.find(' ') + 1);
     };
     std::vector<std::size_t> out;
@@ -265,7 +342,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   //  dictionary form is "" so the next form line is printed, and a meaning before it is never merged across it.
   //  Tricks.Syncope: each rule's marker, a pseudo-entry of its own, and its explanation, printed once a word
   //  (Used_Meanings).
-  static constexpr std::array<std::array<std::string_view, 2>, 6> kSyncope{{
+  static constexpr std::array<std::array<std::string_view, 2>, 6> syncopeRules{{
       {"", ""},
       {"Syncope  ii => ivi", "Syncopated perfect ivi can drop 'v' without contracting vowel"},
       {"Syncope   s => vis", "Syncopated perfect often drops the 'v' and contracts vowel"},
@@ -275,14 +352,13 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   }};
   // INFO: A route's lines again where its rule's readings end and another's begin (sesti: the syncope inside
   //  Try_Slury's se/ce reading, then Pass' own).
-  const auto newRoute = [&](std::size_t j) {
-    return entries[j].route != WHITAKER_ROUTE_DIRECT &&
-           (j == 0 || entries[j - 1].route != entries[j].route ||
-            entries[j - 1].first->spelling_rule != entries[j].first->spelling_rule);
+  const auto newRoute = [&](const std::size_t j) {
+    return entries[j].route != kRouteDirect && (j == 0 || entries[j - 1].route != entries[j].route ||
+                                                entries[j - 1].first->spelling_rule != entries[j].first->spelling_rule);
   };
   // INFO: Fix_Adverb gives each adjective run its own SUFFIX record (pontice: the c run's, then the ic run's).
-  const auto adverbBlock = [&](std::size_t j) {
-    return entries[j].route == WHITAKER_ROUTE_ADVERB && (newRoute(j) || entries[j - 1].addonIds != entries[j].addonIds);
+  const auto adverbBlock = [&](const std::size_t j) {
+    return entries[j].route == kRouteAdverb && (newRoute(j) || entries[j - 1].addonIds != entries[j].addonIds);
   };
   bool explained = false, adverbExplained = false, spellingExplained = false;
   const std::vector<Line>* previousReadings = nullptr;
@@ -299,8 +375,8 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     // INFO: Fix_Adverb copies the addon records right in front of its adjective run, once, before its SUFFIX record
     //  (WORDS 0b32fb9, Ada bug #4): varieque has que there; dieque has nouns between que and the adjective.
     if (adverbBlock(j)) {
-      const auto adjective = [&](std::size_t k) {
-        return entries[k].route == WHITAKER_ROUTE_DIRECT &&
+      const auto adjective = [&](const std::size_t k) {
+        return entries[k].route == kRouteDirect &&
                std::string_view(entries[k].first->pos ? entries[k].first->pos : "") == "ADJ";
       };
       std::size_t run = j;
@@ -319,13 +395,13 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     // INFO: Enclitic takes que, ne, ve, est (ADDONS.LAT's first four tackons) off before a trick reads the rest;
     //  Try_Tricks reads the whole word before Try_Tackons, so any other tackon prints after the rule's lines (hocine,
     //  hisdem).
-    const auto enclitic = [&](std::size_t a) {
+    const auto enclitic = [&](const std::size_t a) {
       const auto& spelled = carrier->addons[a].first;
       const auto stem = spelled.substr(0, spelled.find(' '));
       return spelled.ends_with(" TACKON") &&
              (stem == "que" || stem == "ne" || stem == "ve" || stem == "ue" || stem == "est");
     };
-    const auto addonLines = [&](bool afterRule) {
+    const auto addonLines = [&](const bool afterRule) {
       for (const auto a : starting) {
         if (afterRule != (ruleStarts && !enclitic(a)))
           continue;
@@ -344,42 +420,42 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     //  which names the table's pair in its own order even when the word began with the second; before the rewritten
     //  word's own route lines (adcelerasse: Slur, then Syncope).
     if (ruleStarts) {
-      const WhitakerSpellingRule rule = whitaker_spelling_rule(m.spelling_rule);
+      const auto rule = whitaker::spellingRule(m.spelling_rule);
       const std::string one = rule.first ? rule.first : "?", two = rule.second ? rule.second : "?";
       std::string marker = rule.reversed ? "Word mod " + two + "/" + one : "Word mod " + one + "/" + two, why;
       switch (rule.kind) {
-      case WHITAKER_SPELLING_SLUR:
-        marker = rule.reversed ? "Slur " + two + "~/" + one : "Slur " + one + "/" + two + "~";
-        why = rule.reversed ? "An initial '" + two + "~' may be rendered by " + one
-                            : "An initial '" + one + "' may be rendered by " + two + "~";
-        break;
-      case WHITAKER_SPELLING_SLURY_SWAP:
-        why = "An initial '" + one + "' may be rendered by '" + two + "'";
-        break;
-      case WHITAKER_SPELLING_REPLACED:
-        why = "An initial '" + one + "' may have replaced usual '" + two + "'";
-        break;
-      case WHITAKER_SPELLING_SWAP:
-        why = rule.reversed ? "An initial '" + two + "' may be rendered by '" + one + "'"
-                            : "An initial '" + one + "' may be rendered by '" + two + "'";
-        break;
-      case WHITAKER_SPELLING_INTERNAL:
-        why = "An internal '" + one + "' might be rendered by '" + two + "'";
-        break;
-      case WHITAKER_SPELLING_EO_IIS:
-        marker = "Word mod is => iis";
-        why = "Some forms of eo stem 'i' grates with an 'is .. .' ending, so 'is' -> 'iis' ";
-        break;
-      case WHITAKER_SPELLING_TERMINAL_IIS:
-        marker = "Word mod iis -> is";
-        why = "A Terminal 'iis' on ADJ 1 1 DAT/ABL P might drop 'i'";
-        break;
-      case WHITAKER_SPELLING_DOUBLED:
-        marker = "Word mod " + one + " -> " + two;
-        why = "A doubled consonant may be rendered by just the single  MEDIEVAL";
-        break;
-      default:
-        break;
+        case latin::SpellingKind::SLUR:
+          marker = rule.reversed ? "Slur " + two + "~/" + one : "Slur " + one + "/" + two + "~";
+          why = rule.reversed ? "An initial '" + two + "~' may be rendered by " + one
+                              : "An initial '" + one + "' may be rendered by " + two + "~";
+          break;
+        case latin::SpellingKind::SLURY_SWAP:
+          why = "An initial '" + one + "' may be rendered by '" + two + "'";
+          break;
+        case latin::SpellingKind::REPLACED:
+          why = "An initial '" + one + "' may have replaced usual '" + two + "'";
+          break;
+        case latin::SpellingKind::SWAP:
+          why = rule.reversed ? "An initial '" + two + "' may be rendered by '" + one + "'"
+                              : "An initial '" + one + "' may be rendered by '" + two + "'";
+          break;
+        case latin::SpellingKind::INTERNAL:
+          why = "An internal '" + one + "' might be rendered by '" + two + "'";
+          break;
+        case latin::SpellingKind::EO_IIS:
+          marker = "Word mod is => iis";
+          why = "Some forms of eo stem 'i' grates with an 'is .. .' ending, so 'is' -> 'iis' ";
+          break;
+        case latin::SpellingKind::TERMINAL_IIS:
+          marker = "Word mod iis -> is";
+          why = "A Terminal 'iis' on ADJ 1 1 DAT/ABL P might drop 'i'";
+          break;
+        case latin::SpellingKind::DOUBLED:
+          marker = "Word mod " + one + " -> " + two;
+          why = "A doubled consonant may be rendered by just the single  MEDIEVAL";
+          break;
+        default:
+          break;
       }
       if (marker.size() > 18)
         marker.resize(18);
@@ -394,7 +470,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     if (adverbBlock(j)) {
       // INFO: Fix_Adverb: its SUFFIX record, always e (a superlative's ending me is the reading's), an entry of its
       //  own, and its caption by degree, printed once a word (Used_Meanings).
-      const bool super = e.firstForm && name(WHITAKER_FIELD_COMPARISON, e.firstForm->grammar.comparison) == "SUPER";
+      const bool super = e.firstForm && name<latin::Comparison>(e.firstForm->grammar.comparison) == "SUPER";
       Line l;
       l.kind = Kind::Addon, l.stem = "e", l.qual = "SUFFIX", l.text = "e SUFFIX";
       out.push_back(l);
@@ -403,20 +479,19 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
                                         : "-ly; -ily;  Converting ADJ to ADV")),
             adverbExplained = true;
       previousReadings = nullptr, previousForm.clear(), first = false;
-    } else if (newRoute(j) && e.route != WHITAKER_ROUTE_WORD_MOD && e.route != WHITAKER_ROUTE_SLUR) {
+    } else if (newRoute(j) && e.route != kRouteWordMod && e.route != kRouteSlur) {
       // NOTE: A route the table does not know prints as itself, and differs.
       const auto unknown = std::format("route {}", e.route);
       auto [marker, why] =
-          e.route < kSyncope.size() ? kSyncope[e.route] : std::array<std::string_view, 2>{unknown, unknown};
+          e.route < syncopeRules.size() ? syncopeRules[e.route] : std::array<std::string_view, 2>{unknown, unknown};
       // INFO: The syncope explanation is one slot (Xp.Yyy_Meaning), printed at the end: after Try_Slury, Pass' own
       //  syncope on the word refills it, or leaves it empty (conmendare: the r => v.r inside con/com unexplained).
-      const auto kind = whitaker_spelling_rule(m.spelling_rule).kind;
-      if (kind == WHITAKER_SPELLING_SLUR || kind == WHITAKER_SPELLING_SLURY_SWAP) {
+      const auto kind = whitaker::spellingRule(m.spelling_rule).kind;
+      if (kind == latin::SpellingKind::SLUR || kind == latin::SpellingKind::SLURY_SWAP) {
         const auto own = std::ranges::find_if(entries, [](const Entry& x) {
-          return x.route >= WHITAKER_ROUTE_SYNCOPE_II && x.route <= WHITAKER_ROUTE_SYNCOPE_IS &&
-                 x.first->spelling_rule == 0;
+          return x.route >= kRouteSyncopeII && x.route <= kRouteSyncopeIs && x.first->spelling_rule == 0;
         });
-        why = own == entries.end() ? std::string_view{} : kSyncope[own->route][1];
+        why = own == entries.end() ? std::string_view{} : syncopeRules[own->route][1];
       }
       Line l;
       l.kind = Kind::Route, l.text = collapsed(marker);
@@ -446,19 +521,18 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
       l.knownParts = e.record != nullptr;
       const auto gap = e.form.find("  ");
       l.parts = collapsed(std::string_view(e.form).substr(0, gap));
-      l.unique = m.entry.id >= WHITAKER_GENERAL_RECORDS;
-      l.ref = l.unique ? std::format("UNI>({})", m.entry.id - WHITAKER_GENERAL_RECORDS + 1)
+      l.unique = m.entry.id >= std::to_underlying(whitaker::kFirstUnique);
+      l.ref = l.unique ? std::format("UNI>({})", m.entry.id - std::to_underlying(whitaker::kFirstUnique) + 1)
                        : std::format("GEN>({})", m.entry.id + 1);
       l.qual = libraryForm(m.entry, e.readings.empty() ? std::string() : e.readings.front().qual);
-      l.codes = name(WHITAKER_FIELD_AGE, m.entry.age) + name(WHITAKER_FIELD_AREA, m.entry.area) +
-                name(WHITAKER_FIELD_GEOGRAPHY, m.entry.geography) + name(WHITAKER_FIELD_FREQUENCY, m.entry.frequency) +
-                name(WHITAKER_FIELD_SOURCE, m.entry.source);
+      l.codes = name<latin::Age>(m.entry.age) + name<latin::Area>(m.entry.area) +
+                name<latin::Geography>(m.entry.geography) + name<latin::Frequency>(m.entry.frequency) +
+                name<latin::Source>(m.entry.source);
       l.labels = dictionaryLabels(m.entry);
       l.text = std::format("{} {} [{}] {} {}", l.parts, l.qual, l.codes, l.ref, l.labels);
       // INFO: WORDS skips a form line whose Dictionary_Form is the previous one's, codes not compared (aliqua:
-      // GEN>(2600)
-      //  XXXAO under GEN>(2599) XXXCO). The skipped entry has to agree with its own WORDS record, or its line is
-      //  printed and differs (abscisis).
+      //  GEN>(2600) XXXAO under GEN>(2599) XXXCO). The skipped entry has to agree with its own WORDS record, or its
+      //  line is printed and differs (abscisis).
       const bool agrees = e.record && l.codes == e.record->codes &&
                           l.qual == (gap == std::string::npos ? "" : collapsed(std::string_view(e.form).substr(gap)));
       if (formChanged || !agrees)
@@ -477,15 +551,18 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
         adverbBlock(j + 1) || raw(e) != raw(entries[j + 1]) || library(e) != library(entries[j + 1])) {
       // INFO: Put_Meaning_Line: a numeral with a value has its meaning made up from the value; blank when its sort has
       //  none.
-      if (!e.roman && name(WHITAKER_FIELD_PART, m.entry.part) == "NUM" && m.entry.numeral_value > 0) {
-        auto l = meaningLine(constructedMeaning(
-            m.entry.numeral_value, name(WHITAKER_FIELD_PART, e.firstForm ? e.firstForm->grammar.part : 0),
-            name(WHITAKER_FIELD_NUMERAL_SORT, e.firstForm ? e.firstForm->grammar.numeral_sort : 0)));
+      if (!e.roman && name<latin::Part>(m.entry.part) == "NUM" && m.entry.numeral_value > 0) {
+        auto l = meaningLine(
+            constructedMeaning(m.entry.numeral_value, name<latin::Part>(e.firstForm ? e.firstForm->grammar.part : 0),
+                               name<latin::NumeralSort>(e.firstForm ? e.firstForm->grammar.numeral_sort : 0)));
         l.numeral = true;
         if (!l.qual.empty())
           out.push_back(std::move(l));
       } else {
-        out.push_back(meaningLine(m.meaning ? m.meaning : ""));
+        // NOTE: The library gives a Roman numeral's value apart from its meaning; WORDS prints " 23  as a ROMAN
+        //  NUMERAL;" (Integer'Image's blank, then two).
+        const std::string meaning = m.meaning ? m.meaning : "";
+        out.push_back(meaningLine(e.roman ? std::format(" {}  {}", m.entry.numeral_value, meaning) : meaning));
       }
     }
   }

@@ -262,7 +262,7 @@ booklist() {
     echo "shows for a token, compared with the library's value. Do not edit by hand."
     echo
     echo "- WORDS: $(basename "$set")"
-    echo "- library: $(sed -n 's/^#define WHITAKER_VERSION_[A-Z]* //p' "$lib/include/whitaker.h" | paste -sd.)"
+    echo "- library: $(sed -n 's/^inline constexpr char kVersion\[\] = "\(.*\)";$/\1/p' "$lib/include/whitaker.hpp")"
     echo "- report: $(basename "$out")"
     echo "- texts: Perseus Digital Library, canonical-latinLit (CC BY-SA 4.0); only"
     echo "  their names and counts are listed here."

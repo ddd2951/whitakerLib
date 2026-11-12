@@ -6,13 +6,13 @@ namespace {
 
 constexpr std::array kCodeNames{"age"sv, "area"sv, "geography"sv, "frequency"sv, "source"sv};
 
-bool digits(std::string_view s) {
-  return !s.empty() && std::ranges::all_of(s, [](unsigned char c) { return std::isdigit(c); });
+bool digits(const std::string_view s) {
+  return !s.empty() && std::ranges::all_of(s, [](const unsigned char c) { return std::isdigit(c); });
 }
 
 } // namespace
 
-std::array<std::string, 3> qualifierFields(std::string_view qual) {
+std::array<std::string, 3> qualifierFields(const std::string_view qual) {
   const auto w = tester::wordsOf(qual);
   std::array<std::string, 3> out;
   if (w.empty())
@@ -30,110 +30,113 @@ namespace {
 
 std::vector<Field> compareFields(const Line& a, const Line& l, Rules& rules) {
   std::vector<Field> f;
-  const auto put = [&](std::string_view name, std::string_view x, std::string_view y, bool equal) {
+  const auto put = [&](const std::string_view name, const std::string_view x, const std::string_view y,
+                       const bool equal) {
     f.push_back(
         {name, equal ? Status::Equal : Status::Differs, equal ? "" : std::string(x), equal ? "" : std::string(y)});
   };
-  const auto gap = [&](std::string_view name, Rule r) {
+  const auto gap = [&](const std::string_view name, const Rule r) {
     f.push_back({name, Status::Gap, {}, {}});
     rules.insert(r);
   };
-  const auto spelled = [&](std::string_view name, std::string_view x, std::string_view y) {
+  const auto spelled = [&](const std::string_view name, const std::string_view x, const std::string_view y) {
     bool equal = x == y;
     if (!equal && tester::folded(x) == tester::folded(y))
       equal = true, rules.insert(Rule::SpellingFold);
     put(name, x, y, equal);
   };
   switch (a.kind) {
-  case Kind::Inflection: {
-    spelled("stem", a.stem, l.stem);
-    if (!l.knownEnding) {
-      if (!a.ending.empty())
-        gap("ending", Rule::Ending);
-    } else {
-      spelled("ending", a.ending, l.ending);
+    case Kind::Inflection: {
+      spelled("stem", a.stem, l.stem);
+      if (!l.knownEnding) {
+        if (!a.ending.empty())
+          gap("ending", Rule::Ending);
+      } else {
+        spelled("ending", a.ending, l.ending);
+      }
+      auto q = a.qual, lib = l.qual;
+      // INFO: Print_Modified_Qual: a deponent's voice field is blank in IND .. INF and in a participle, whatever it
+      //  holds (ACTIVE for a future participle): only where WORDS shows no voice and the mood is one of those.
+      if (l.deponent && !q.contains("ACTIVE") && !q.contains("PASSIVE")) {
+        const auto words = tester::wordsOf(lib);
+        const bool blanked = std::ranges::any_of(words, [](const std::string_view w) {
+          return w == "IND" || w == "SUB" || w == "IMP" || w == "INF" || w == "PPL";
+        });
+        for (const auto voice : {" ACTIVE"sv, " PASSIVE"sv})
+          if (const auto at = lib.find(voice); blanked && at != std::string::npos) {
+            lib.erase(at, voice.size()), rules.insert(Rule::DeponentVoice);
+            break;
+          }
+      }
+      // INFO: WORDS prints a verb's person 0 (INF 0 X, MANE's X X X 0 X); whitaker_describe leaves it out. After the
+      //  deponent's voice, so the two words line up.
+      if (const auto w = tester::wordsOf(q), v = tester::wordsOf(lib);
+          !w.empty() && w[0] == "V" && w.size() >= 2 && w[w.size() - 2] == "0" && v.size() + 1 == w.size()) {
+        std::string without;
+        for (std::size_t i = 0; i < w.size(); ++i)
+          if (i != w.size() - 2)
+            without += (without.empty() ? "" : " ") + std::string(w[i]);
+        q = without, rules.insert(Rule::PersonZero);
+      }
+      const auto x = qualifierFields(q), y = qualifierFields(lib);
+      // NOTE: The library names the part twice, in pos and in its grammar; both must be WORDS'.
+      put("part", x[0], l.pos == y[0] ? y[0] : y[0] + " pos " + l.pos, x[0] == y[0] && l.pos == y[0]);
+      put("declension/conjugation", x[1], y[1], x[1] == y[1]);
+      put("grammar", x[2], y[2], x[2] == y[2]);
+      put("inflection labels", a.labels, l.labels, a.labels == l.labels);
+      break;
     }
-    auto q = a.qual, lib = l.qual;
-    // INFO: Print_Modified_Qual: a deponent's voice field is blank in IND .. INF and in a participle, whatever it holds
-    //  (ACTIVE for a future participle): only where WORDS shows no voice and the mood is one of those.
-    if (l.deponent && !q.contains("ACTIVE") && !q.contains("PASSIVE")) {
-      const auto words = tester::wordsOf(lib);
-      const bool blanked = std::ranges::any_of(
-          words, [](std::string_view w) { return w == "IND" || w == "SUB" || w == "IMP" || w == "INF" || w == "PPL"; });
-      for (const auto voice : {" ACTIVE"sv, " PASSIVE"sv})
-        if (const auto at = lib.find(voice); blanked && at != std::string::npos) {
-          lib.erase(at, voice.size()), rules.insert(Rule::DeponentVoice);
-          break;
-        }
+    case Kind::Addon:
+      spelled("addon", a.stem, l.stem);
+      put("addon kind", a.qual, l.qual, a.qual == l.qual);
+      break;
+    case Kind::Form:
+      put("form", a.qual, l.qual, a.qual == l.qual);
+      for (std::size_t i = 0; i < kCodeNames.size(); ++i) {
+        const auto x = a.codes.substr(std::min(i, a.codes.size()), 1),
+                   y = l.codes.substr(std::min(i, l.codes.size()), 1);
+        put(kCodeNames[i], x, y, x == y);
+      }
+      put("entry labels", a.labels, l.labels, a.labels == l.labels);
+      if (!a.parts.empty() && !l.knownParts)
+        gap("principal parts", Rule::PrincipalParts);
+      else
+        put("principal parts", a.parts, l.parts, a.parts == l.parts);
+      if (!a.ref.empty() && !l.knownRef)
+        gap("dictionary ref", Rule::DictionaryRef);
+      else
+        put("dictionary ref", a.ref, l.ref, a.ref == l.ref);
+      break;
+    case Kind::Meaning: {
+      // INFO: Put_Meaning: Trim (Head (Trim_Bar (Raw), 79)): the bars and blanks off the front, cut at 79, trimmed.
+      std::string_view lib = l.raw;
+      bool bar = false;
+      while (lib.starts_with('|'))
+        lib.remove_prefix(1), bar = true;
+      while (lib.starts_with(' '))
+        lib.remove_prefix(1);
+      const bool cut = collapsed(lib.substr(std::min<std::size_t>(lib.size(), 79))).size() > 0;
+      const auto shown = collapsed(lib.substr(0, 79));
+      const bool equal = shown == a.qual;
+      if (equal && bar)
+        rules.insert(Rule::MeaningBar);
+      if (equal && cut)
+        rules.insert(Rule::MeaningWidth);
+      put(l.numeral ? "numeral meaning" : "meaning", a.qual, l.qual, equal);
+      break;
     }
-    // INFO: WORDS prints a verb's person 0 (INF 0 X, MANE's X X X 0 X); whitaker_describe leaves it out. After the
-    //  deponent's voice, so the two words line up.
-    if (const auto w = tester::wordsOf(q), v = tester::wordsOf(lib);
-        !w.empty() && w[0] == "V" && w.size() >= 2 && w[w.size() - 2] == "0" && v.size() + 1 == w.size()) {
-      std::string without;
-      for (std::size_t i = 0; i < w.size(); ++i)
-        if (i != w.size() - 2)
-          without += (without.empty() ? "" : " ") + std::string(w[i]);
-      q = without, rules.insert(Rule::PersonZero);
-    }
-    const auto x = qualifierFields(q), y = qualifierFields(lib);
-    // NOTE: The library names the part twice, in pos and in its grammar; both must be WORDS'.
-    put("part", x[0], l.pos == y[0] ? y[0] : y[0] + " pos " + l.pos, x[0] == y[0] && l.pos == y[0]);
-    put("declension/conjugation", x[1], y[1], x[1] == y[1]);
-    put("grammar", x[2], y[2], x[2] == y[2]);
-    put("inflection labels", a.labels, l.labels, a.labels == l.labels);
-    break;
-  }
-  case Kind::Addon:
-    spelled("addon", a.stem, l.stem);
-    put("addon kind", a.qual, l.qual, a.qual == l.qual);
-    break;
-  case Kind::Form:
-    put("form", a.qual, l.qual, a.qual == l.qual);
-    for (std::size_t i = 0; i < kCodeNames.size(); ++i) {
-      const auto x = a.codes.substr(std::min(i, a.codes.size()), 1), y = l.codes.substr(std::min(i, l.codes.size()), 1);
-      put(kCodeNames[i], x, y, x == y);
-    }
-    put("entry labels", a.labels, l.labels, a.labels == l.labels);
-    if (!a.parts.empty() && !l.knownParts)
-      gap("principal parts", Rule::PrincipalParts);
-    else
-      put("principal parts", a.parts, l.parts, a.parts == l.parts);
-    if (!a.ref.empty() && !l.knownRef)
-      gap("dictionary ref", Rule::DictionaryRef);
-    else
-      put("dictionary ref", a.ref, l.ref, a.ref == l.ref);
-    break;
-  case Kind::Meaning: {
-    // INFO: Put_Meaning: Trim (Head (Trim_Bar (Raw), 79)): the bars and blanks off the front, cut at 79, trimmed.
-    std::string_view lib = l.raw;
-    bool bar = false;
-    while (lib.starts_with('|'))
-      lib.remove_prefix(1), bar = true;
-    while (lib.starts_with(' '))
-      lib.remove_prefix(1);
-    const bool cut = collapsed(lib.substr(std::min<std::size_t>(lib.size(), 79))).size() > 0;
-    const auto shown = collapsed(lib.substr(0, 79));
-    const bool equal = shown == a.qual;
-    if (equal && bar)
-      rules.insert(Rule::MeaningBar);
-    if (equal && cut)
-      rules.insert(Rule::MeaningWidth);
-    put(l.numeral ? "numeral meaning" : "meaning", a.qual, l.qual, equal);
-    break;
-  }
-  // INFO: Do_Qvae_Kludge: WORDS echoes an unknown qv word as qu (noviqvie).
-  case Kind::Unknown:
-    spelled("unknown", a.stem, l.stem);
-    break;
-  case Kind::Route:
-    put("route", a.text, l.text, a.text == l.text);
-    break;
-  case Kind::Trimmed:
-    put("trimmed", "*", "*", true);
-    break;
-  default:
-    break;
+    // INFO: Do_Qvae_Kludge: WORDS echoes an unknown qv word as qu (noviqvie).
+    case Kind::Unknown:
+      spelled("unknown", a.stem, l.stem);
+      break;
+    case Kind::Route:
+      put("route", a.text, l.text, a.text == l.text);
+      break;
+    case Kind::Trimmed:
+      put("trimmed", "*", "*", true);
+      break;
+    default:
+      break;
   }
   return f;
 }
@@ -150,7 +153,8 @@ std::optional<Rules> sameLine(const Line& a, const Line& l) {
 
 } // namespace
 
-Spelling compare(const std::string& word, std::string_view response, const Mutation* mutate, std::size_t only) {
+Spelling compare(const std::string& word, const std::string_view response, const Mutation* const mutate,
+                 const std::size_t only) {
   Spelling s;
   s.word = word;
   s.ada = adaLines(response);
@@ -163,7 +167,8 @@ Spelling compare(const std::string& word, std::string_view response, const Mutat
     if (!(general || unique) || std::sscanf(a.ref.c_str() + 5, "%u", &n) != 1 || n == 0)
       continue;
     const auto& dictionary = wordsDictionary();
-    const auto* record = dictionary.record(static_cast<std::uint16_t>(unique ? dictionary.general() + n - 1 : n - 1));
+    const auto* const record =
+        dictionary.record(static_cast<std::uint16_t>(unique ? dictionary.general() + n - 1 : n - 1));
     ++s.formsRebuilt;
     if (const auto rebuilt = record ? collapsed(dictionaryForm(*record)) : "?"; rebuilt != a.printedForm)
       s.formsDiffering.push_back(std::format("{}: WORDS \"{}\" rebuilt \"{}\"", a.ref, a.printedForm, rebuilt));
@@ -213,7 +218,7 @@ Spelling compare(const std::string& word, std::string_view response, const Mutat
       if (!p.ada)
         continue;
       const auto it = std::find_if(left.begin() + next, left.end(),
-                                   [&](std::size_t y) { return pairs[y].library->kind == p.ada->kind; });
+                                   [&](const std::size_t y) { return pairs[y].library->kind == p.ada->kind; });
       if (it != left.end()) {
         Rules ignored;
         p.library = pairs[*it].library;
@@ -223,7 +228,7 @@ Spelling compare(const std::string& word, std::string_view response, const Mutat
       }
       s.pairs.push_back(std::move(p));
     }
-    for (auto y : left)
+    for (const auto y : left)
       if (pairs[y].library)
         s.pairs.push_back(std::move(pairs[y]));
     k = end;
@@ -249,16 +254,16 @@ Spelling compare(const std::string& word, std::string_view response, const Mutat
   const auto once = [&](const std::vector<Line>& all, auto side) {
     std::vector<int> seen(all.size());
     for (const auto& p : s.pairs)
-      if (const Line* l = p.*side)
+      if (const Line* const l = p.*side)
         ++seen[static_cast<std::size_t>(l - all.data())];
-    return std::ranges::all_of(seen, [](int n) { return n == 1; });
+    return std::ranges::all_of(seen, [](const int n) { return n == 1; });
   };
   if (!once(s.ada, &Pairing::ada) || !once(s.library, &Pairing::library))
     throw std::logic_error("a line is not in exactly one pairing: " + word);
   for (const auto& p : s.pairs) {
     if (p.differs)
       s.verdict = Verdict::Differs;
-    for (auto r : p.rules)
+    for (const auto r : p.rules)
       if (kRules[std::to_underlying(r)].kind != "reading")
         s.verdict = std::max(s.verdict, Verdict::Gaps);
   }
@@ -276,16 +281,16 @@ std::string pattern(const Pairing& p) {
   const auto& l = p.ada ? *p.ada : *p.library;
   const std::string side = p.ada ? "Ada only" : "library only";
   switch (l.kind) {
-  case Kind::Inflection:
-    return std::format("{} reading: {}", side, l.qual);
-  case Kind::Form:
-    return std::format("{} form: {} [{}] {}", side, l.qual, l.codes, l.labels);
-  case Kind::Meaning:
-    return std::format("{} meaning: {}", side, l.qual);
-  case Kind::Addon:
-    return std::format("{} addon: {} {}", side, l.stem, l.qual);
-  default:
-    return std::format("{} {}", side, kKindNames[std::to_underlying(l.kind)]);
+    case Kind::Inflection:
+      return std::format("{} reading: {}", side, l.qual);
+    case Kind::Form:
+      return std::format("{} form: {} [{}] {}", side, l.qual, l.codes, l.labels);
+    case Kind::Meaning:
+      return std::format("{} meaning: {}", side, l.qual);
+    case Kind::Addon:
+      return std::format("{} addon: {} {}", side, l.stem, l.qual);
+    default:
+      return std::format("{} {}", side, kKindNames[std::to_underlying(l.kind)]);
   }
 }
 

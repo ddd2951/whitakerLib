@@ -4,6 +4,6 @@
 
 namespace whitaker::parse {
 
-void addAdverbsOfAdjectives(Work& out) noexcept;
+void addAdverbsOfAdjectives(Work& out);
 
 } // namespace whitaker::parse

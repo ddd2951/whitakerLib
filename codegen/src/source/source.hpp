@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <meta>
 #include <string_view>
+#include <type_traits>
 
 #include "source/schemes.hpp"
 
@@ -18,11 +19,13 @@ using DictlineIndex = Index<^^scheme::dictline>;
 using InflectsIndex = Index<^^scheme::inflects>;
 using UniquesIndex = Index<^^scheme::uniques>;
 using AddonsIndex = Index<^^scheme::addons>;
+static_assert(std::is_trivially_copyable_v<DictlineIndex>);
+static_assert(std::is_trivially_copyable_v<InflectsIndex>);
+static_assert(std::is_trivially_copyable_v<UniquesIndex>);
+static_assert(std::is_trivially_copyable_v<AddonsIndex>);
 
 using UniquesLines = std::array<std::string_view, scheme::uniques::kLinesPerEntry>;
 using AddonsLines = std::array<std::string_view, scheme::addons::kLinesPerEntry>;
-
-void init();
 
 std::string_view dictline(DictlineIndex entry);
 std::string_view inflects(InflectsIndex entry);

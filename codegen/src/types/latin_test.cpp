@@ -11,7 +11,7 @@
 #include <variant>
 #include <vector>
 
-#include "include/whitaker.h"
+#include <whitaker.hpp>
 #include "latin.hpp"
 #include "src/search/relationship_schema.hpp"
 #include "types/grammar.hpp"
@@ -44,7 +44,7 @@ static_assert(validOnlyForEnumerators<latin::Part, latin::isPart>());
 static_assert(validOnlyForEnumerators<latin::AddonKind, latin::isAddonKind>());
 
 consteval std::vector<std::meta::info> latinEnums() {
-  std::vector<std::meta::info> out;
+  std::vector<std::meta::info> out{};
   for (const std::meta::info l : std::meta::members_of(^^latin, std::meta::access_context::unchecked()))
     if (std::meta::is_type(l) && std::meta::is_enum_type(l) && std::meta::has_identifier(l))
       out.push_back(l);
@@ -112,55 +112,6 @@ static_assert(everyLayoutMatches<rel::entryLayout, true>(std::type_identity<lati
 static_assert(fitsField<latin::Area>(rel::Field::area) && fitsField<latin::Geography>(rel::Field::geography) &&
               fitsField<latin::Source>(rel::Field::source));
 
-template <auto V> inline constexpr long long kValue = static_cast<long long>(V);
-
-consteval long long valueOf(std::meta::info enumerator) {
-  const std::array arguments{enumerator};
-  return std::meta::extract<long long>(std::meta::substitute(^^kValue, arguments));
-}
-
-consteval std::string upperSnake(std::string_view name) {
-  std::string out;
-  for (const char c : name) {
-    if (c >= 'A' && c <= 'Z' && !out.empty())
-      out += '_';
-    out += static_cast<char>(c >= 'a' && c <= 'z' ? c - 'a' + 'A' : c);
-  }
-  return out;
-}
-
-// whitaker.h spells latin's enums for C: WhitakerX mirrors latin::X, each WHITAKER_X_NAME being latin::X::NAME with its
-// value. Status, Field, AddonKind, Route and SpellingKind are C's own.
-consteval std::string mirrorFault() {
-  using namespace std::meta;
-  constexpr auto ctx = access_context::unchecked();
-  const std::vector<info> enums = latinEnums();
-  for (const info c : members_of(^^::, ctx)) {
-    if (!is_type_alias(c) || !identifier_of(c).starts_with("Whitaker") || !is_enum_type(dealias(c)))
-      continue;
-    const std::string name{identifier_of(c).substr(8)};
-    if (name == "Status" || name == "Field" || name == "AddonKind" || name == "Route" || name == "SpellingKind")
-      continue;
-    const auto l = std::ranges::find_if(enums, [&](info e) { return identifier_of(e) == name; });
-    if (l == enums.end())
-      return "latin has no enum " + name;
-    const auto cs = enumerators_of(dealias(c));
-    const auto ls = enumerators_of(*l);
-    if (cs.size() != ls.size())
-      return "Whitaker" + name + " and latin::" + name + " differ in size";
-    for (const info le : ls) {
-      const std::string cName = "WHITAKER_" + upperSnake(name) + "_" + std::string{identifier_of(le)};
-      const auto ce = std::ranges::find_if(cs, [&](info e) { return identifier_of(e) == cName; });
-      if (ce == cs.end() || valueOf(*ce) != valueOf(le))
-        return "whitaker.h's " + cName + " is not latin::" + name + "::" + std::string{identifier_of(le)};
-    }
-  }
-  return {};
-}
-constexpr std::string_view kMirrorFault = std::define_static_string(mirrorFault());
-static_assert(kMirrorFault.empty(), kMirrorFault);
-
-// An entry's id is its image record, numbered as WORDS numbers them: DICTLINE.GEN's lines and esse, then UNIQUES.
-static_assert(word::kDictlineWords == WHITAKER_GENERAL_RECORDS);
+static_assert(word::kDictlineWords == std::to_underlying(whitaker::kFirstUnique));
 
 } // namespace

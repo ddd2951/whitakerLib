@@ -7,9 +7,9 @@
 
 namespace whitaker::parse {
 
-bool addPrefixVariantReadings(Work& out, Text& text, std::string_view input) noexcept;
-bool addRespelledReadings(Work& out, Text& text, std::string_view input) noexcept;
-void addRespelledEncliticReadings(Work& out, Text& text, std::string_view word) noexcept;
-[[nodiscard]] WhitakerSpellingRule spellingRule(std::uint8_t rule) noexcept;
+bool addPrefixVariantReadings(Work& out, std::string_view input);
+bool addRespelledReadings(Work& out, std::string_view input);
+void addRespelledEncliticReadings(Work& out, std::string_view word);
+[[nodiscard]] SpellingRule spellingRule(std::uint8_t rule);
 
 } // namespace whitaker::parse

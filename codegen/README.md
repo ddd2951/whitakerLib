@@ -1,13 +1,25 @@
 # whitakerLib lookup-image generator
 
-`gen` builds `data/whitaker.dat`, the lookup image the library embeds.
-It takes no options: what it builds comes from the vendored sources and
-their schemes, so change those instead. It works and its output is checked
-exhaustively, but it is far from finished.
+Gen builds `data/whitaker.dat`, the lookup image the library embeds, from
+WORDS' four source files, fetched from upstream (see Getting WORDS' files). It
+uses three names, one for each part.
+
+- `gen_image` is the generator, one executable. It expands the sources, builds
+  the image, checks it and publishes it.
+- `image` is the CMake target that builds `gen_image` and runs it. Only an
+  image that passes every check replaces `data/whitaker.dat`.
+- `gen` is the CMake target that only builds `gen_image` and checks that the
+  checked-in files are current. Its build refuses stale bindings and reading
+  shapes, and it checks the two bounds and the image against the sources. It
+  writes nothing.
+
+The two-ended tables are image sections, so there is no checked-in C++ table and
+no runtime table construction.
 
 ## Inputs
 
-`gen` runs from the repository root and expects the files as follows:
+`gen_image` and the bounds checks run from the repository root and expect these
+files.
 
 ```text
 data/source/DICTLINE.GEN   39,335 lines
@@ -21,54 +33,77 @@ changing them. A new understanding or change of what a word means does not.
 
 ## Output
 
-`gen` will write `data/whitaker.dat`. The write only happens after it has
-verified it, so a failed run does not replace the old one (see Checks).
+`image` writes `data/whitaker.dat`. The write only happens after the image has
+been verified, so a failed run does not replace the old one (see Checks).
 
 ## Build and run
 
 Needs a POSIX system, CMake 3.28 or newer and GCC 16 with `-freflection`
 (C++26 reflection). Tested on Linux only, would love to hear if anyone gets it
-to build on macOS or a BSD. From the repository root:
+to build on macOS or a BSD. From the repository root, run
 
 ```sh
 cmake -S codegen -B build-codegen
-cmake --build build-codegen --target image
+cmake --build build-codegen --target gen     # check that everything is current
+cmake --build build-codegen --target image   # rebuild data/whitaker.dat
 ```
 
-The build is Release unless another type is given. The `image` target builds
-`gen` and runs it from the repository root.
+The build is Release unless another type is given. `image` alone is enough when
+only the image is stale. After a change to the header, the Latin declarations or
+the sources, regenerate everything gen writes, in the order below. `gen_image`
+does not build while the first two are stale, and it builds the image with the
+two bounds compiled in (`gen` reports them stale).
 
-`sha256sum data/whitaker.dat` with the pinned corpus should give:
-
-```text
-size:    10,527,058 bytes
-SHA-256: 35fbe999b0100f62c2d3630bd62d93ca31670c7a76e220e3c2b48dc4d88a4630
+```sh
+cmake --build build-codegen --target write_reading_format    # include/latin_generated.hpp
+cmake --build build-codegen --target write_bindings          # the C and Python bindings, the inspector's API view
+cmake --build build-codegen --target write_two_ended         # the two-ended tables' bounds
+cmake --build build-codegen --target write_reading_capacity  # the change list's bounds
+cmake --build build-codegen --target image                   # data/whitaker.dat
 ```
-
-A warm Release run takes a median 3.4 seconds on an AMD Ryzen 5 5600X with
-GCC 16.2.1, pinned to one core.
 
 ## Pipeline
 
-`main()` runs four phases in order:
+Gen is 66 steps, each a function declared in one file,
+`src/execution_steps/steps.hpp`, in 12 phases. They read and parse WORDS' four
+files, expand every stem and ending into WORDS' readings, then build, encode,
+check and publish the image. `main()` is one line.
 
-1. `source::init()` reads the four files into lines and frames their records.
-2. `word::init()` parses every record once into typed values.
-3. `expand::init()` applies the WORDS morphology rules and decides which forms
-   and readings are kept.
-4. `emitter::emit()` builds the automaton and tables, writes the image and
-   checks it.
+```cpp
+runner::runParallel<^^execution_steps>();
+```
 
-Each phase keeps what it builds until `gen` exits and answers through plain
-functions on typed indices: `source::dictline(index)`, `word::entry(row)`,
-`expand::spelling(result)`. They hand out views, not copies: a word's text is a
-`string_view` into the source lines, a spelling a view into expansion's store.
-Nothing is copied between phases and nothing is freed early.
+Each step is tagged with the steps it follows and the values it reads and
+writes.
 
-The price: a phase answers only after its `init()` has run. Before that its
-storage is there but empty, and a call returns empty text or a default record,
-or reads out of bounds, without complaint. Nothing checks the order; `main()`
-is the only place that states it.
+```cpp
+[[ = tag::Gate{^^parseInflectsRecords},
+   = tag::Writes{^^storage::inflects} ]] void addAdverbInflections();
+```
+
+At build time `src/execution_steps/run.hpp` collects the steps by reflection,
+checks that every gate names a step and that the waits have no cycle, direct
+or through other steps (the build stops if they do), and works out the order
+and what may run at once. A step starts as soon as everything it waits for has
+finished. Gen takes about 5 s and publishes the same image byte
+for byte, run after run. Nothing else lists the steps.
+
+The weak point is that the Reads and Writes tags are kept by hand on each
+declaration in `steps.hpp`, written from reading each step's code. The build
+checks that each one names a real value, not that the list is complete, and a
+missing one can let two steps race. A ThreadSanitizer build of gen helps find
+it. Generating the tags from what each step actually touches is planned.
+
+The values the steps share live in `src/storage/`, one header each, and stay
+until gen exits. Steps hand out views, not copies. A word's text is a
+`string_view` into the source lines, and a spelling a view into expansion's
+store.
+
+Every answer is derived twice, on purpose. The lookup tables are built from the
+unswept licensing, and the lookup sweeps at run time. Expansion's finished
+answers, in WORDS' own order, are the reference `checkImageReadings` compares
+that lookup with, on every spelling. The WORDS rules both need are written once
+and shared (`helpers/adverb_of.hpp`).
 
 ## Why reflection?
 
@@ -77,64 +112,92 @@ to try out new things I've learned. With reflection such an exciting addition
 to C++, it was natural for this project to start asking what it could do here.
 The first use was replacing magic_enum for turning an `enum class` into a
 `string_view`. The first public version, 0.1, was already built this way.
-Since then, a few places have shown where it really shines:
+Since then, a few places have shown where it really shines.
 
 - **Columns on the struct.** DICTLINE's fixed columns are annotations on the
-  record's members (`[[= Column{0, 19}]] Stem stem1;`); the parser reads them
-  from there.
+  record's members (`[[= Column{0, 19}]] Stem stem1;`), and the parser reads
+  them from there.
 - **Records filled member by member.** A `template for` over a struct's members
-  parses each field into the next member; a new member needs no parser change.
+  parses each field into the next member, so a new member needs no parser
+  change.
 - **Enum names are the source tokens.** `N`, `ADJ`, `TRANS` are read and
-  printed straight from the enumerators; no name tables.
+  printed straight from the enumerators, with no name tables.
 - **Types know their part of speech.** `[[= Part::N]] struct Noun`, read by
   `latin::partOf`, in place of hand-written switches.
-- **One index type per source file.** `source::Index<^^scheme::dictline>`: a
-  DICTLINE index can't be passed where an INFLECTS one is expected.
-- **The C header checked against gen.** `whitaker.h`'s C enums mirror gen's,
-  names and values, in one loop instead of 197 lines of asserts.
+- **One index type per source file.** With `source::Index<^^scheme::dictline>`,
+  a DICTLINE index can't be passed where an INFLECTS one is expected.
 - **Any value described.** Error reports print a record field by field, and
   name exactly the fields that differ.
+- **Bindings from tags.** The C++ header marks its calls and fields
+  `WHITAKER_TAG(bind)`, and gen reads the tags to write the C header, the Python
+  module and the inspector's API view, and refuses to build while any of them
+  is stale.
+- **Steps that schedule themselves.** Gen's steps are found, ordered and run
+  in parallel from their declarations alone (Pipeline, above).
 
-The cost: GCC 16 only, and `-Wno-shadow`, since every `template for` trips
-`-Wshadow`. Editors lag behind: clangd only gets close with the
+0.4.0 changed how gen is put together, not what its steps compute, and
+reflection now runs through all of it. Some of it I'm proud of. Some of it
+might look a bit cursed, like the execution steps, with annotations used as a
+dependency ledger and a scheduler worked out at compile time.
+
+The cost is GCC 16 only, and `-Wno-shadow`, since every `template for` trips
+`-Wshadow`. Editors lag behind. clangd only gets close with the
 [clang-p2996](https://github.com/bloomberg/clang-p2996) fork, and until my fix
 ([#361](https://github.com/bloomberg/clang-p2996/pull/361)) is in, it trips
-over annotations: clangd keeps the headers it has parsed as a precompiled
+over annotations. clangd keeps the headers it has parsed as a precompiled
 header, and the fork doesn't save annotation values in one, so they come back
 empty. With the fix, clangd is clean on gen except `src/types/latin_test.cpp`,
 where the fork rejects an enumerator reflection passed to `substitute` (GCC
-accepts it). The library itself is C++23 and has no reflection; only `gen`
+accepts it). The library itself is C++23 and has no reflection. Only `gen`
 and the oracle's probe use it.
 
 ## Checks
 
-- **Build:** the C enums in `whitaker.h` mirror gen's
-  (`src/types/latin_test.cpp`).
-- **Load:** the image loads as the library would (header, directory, section
+- **Build.** Latin declarations fit their image and reading slots, and the
+  generated public companions are current.
+- **Load.** The image loads as the library would (header, directory, section
   sizes).
-- **Spellings:** every kept spelling, in order, by walking the whole automaton.
-- **Rows:** every row of each spelling, in order: its stem, meaning and grammar.
-- **Entries:** all 39,415 stored entries match the parsed DICTLINE and UNIQUES
+- **Spellings.** Every kept spelling, in order, as the loaded image lists them
+  (`rel::spellings()`).
+- **Rows.** Every row of each spelling, in order, with its stem, meaning and
+  grammar.
+- **Entries.** All 39,415 stored entries match the parsed DICTLINE and UNIQUES
   words.
-- **Addon search:** the records only the addon search reads stay inside their tables,
-  and the endings and stems are sorted. Which rows they hold is
-  pinned by the library's examples test (`examples/expected/c.txt`), not here.
+- **Addon search.** The records only the addon search reads stay inside their
+  tables, and the endings and stems are sorted. Which rows they hold is checked
+  by the oracle, against WORDS' own readings, not here.
 
 All but the first run on a temporary file beside the image
 (`data/.whitaker.dat.tmp.<n>`). Only an image that passes every check replaces
-`data/whitaker.dat`. The first failure stops `gen`; the old image is untouched
-and the failed one stays for inspection.
+`data/whitaker.dat`. The first failure stops `gen_image`, the old image is
+untouched, and the failed one stays for inspection.
+
+## Getting WORDS' files
+
+Gen reads WORDS' four files from `data/source/`. They are not shipped, only
+their hashes in `data/source/MANIFEST.sha256` and their licence. The library
+itself never reads them, since it builds from the checked-in
+`data/whitaker.dat`. To regenerate the image, fetch them at the upstream
+revision the root README names under "Data and licence" (`1f2f0fb0867a` of
+`mk270/whitakers-words`).
+
+```sh
+git clone https://github.com/mk270/whitakers-words /tmp/whitakers-words
+git -C /tmp/whitakers-words checkout 1f2f0fb0867a
+cp /tmp/whitakers-words/{DICTLINE.GEN,INFLECTS.LAT,UNIQUES.LAT,ADDONS.LAT} data/source/
+(cd data/source && sha256sum -c MANIFEST.sha256)
+```
 
 ## Updating the corpus
 
-To try a newer WORDS:
+To try a newer WORDS, follow these steps.
 
-1. Update the files under `data/source/` and their hashes in
-   `data/source/MANIFEST.sha256`; note the upstream revision in the root
-   README under "Data and licence".
+1. Fetch the newer files into `data/source/` and update their hashes in
+   `data/source/MANIFEST.sha256`. Note the upstream revision in the root
+   README under "Data and licence" and in "Getting WORDS' files" above.
 2. Update the counts in the schemes under `src/source/`, and in Inputs above.
 3. Build the `image` target, which replaces `data/whitaker.dat` only when
-   every check passes; then build the library and run its tests.
+   every check passes. Then build the library and run its tests.
 
 The checks prove the image holds exactly what expansion built. They do not
 prove a corpus change is linguistically right, nor that every WORDS front-end

@@ -8,8 +8,8 @@
 namespace expand {
 
 struct Candidates {
-  std::vector<char> spellings;
-  ByLetter byLetter;
+  std::vector<char> spellings{};
+  ByLetter byLetter{};
 };
 
 Candidates candidates();

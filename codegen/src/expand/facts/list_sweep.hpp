@@ -18,7 +18,7 @@ enum class Fate : std::uint8_t {
 };
 
 struct Swept {
-  std::array<std::vector<Fate>, facts::kLetterCount> byLetter;
+  std::array<std::vector<Fate>, facts::kLetterCount> byLetter{};
 };
 
 // INFO: List_Sweep per spelling; the kept forms come first.

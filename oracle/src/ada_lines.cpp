@@ -14,8 +14,8 @@ constexpr std::array kInflectionLabels{"Archaic"sv,  "Early"sv,   "Classic"sv, "
 
 // INFO: "am.o  V  1 1 PRES ACTIVE IND 1 S  Early". A stem and ending of 21 characters or more run into the part
 //  ("conperendination.ibusN"), since WORDS sets the qualifier's column after them.
-std::optional<Line> inflectionLine(std::string_view raw) {
-  auto words = tester::wordsOf(raw);
+std::optional<Line> inflectionLine(const std::string_view raw) {
+  const auto words = tester::wordsOf(raw);
   if (words.size() < 2 || raw.front() == ' ')
     return std::nullopt;
   std::string first(words[0]);
@@ -27,7 +27,7 @@ std::optional<Line> inflectionLine(std::string_view raw) {
   } else {
     if (first.size() < 21)
       return std::nullopt;
-    const auto glued = std::ranges::find_if(kParts, [&](auto p) {
+    const auto glued = std::ranges::find_if(kParts, [&](const auto p) {
       return first.ends_with(p) && first.size() > p.size() && std::islower(first[first.size() - p.size() - 1]);
     });
     if (glued == kParts.end())
@@ -49,7 +49,7 @@ std::optional<Line> inflectionLine(std::string_view raw) {
   return l;
 }
 
-Line formLine(std::string_view raw) {
+Line formLine(const std::string_view raw) {
   Line l;
   l.kind = Kind::Form;
   const auto open = raw.find('[');
@@ -76,9 +76,9 @@ Line formLine(std::string_view raw) {
 
 } // namespace
 
-std::vector<Line> adaLines(std::string_view response) {
+std::vector<Line> adaLines(const std::string_view response) {
   std::vector<Line> out;
-  for (auto piece : response | std::views::split('\n')) {
+  for (const auto piece : response | std::views::split('\n')) {
     std::string_view raw(piece.begin(), piece.end());
     while (!raw.empty() && (raw.back() == ' ' || raw.back() == '\r'))
       raw.remove_suffix(1);
@@ -86,27 +86,27 @@ std::vector<Line> adaLines(std::string_view response) {
       continue;
     Line l;
     switch (tester::classify(raw)) {
-    case LineKind::Blank:
-      continue;
-    case LineKind::Trimmed:
-      l.kind = Kind::Trimmed;
-      break;
-    case LineKind::Unknown:
-      l.kind = Kind::Unknown;
-      l.stem = std::string(tester::wordsOf(raw)[0]);
-      break;
-    case LineKind::RouteMarker:
-    case LineKind::Explanation:
-      l.kind = Kind::Route;
-      break;
-    case LineKind::DictionaryForm:
-      l = formLine(raw);
-      break;
-    default:
-      if (auto i = inflectionLine(raw))
-        l = *i;
-      else
-        l.kind = Kind::Meaning, l.qual = collapsed(raw);
+      case LineKind::Blank:
+        continue;
+      case LineKind::Trimmed:
+        l.kind = Kind::Trimmed;
+        break;
+      case LineKind::Unknown:
+        l.kind = Kind::Unknown;
+        l.stem = std::string(tester::wordsOf(raw)[0]);
+        break;
+      case LineKind::RouteMarker:
+      case LineKind::Explanation:
+        l.kind = Kind::Route;
+        break;
+      case LineKind::DictionaryForm:
+        l = formLine(raw);
+        break;
+      default:
+        if (const auto i = inflectionLine(raw))
+          l = *i;
+        else
+          l.kind = Kind::Meaning, l.qual = collapsed(raw);
     }
     l.text = collapsed(raw);
     out.push_back(std::move(l));

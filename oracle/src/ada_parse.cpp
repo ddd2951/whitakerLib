@@ -25,7 +25,7 @@ constexpr std::array kExplanations{"Syncopated perfect"sv,
 constexpr std::array kParts{"N"sv,   "V"sv,    "ADJ"sv,  "ADV"sv,    "PRON"sv, "VPAR"sv, "SUPINE"sv,
                             "NUM"sv, "PREP"sv, "CONJ"sv, "INTERJ"sv, "PACK"sv, "X"sv};
 constexpr std::array kAddons{"TACKON"sv, "PREFIX"sv, "SUFFIX"sv};
-bool among(std::string_view word, const auto& list) { return std::ranges::contains(list, word); }
+bool among(const std::string_view word, const auto& list) { return std::ranges::contains(list, word); }
 
 std::string_view trimRight(std::string_view line) {
   while (!line.empty() && (line.back() == ' ' || line.back() == '\r'))
@@ -33,15 +33,15 @@ std::string_view trimRight(std::string_view line) {
   return line;
 }
 
-bool hasCodes(std::string_view line) {
+bool hasCodes(const std::string_view line) {
   for (auto at = line.find('['); at != std::string_view::npos; at = line.find('[', at + 1))
     if (at + 6 < line.size() && line[at + 6] == ']' &&
-        std::ranges::all_of(line.substr(at + 1, 5), [](char c) { return std::isupper(c); }))
+        std::ranges::all_of(line.substr(at + 1, 5), [](const char c) { return std::isupper(c); }))
       return true;
   return false;
 }
 
-std::optional<std::string_view> leadingPart(std::string_view line) {
+std::optional<std::string_view> leadingPart(const std::string_view line) {
   if (line.empty() || line.front() == ' ')
     return std::nullopt;
   const auto gap = line.find(' ');
@@ -55,7 +55,7 @@ std::optional<std::string_view> leadingPart(std::string_view line) {
 
 } // namespace
 
-LineKind classify(std::string_view raw) {
+LineKind classify(const std::string_view raw) {
   const auto line = trimRight(raw);
   if (line.empty())
     return LineKind::Blank;
@@ -63,15 +63,15 @@ LineKind classify(std::string_view raw) {
     return LineKind::Trimmed;
   if (line.contains("========") && line.contains("UNKNOWN"))
     return LineKind::Unknown;
-  for (auto start : kMarkers)
+  for (const auto start : kMarkers)
     if (line.starts_with(start))
       return LineKind::RouteMarker;
-  for (auto start : kExplanations)
+  for (const auto start : kExplanations)
     if (line.starts_with(start))
       return LineKind::Explanation;
   if (hasCodes(line))
     return LineKind::DictionaryForm;
-  if (auto part = leadingPart(line))
+  if (const auto part = leadingPart(line))
     return among(*part, kAddons) ? LineKind::Addon : LineKind::Inflection;
   return LineKind::Meaning;
 }

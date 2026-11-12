@@ -24,7 +24,61 @@
 #include <thread>
 #include <vector>
 
-#include <whitaker.h>
+#include <whitaker.hpp>
+
+// INFO: The adapter's own copies of a reading, filled from Result::decode, which --probe changes field by field.
+struct WhitakerAddonStep {
+  uint16_t id;
+  uint8_t kind;
+};
+struct WhitakerGrammar {
+  uint8_t part;
+  uint8_t which;
+  uint8_t variant;
+  uint8_t case_of;
+  uint8_t number;
+  uint8_t gender;
+  uint8_t comparison;
+  uint8_t numeral_sort;
+  uint8_t tense;
+  uint8_t voice;
+  uint8_t mood;
+  uint8_t person;
+};
+struct WhitakerEntry {
+  uint8_t part;
+  uint8_t which;
+  uint8_t variant;
+  uint8_t gender;
+  uint8_t kind;
+  uint8_t comparison;
+  uint8_t numeral_sort;
+  uint8_t area;
+  uint8_t geography;
+  uint8_t source;
+  uint16_t numeral_value;
+  uint8_t age;
+  uint8_t frequency;
+  uint16_t id;
+};
+struct WhitakerForm {
+  const char* orth;
+  const char* ending;
+  WhitakerGrammar grammar;
+  uint8_t inflection_age;
+  uint8_t inflection_frequency;
+};
+struct WhitakerRecord {
+  WhitakerEntry entry;
+  const char* meaning;
+  const char* pos;
+  const WhitakerAddonStep* addons;
+  uint8_t addon_count;
+  uint8_t route;
+  uint8_t spelling_rule;
+  size_t first_form;
+  size_t form_count;
+};
 
 #include "ada_parse.hpp"
 #include "dictionary.hpp"
@@ -46,7 +100,7 @@ enum class Rule : std::uint8_t {
   MeaningWidth,
   PersonZero,
   DeponentVoice,
-  Count
+  Count,
 };
 struct RuleInfo {
   Rule rule;
@@ -68,7 +122,7 @@ inline constexpr std::array<RuleInfo, std::to_underlying(Rule::Count)> kRules{{
      "WORDS blanks a deponent's voice field, whatever it holds: not shown, not compared"},
 }};
 static_assert(std::ranges::all_of(std::views::iota(0uz, kRules.size()),
-                                  [](std::size_t i) { return std::to_underlying(kRules[i].rule) == i; }));
+                                  [](const std::size_t i) { return std::to_underlying(kRules[i].rule) == i; }));
 using Rules = std::set<Rule>;
 
 enum class Kind : std::uint8_t { Inflection, Form, Meaning, Addon, Unknown, Route, Trimmed };
@@ -90,9 +144,9 @@ struct Line {
   std::string raw;
 };
 
-inline std::string collapsed(std::string_view s) {
+inline std::string collapsed(const std::string_view s) {
   std::string out;
-  for (auto w : tester::wordsOf(s))
+  for (const auto w : tester::wordsOf(s))
     out += (out.empty() ? "" : " ") + std::string(w);
   return out;
 }
@@ -144,7 +198,7 @@ Spelling compare(const std::string& word, std::string_view response, const Mutat
                  std::size_t only = kAll);
 std::string pattern(const Pairing& p);
 std::string readFile(const fs::path& path);
-// Throws if the file cannot be opened or fully written.
+// INFO: Throws if the file cannot be opened or fully written.
 void write(const fs::path& path, const std::function<void(std::ostream&)>& fill);
 std::map<std::string, Seen> load(const fs::path& captures, std::vector<std::string>& names, std::uint64_t& bookTokens,
                                  bool skipIncomplete = false);

@@ -1,12 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 
-file(STRINGS include/whitaker.h WHITAKER_VERSION
-    REGEX "^#define WHITAKER_VERSION_(MAJOR|MINOR|PATCH) ")
-string(REGEX REPLACE "[^;]* ([0-9]+)" "\\1" WHITAKER_VERSION "${WHITAKER_VERSION}")
-list(JOIN WHITAKER_VERSION . WHITAKER_VERSION)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS include/whitaker.h)
-
-project(whitaker VERSION ${WHITAKER_VERSION} LANGUAGES CXX C)
+file(STRINGS include/whitaker.hpp WHITAKER_VERSION_LINE REGEX "^inline constexpr char kVersion")
+string(REGEX MATCH "[0-9]+[.][0-9]+[.][0-9]+" WHITAKER_VERSION "${WHITAKER_VERSION_LINE}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS include/whitaker.hpp)
+project(whitaker VERSION ${WHITAKER_VERSION} LANGUAGES C CXX)
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
     message(FATAL_ERROR
@@ -53,10 +50,20 @@ function(whitaker_sanitize target)
         target_compile_options(${target} PRIVATE
             -fsanitize=address,undefined -fno-sanitize-recover=undefined)
         target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+        # NOTE: Linux's -z,defs needs Clang's shared runtime; executables must use that same runtime.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            target_link_options(${target} PRIVATE -shared-libsan)
+        endif()
     endif()
 endfunction()
 
-add_library(whitaker SHARED
+# NOTE: The browser build links the library into one module.
+if(EMSCRIPTEN)
+    set(WHITAKER_LIBRARY_TYPE STATIC)
+else()
+    set(WHITAKER_LIBRARY_TYPE SHARED)
+endif()
+add_library(whitaker ${WHITAKER_LIBRARY_TYPE}
     src/parse/adverb.cpp
     src/parse/find_readings.cpp
     src/parse/result.cpp
@@ -67,8 +74,12 @@ add_library(whitaker SHARED
     src/search/relationship_image.cpp
     src/search/syncope_lookup.cpp
     src/whitaker.cpp
+    bindings/c/whitaker_c.cpp
 )
 add_library(Whitaker::whitaker ALIAS whitaker)
+
+# INFO: The embedded image's section places are link-time constants (gen loads its image at run time instead).
+target_compile_definitions(whitaker PRIVATE WHITAKER_EMBEDDED_FRAME)
 
 set_target_properties(whitaker PROPERTIES
     EXPORT_NAME whitaker
@@ -83,11 +94,11 @@ if(NOT EXISTS "${WHITAKER_DATA_IMAGE}")
 endif()
 # NOTE: #embed takes offsets and limits from the preprocessor alone, so the
 #  string pool's place is read here from the image's directory: Strings is
-#  section 13 (relationship_schema.hpp), each directory entry 24 bytes after
-#  the 48-byte header. embedded_image.cpp checks both against the image.
+#  section 7 (relationship_schema.hpp), each directory entry 24 bytes after
+#  the 40-byte header. embedded_image.cpp checks both against the image.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${WHITAKER_DATA_IMAGE}")
-file(READ "${WHITAKER_DATA_IMAGE}" entry_hex OFFSET 360 LIMIT 16 HEX)
+file(READ "${WHITAKER_DATA_IMAGE}" entry_hex OFFSET 208 LIMIT 16 HEX)
 foreach(field AT BYTES)
     # A little-endian u64, most significant byte first for math().
     set(hex "")
@@ -99,12 +110,40 @@ foreach(field AT BYTES)
     math(EXPR WHITAKER_IMAGE_STRINGS_${field} "0x${hex}")
     string(SUBSTRING "${entry_hex}" 16 -1 entry_hex)
 endforeach()
+# INFO: The whole directory, so the library can use each section's place as a constant. 25 entries of offset,
+#  bytes and count; embedded_image.cpp checks them against the image.
+file(READ "${WHITAKER_DATA_IMAGE}" directory_hex OFFSET 40 LIMIT 600 HEX)
+set(WHITAKER_IMAGE_DIRECTORY "")
+foreach(field RANGE 0 74)
+    set(hex "")
+    foreach(byte RANGE 7 0 -1)
+        math(EXPR hex_index "16 * ${field} + 2 * ${byte}")
+        string(SUBSTRING "${directory_hex}" ${hex_index} 2 pair)
+        string(APPEND hex "${pair}")
+    endforeach()
+    math(EXPR value "0x${hex}")
+    math(EXPR position "${field} % 3")
+    if(position EQUAL 0)
+        string(APPEND WHITAKER_IMAGE_DIRECTORY "{${value}u, ")
+    elseif(position EQUAL 1)
+        string(APPEND WHITAKER_IMAGE_DIRECTORY "${value}u, ")
+    else()
+        string(APPEND WHITAKER_IMAGE_DIRECTORY "${value}u}, ")
+    endif()
+endforeach()
 file(CONFIGURE OUTPUT image_layout.h CONTENT
     "// Generated from data/whitaker.dat's directory by CMakeLists.txt.
 #pragma once
 #define WHITAKER_IMAGE_FILE \"${WHITAKER_DATA_IMAGE}\"
 #define WHITAKER_IMAGE_STRINGS_AT ${WHITAKER_IMAGE_STRINGS_AT}
 #define WHITAKER_IMAGE_STRINGS_BYTES ${WHITAKER_IMAGE_STRINGS_BYTES}
+#define WHITAKER_IMAGE_DIRECTORY ${WHITAKER_IMAGE_DIRECTORY}
+")
+file(SHA256 "${WHITAKER_DATA_IMAGE}" WHITAKER_IMAGE_SHA256)
+file(CONFIGURE OUTPUT image_checksum.h CONTENT
+    "// Generated from data/whitaker.dat by CMakeLists.txt.
+#pragma once
+#define WHITAKER_IMAGE_SHA256 \"${WHITAKER_IMAGE_SHA256}\"
 ")
 set_source_files_properties(src/search/embedded_image.cpp
     PROPERTIES OBJECT_DEPENDS "${WHITAKER_DATA_IMAGE}")
@@ -116,6 +155,7 @@ target_include_directories(whitaker PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_include_directories(whitaker PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/bindings/c>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -144,6 +184,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 whitaker_sanitize(whitaker)
 
+if(EMSCRIPTEN)
+    add_subdirectory(inspector)
+endif()
+
+option(WHITAKER_BUILD_PYTHON "Build the Python binding; needs pybind11" OFF)
+if(WHITAKER_BUILD_PYTHON)
+    add_subdirectory(bindings/python)
+endif()
+
 if(WHITAKER_BUILD_TESTING)
     function(whitaker_test target)
         target_link_libraries(${target} PRIVATE whitaker_warnings)
@@ -152,32 +201,16 @@ if(WHITAKER_BUILD_TESTING)
         add_test(NAME ${target} COMMAND ${target} ${ARGN})
     endfunction()
 
-    add_executable(whitaker_test test/test.c)
+    add_executable(whitaker_test test/test.cpp)
     target_link_libraries(whitaker_test PRIVATE whitaker)
+    target_compile_features(whitaker_test PRIVATE cxx_std_23)
     whitaker_test(whitaker_test)
 
-    if(WHITAKER_INSTALL)
-        set(WHITAKER_EXAMPLE_FLAGS "-Wall -Wextra -Wpedantic -Werror")
-        if(WHITAKER_SANITIZE)
-            string(APPEND WHITAKER_EXAMPLE_FLAGS " -fsanitize=address,undefined")
-        endif()
-        add_test(NAME whitaker_examples
-            COMMAND ${CMAKE_COMMAND}
-                -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
-                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples
-                -DC_COMPILER=${CMAKE_C_COMPILER}
-                -DCXX_COMPILER=${CMAKE_CXX_COMPILER}
-                -DFLAGS=${WHITAKER_EXAMPLE_FLAGS}
-                -DCONFIG=$<CONFIG>
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/test/examples.cmake)
-    endif()
+    add_executable(whitaker_c_test test/test_c.c)
+    target_link_libraries(whitaker_c_test PRIVATE whitaker)
+    target_compile_features(whitaker_c_test PRIVATE c_std_11)
+    whitaker_test(whitaker_c_test)
 
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        add_test(NAME whitaker_build_boundary
-            COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/test/build_boundary.sh
-                $<TARGET_FILE:whitaker>)
-    endif()
 endif()
 
 if(WHITAKER_INSTALL)
@@ -206,8 +239,11 @@ write_basic_package_version_file(
 
 install(TARGETS whitaker EXPORT WhitakerTargets)
 install(FILES
-    include/whitaker.h
-    include/whitaker_types.h
+    include/whitaker.hpp
+    bindings/c/whitaker.h
+    include/latin_types.hpp
+    include/latin_generated.hpp
+    include/latin_describe.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/whitaker.pc

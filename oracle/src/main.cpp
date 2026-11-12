@@ -1,6 +1,6 @@
 #include "lines.hpp"
 
-int main(int argc, char** argv) {
+int main(const int argc, char** const argv) {
   try {
     if (argc < 3) {
       std::cerr << "usage: lines CAPTURES_DIR OUT_DIR [BOOK...]\n"

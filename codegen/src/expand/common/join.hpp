@@ -14,19 +14,19 @@
 namespace expand::internal {
 
 struct Licensed {
-  DictlineRow entry;
+  DictlineRow entry{};
   const word::DictlineEntry& dictionary;
-  InflectsRow inflection;
+  InflectsRow inflection{};
   const word::InflectsEntry& ending;
-  latin::StemKey column;
-  std::string_view stem;
-  std::string_view suffix;
+  latin::StemKey column{};
+  std::string_view stem{};
+  std::string_view suffix{};
 };
 
 // NOTE: Every dictionary row is crossed, source and synthetic. Only source inflection rows are: a synthetic inflection
 //  is reached by the pass that made it, never by the join.
 template <typename Visit> void forEachLicensed(Visit&& visit) {
-  std::array<std::vector<std::uint32_t>, kInflectionCount> byAlternative;
+  std::array<std::vector<std::uint32_t>, kInflectionCount> byAlternative{};
   for (std::uint32_t row = 0; row < source::scheme::inflects::kEntriesPerFile; ++row)
     byAlternative[word::entry(InflectsRow{row}).grammar.index()].push_back(row);
 

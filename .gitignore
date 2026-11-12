@@ -19,3 +19,9 @@ __pycache__/
 
 # The oracle's captures and reports (oracle/README.md).
 oracle/stored/
+
+# WORDS' four files: fetched from upstream, not shipped (codegen/README.md, "Getting WORDS' files").
+data/source/DICTLINE.GEN
+data/source/INFLECTS.LAT
+data/source/UNIQUES.LAT
+data/source/ADDONS.LAT

@@ -137,48 +137,50 @@ So far, I've found 20. Some give incorrect readings, others silently drop answer
 
 If WORDS has a bug, I don't really want to reproduce that bug in whitakerLib just to get a matching result.
 
-Five fixes have been submitted to the upstream project. All 19 completed fixes
-and their regression tests are available in the [combined_fixes branch][combined-fixes].
-For a fixed source revision, pin to
-[`da6b35f`](https://github.com/ddd2951/whitakers-words/commit/da6b35fc862f1019720993dcddf7fd9d62ecc080).
-Its Ada source is identical to the local build used for the saved captures;
-the captures retain their original source revision and build details.
+Nine fixes have been sent to the upstream project. Seven of them are merged
+and two are waiting for review. The ninth, #152, was closed by mistake upstream
+and is not merged yet. The remaining fixes are local and not sent yet.
 
-The [WORDS fix notes](WORDS_FIXES.md) give a short overview with regression
-examples and links to the tests. The cases use WORDS' existing five test folders.
+The comparisons currently use my local patched WORDS build, `5dd8ca5`.
+Its source revision and build details are saved with the captures, so I can
+track exactly what produced each answer. Its full source, every fix combined,
+is the pinned `combined_fixes` branch of my fork,
+[`ddd2951/whitakers-words`](https://github.com/ddd2951/whitakers-words/tree/combined_fixes),
+at `da6b35f`.
 
-The first five entries below follow upstream pull-request order. The combined
-branch includes fixes #1–#19; #20 remains open and is excluded.
+The findings keep the numbers they were given when found. The build includes
+fixes for all findings except #20, which is still being investigated.
 
-| # | Finding | Cause | Patch |
+| # | Finding | Cause | Upstream |
 | --- | --- | --- | --- |
-| 1 | Syncope state | Failed syncope attempts overwrite dictionary candidates. | [#151](https://github.com/mk270/whitakers-words/pull/151) |
-| 2 | Enclitic syncope | Syncope is tried on the whole word instead of its base. | [#152](https://github.com/mk270/whitakers-words/pull/152) |
-| 3 | Comment reader | A short line is tested using stale buffer text. | [#153](https://github.com/mk270/whitakers-words/pull/153) |
-| 4 | Slur and tackon state | Failed slur or rejected tackon attempts overwrite candidates. | [#154](https://github.com/mk270/whitakers-words/pull/154) |
-| 5 | vis syncope | The rule accepts verbs outside the perfect system. | [#155](https://github.com/mk270/whitakers-words/pull/155) |
-| 6 | Enclitic state | Failed attempts lose candidates; fixes-only lookup misses the base. | [Combined fixes][combined-fixes] |
-| 7 | Unique part | The part is read from the uninitialized destination qualifier. | [Combined fixes][combined-fixes] |
-| 8 | Compound numbers | Numeral-hit flags survive failed word splits and can cause a crash. | [Combined fixes][combined-fixes] |
-| 9 | Repeated PACK/UNIQUES | The fixes-only pass repeats the ordinary unique and Qu lookups. | [Combined fixes][combined-fixes] |
-| 10 | Repeated adverbs | Fix_Adverb derives multiple adverbs from the same adjective record. | [Combined fixes][combined-fixes] |
-| 11 | Unique adverb ending | Fix_Adverb adds an ending absent from the unique's spelling. | [Combined fixes][combined-fixes] |
-| 12 | Full enclitic result | Inserting a marker overruns a full 40-record trick array. | [Combined fixes][combined-fixes] |
-| 13 | Packon boundary | A prefix match confuses the names cum and cumque. | [Combined fixes][combined-fixes] |
-| 14 | Suffix fallback | A later suffix miss erases evidence of an earlier hit. | [Combined fixes][combined-fixes] |
-| 15 | Qu grouping | Plain readings get sorted into the preceding add-on group. | [Combined fixes][combined-fixes] |
-| 16 | Orphan add-ons | Trimming removes all readings but leaves their add-on markers. | [Combined fixes][combined-fixes] |
-| 17 | Qu folding | The qu/cu test does not fold v to u. | [Combined fixes][combined-fixes] |
-| 18 | Nested tackons | The outer tackon sweep drops an accepted inner tackon marker. | [Combined fixes][combined-fixes] |
-| 19 | Ending lookup | The ending index uses the raw final letter, so final v finds none. | [Combined fixes][combined-fixes] |
-| 20 | Lost full results (open) | Fixed parse arrays overflow; the exception is swallowed as UNKNOWN. | Open; excluded |
+| 1 | Syncope state | Failed syncope attempts overwrite dictionary candidates. | [#151](https://github.com/mk270/whitakers-words/pull/151), merged |
+| 2 | Enclitic syncope | Syncope is tried on the whole word instead of its base. | [#152](https://github.com/mk270/whitakers-words/pull/152), closed by mistake, not merged yet |
+| 3 | Comment reader | A short line is tested using stale buffer text. | [#153](https://github.com/mk270/whitakers-words/pull/153), merged |
+| 4 | Slur and tackon state | Failed slur or rejected tackon attempts overwrite candidates. | [#154](https://github.com/mk270/whitakers-words/pull/154), merged |
+| 5 | vis syncope | The rule accepts verbs outside the perfect system. | [#155](https://github.com/mk270/whitakers-words/pull/155), merged |
+| 6 | Enclitic state | Failed attempts lose candidates; fixes-only lookup misses the base. | [#157](https://github.com/mk270/whitakers-words/pull/157), merged |
+| 7 | Unique part | The part is read from the uninitialized destination qualifier. | [#159](https://github.com/mk270/whitakers-words/pull/159), waiting for review |
+| 8 | Compound numbers | Numeral-hit flags survive failed word splits and can cause a crash. | [#156](https://github.com/mk270/whitakers-words/pull/156), merged |
+| 9 | Repeated PACK/UNIQUES | The fixes-only pass repeats the ordinary unique and Qu lookups. | Not posted yet |
+| 10 | Repeated adverbs | Fix_Adverb derives multiple adverbs from the same adjective record. | Not posted yet |
+| 11 | Unique adverb ending | Fix_Adverb adds an ending absent from the unique's spelling. | Not posted yet |
+| 12 | Full enclitic result | Inserting a marker overruns a full 40-record trick array. | Not posted yet |
+| 13 | Packon boundary | A prefix match confuses the names cum and cumque. | [#158](https://github.com/mk270/whitakers-words/pull/158), waiting for review |
+| 14 | Suffix fallback | A later suffix miss erases evidence of an earlier hit. | Not posted yet |
+| 15 | Qu grouping | Plain readings get sorted into the preceding add-on group. | Not posted yet |
+| 16 | Orphan add-ons | Trimming removes all readings but leaves their add-on markers. | Not posted yet |
+| 17 | Qu folding | The qu/cu test does not fold v to u. | Not posted yet |
+| 18 | Nested tackons | The outer tackon sweep drops an accepted inner tackon marker. | Not posted yet |
+| 19 | Ending lookup | The ending index uses the raw final letter, so final v finds none. | Not posted yet |
+| 20 | Lost full results (open) | Fixed parse arrays overflow; the exception is swallowed as UNKNOWN. | Not posted yet |
 
 The first fix for #20 answered pilula and seconda but crashed on roboraria while grouping the output.
 It is excluded from the comparison build and remains under investigation.
 
 ## Where we are now
 
-These are the results of the final 0.3.0 report, `20261030T211216`.
+These are the results of the final 0.3.0 report, `20261030T211216`. 0.4.0 gives
+the same report, byte for byte.
 The pinned collection contains 102 Latin books, with 4,662,505 word occurrences.
 
 | Result | Tokens | Percentage |
@@ -245,7 +247,7 @@ Pairing or shared-record inconsistencies invalidate the run.
 
 - [oracle](oracle): registration, capture, build and comparison commands.
 - [src/](src/): capture loading, Ada parsing, library layout, comparison and probe.
-- [fixtures/](fixtures/): constructed inputs registered separately from books.
+- `fixtures/`: where constructed inputs go, registered separately from books (none at present).
 - `stored/books.tsv`: registered paths, hashes, book/fixture kind and probe selection.
 - `stored/captures/<version>/`: token lists, provenance and shared raw answers
   under `answers/<batch>/`; older per-book answers remain readable.

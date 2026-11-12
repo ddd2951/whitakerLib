@@ -6,7 +6,7 @@
 
 namespace whitaker::parse {
 
-void addSyncopeReadings(Work& out, Text& text, std::string_view word) noexcept;
-void findReadings(Work& out, Text& text, std::string_view word) noexcept;
+void addSyncopeReadings(Work& out, std::string_view word);
+void findReadings(Work& out, std::string_view word);
 
 } // namespace whitaker::parse

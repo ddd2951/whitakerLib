@@ -6,6 +6,6 @@ namespace emitter {
 
 struct ImageFile;
 
-[[nodiscard]] ImageFile encodeImage(const ImageData& imageData, const Machine& machine);
+[[nodiscard]] ImageFile encodeImage(const ImageData& imageData);
 
 } // namespace emitter

@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <string_view>
+#include <type_traits>
 
 namespace expand {
 
@@ -13,8 +14,7 @@ struct ResultIndex {
   std::size_t value{};
   friend constexpr bool operator==(ResultIndex, ResultIndex) = default;
 };
-
-void init();
+static_assert(std::is_trivially_copyable_v<ResultIndex>);
 
 [[nodiscard]] std::size_t resultCount();
 

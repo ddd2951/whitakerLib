@@ -7,7 +7,7 @@
 namespace expand {
 
 struct Sorted {
-  ByLetter byLetter;
+  ByLetter byLetter{};
 };
 
 Sorted sorted(const Candidates& candidates, const Uniques& uniques);

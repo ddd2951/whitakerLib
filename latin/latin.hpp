@@ -1,356 +1,54 @@
 #pragma once
 
-#include <array>
-#include <cstddef>
+#include <latin_generated.hpp>
+
 #include <tuple>
 #include <type_traits>
-#include <utility>
-
-// WORDS' terms, as ADDONS.LAT and DICTLINE use them:
-// - prefix: added to the start of a stem to change its meaning:
-//   ante + cedo -> antecedo.
-// - suffix: added to the end of a stem, before the inflection; it can change
-//   the part of speech: vinc- + tor -> victor.
-// - tackon: added to the end of a whole, inflected word; taking it off leaves
-//   the same inflected word: -que, -ne, -ve.
-// - packon: a tackon that only joins the qu- pronouns: qui + cumque ->
-//   quicumque. The pronoun halves are DICTLINE's PACK entries.
-// - tickon: added to the front of those same qu- pronouns: ec- + quis ->
-//   ecquis.
-// - stem key: which of an entry's four stems an inflection joins; each
-//   INFLECTS row names the key it needs.
-// - allowed stem (AllowSet): WORDS' further checks on whether an inflection
-//   may join a stem, such as the short imperatives dic, duc, fac, fer.
 
 namespace latin {
 
-// INFO: DICTLINE and ADDONS.LAT number the parts differently. Both are converted to this one ordinal, so the image
-//  compares like with like.
-enum class Part : unsigned char {
-  // ADDONS.LAT's X: the record accepts any part.
-  X = 0,
-  N = 1,
-  PRON = 2,
-  V = 3,
-  ADJ = 4,
-  ADV = 5,
-  PREP = 6,
-  NUM = 7,
-  CONJ = 8,
-  INTERJ = 9,
-  PACK = 10,
-  SUPINE = 11,
-  VPAR = 12,
-  NONE = 13,
-};
-
-// ADDONS.LAT's record kinds, in the order the addon table stores them.
-enum class AddonKind : unsigned char {
-  Tickon = 0,
-  Prefix = 1,
-  Suffix = 2,
-  Tackon = 3,
-  Packon = 4,
-};
-
-enum class Case : unsigned char {
-  X = 0,
-  NOM = 1,
-  VOC = 2,
-  GEN = 3,
-  LOC = 4,
-  DAT = 5,
-  ABL = 6,
-  ACC = 7,
-};
-
-enum class Number : unsigned char {
-  X = 0,
-  S = 1,
-  P = 2,
-};
-
-enum class Gender : unsigned char {
-  X = 0,
-  M = 1,
-  F = 2,
-  N = 3,
-  C = 4,
-};
-
-enum class Tense : unsigned char {
-  X = 0,
-  PRES = 1,
-  IMPF = 2,
-  FUT = 3,
-  PERF = 4,
-  PLUP = 5,
-  FUTP = 6,
-};
-
-enum class Voice : unsigned char {
-  X = 0,
-  ACTIVE = 1,
-  PASSIVE = 2,
-};
-
-enum class Mood : unsigned char {
-  X = 0,
-  IND = 1,
-  SUB = 2,
-  IMP = 3,
-  INF = 4,
-  PPL = 5,
-};
-
-enum class Comparison : unsigned char {
-  X = 0,
-  POS = 1,
-  COMP = 2,
-  SUPER = 3,
-};
-
-// NOTE: Keep upper and lower case distinct until emission.
-enum class NounKind : unsigned char {
-  X = 0,
-  S = 1,
-  M = 2,
-  A = 3,
-  G = 4,
-  N = 5,
-  P = 6,
-  T = 7,
-  L = 8,
-  W = 9,
-  p = 10,
-  t = 11,
-  w = 12,
-  x = 13,
-};
-
-enum class PronounKind : unsigned char {
-  X = 0,
-  PERS = 1,
-  REL = 2,
-  REFLEX = 3,
-  DEMONS = 4,
-  INTERR = 5,
-  INDEF = 6,
-  ADJECT = 7,
-};
-
-enum class PackonKind : unsigned char {
-  X = 0,
-  INTERR = 1,
-  REL = 2,
-  INDEF = 3,
-  ADJECT = 4,
-};
-
-// INFO: TO_BE is used only by the synthesized esse entry.
-enum class VerbKind : unsigned char {
-  X = 0,
-  TO_BE = 1,
-  TO_BEING = 2,
-  GEN = 3,
-  DAT = 4,
-  ABL = 5,
-  TRANS = 6,
-  INTRANS = 7,
-  IMPERS = 8,
-  DEP = 9,
-  SEMIDEP = 10,
-  PERFDEF = 11,
-};
-
-enum class NumeralSort : unsigned char {
-  X = 0,
-  CARD = 1,
-  ORD = 2,
-  DIST = 3,
-  ADVERB = 4,
-};
-
-enum class Age : unsigned char {
-  X = 0,
-  A = 1,
-  B = 2,
-  C = 3,
-  D = 4,
-  E = 5,
-  F = 6,
-  G = 7,
-  H = 8,
-};
-
-enum class Frequency : unsigned char {
-  X = 0,
-  A = 1,
-  B = 2,
-  C = 3,
-  D = 4,
-  E = 5,
-  F = 6,
-  I = 7,
-  M = 8,
-  N = 9,
-};
-
-enum class Area : unsigned char {
-  X = 0,
-  A = 1,
-  B = 2,
-  D = 3,
-  E = 4,
-  G = 5,
-  L = 6,
-  P = 7,
-  S = 8,
-  T = 9,
-  W = 10,
-  Y = 11,
-};
-
-enum class Geography : unsigned char {
-  X = 0,
-  A = 1,
-  B = 2,
-  C = 3,
-  D = 4,
-  E = 5,
-  F = 6,
-  G = 7,
-  H = 8,
-  I = 9,
-  J = 10,
-  K = 11,
-  N = 12,
-  P = 13,
-  Q = 14,
-  R = 15,
-  S = 16,
-  U = 17,
-};
-
-enum class Source : unsigned char {
-  X = 0,
-  A = 1,
-  B = 2,
-  C = 3,
-  D = 4,
-  E = 5,
-  F = 6,
-  G = 7,
-  H = 8,
-  I = 9,
-  J = 10,
-  K = 11,
-  L = 12,
-  M = 13,
-  N = 14,
-  O = 15,
-  P = 16,
-  Q = 17,
-  R = 18,
-  S = 19,
-  T = 20,
-  U = 21,
-  V = 22,
-  W = 23,
-  Y = 24,
-  Z = 25,
-};
-
-struct Declension {
-  unsigned char value{};
-  friend constexpr bool operator==(Declension, Declension) = default;
-};
-
-struct Variant {
-  unsigned char value{};
-  friend constexpr bool operator==(Variant, Variant) = default;
-};
-
-struct Conjugation {
-  unsigned char value{};
-  friend constexpr bool operator==(Conjugation, Conjugation) = default;
-};
-
-struct StemKey {
-  unsigned char value{};
-  friend constexpr bool operator==(StemKey, StemKey) = default;
-};
-
-struct CharacterCount {
-  unsigned char value{};
-  friend constexpr bool operator==(CharacterCount, CharacterCount) = default;
-};
-
-struct Person {
-  unsigned char value{};
-  friend constexpr bool operator==(Person, Person) = default;
-};
-
-struct NumeralValue {
-  unsigned short value{};
-  friend constexpr bool operator==(NumeralValue, NumeralValue) = default;
-};
-
-struct Analysis {
-  Part part{};
-  unsigned char which{};
-  Variant variant{};
-  Case caseOf{};
-  Number number{};
-  Gender gender{};
-  Comparison comparison{};
-  NumeralSort numeralSort{};
-  Tense tense{};
-  Voice voice{};
-  Mood mood{};
-  Person person{};
-  friend constexpr bool operator==(const Analysis&, const Analysis&) = default;
-};
-
 // INFO: Declensions 7 and 8 are not part of the source domain.
 [[nodiscard]] constexpr bool isValid(Declension d) noexcept { return d.value <= 6 || d.value == 9; }
-[[nodiscard]] constexpr bool isValid(Variant v) noexcept { return v.value <= 9; }
-[[nodiscard]] constexpr bool isValid(Conjugation c) noexcept { return c.value <= 9; }
-[[nodiscard]] constexpr bool isValid(StemKey key) noexcept { return key.value <= 9; }
-[[nodiscard]] constexpr bool isValid(CharacterCount count) noexcept { return count.value <= 7; }
-[[nodiscard]] constexpr bool isValid(Person person) noexcept { return person.value <= 3; }
-// INFO: Whitaker's NUMERAL_VALUE_TYPE is range 0..1000.
-[[nodiscard]] constexpr bool isValid(NumeralValue value) noexcept { return value.value <= 1000; }
+[[nodiscard]] constexpr bool isValid(Variant v) noexcept { return v.value <= kVariantMaximum; }
+[[nodiscard]] constexpr bool isValid(Conjugation c) noexcept { return c.value <= kConjugationMaximum; }
+[[nodiscard]] constexpr bool isValid(StemKey key) noexcept { return key.value <= kStemKeyMaximum; }
+[[nodiscard]] constexpr bool isValid(CharacterCount count) noexcept { return count.value <= kCharacterCountMaximum; }
+[[nodiscard]] constexpr bool isValid(Person person) noexcept { return person.value <= kPersonMaximum; }
+[[nodiscard]] constexpr bool isValid(EntryNumeralValue value) noexcept {
+  return value.value <= kEntryNumeralValueMaximum;
+}
+// INFO: Roman readings have no image entry.
+[[nodiscard]] constexpr bool isValid(NumeralValue value) noexcept { return value.value <= kNumeralValueMaximum; }
 
 [[nodiscard]] constexpr bool isPart(unsigned char value) noexcept {
   switch (Part{value}) {
-  case Part::X:
-  case Part::N:
-  case Part::PRON:
-  case Part::V:
-  case Part::ADJ:
-  case Part::ADV:
-  case Part::PREP:
-  case Part::NUM:
-  case Part::CONJ:
-  case Part::INTERJ:
-  case Part::PACK:
-  case Part::SUPINE:
-  case Part::VPAR:
-  case Part::NONE:
-    return true;
+    case Part::X:
+    case Part::N:
+    case Part::PRON:
+    case Part::V:
+    case Part::ADJ:
+    case Part::ADV:
+    case Part::PREP:
+    case Part::NUM:
+    case Part::CONJ:
+    case Part::INTERJ:
+    case Part::PACK:
+    case Part::SUPINE:
+    case Part::VPAR:
+    case Part::NONE:
+      return true;
   }
   return false;
 }
 
 [[nodiscard]] constexpr bool isAddonKind(unsigned char value) noexcept {
   switch (AddonKind{value}) {
-  case AddonKind::Tickon:
-  case AddonKind::Prefix:
-  case AddonKind::Suffix:
-  case AddonKind::Tackon:
-  case AddonKind::Packon:
-    return true;
+    case AddonKind::tickon:
+    case AddonKind::prefix:
+    case AddonKind::suffix:
+    case AddonKind::tackon:
+    case AddonKind::packon:
+      return true;
   }
   return false;
 }
@@ -366,34 +64,34 @@ struct Analysis {
 // INFO: Part_Of_Speech_Type's order.
 [[nodiscard]] constexpr unsigned pofsPos(Part part) noexcept {
   switch (part) {
-  case Part::X:
-    return 0;
-  case Part::N:
-    return 1;
-  case Part::PRON:
-    return 2;
-  case Part::PACK:
-    return 3;
-  case Part::ADJ:
-    return 4;
-  case Part::NUM:
-    return 5;
-  case Part::ADV:
-    return 6;
-  case Part::V:
-    return 7;
-  case Part::VPAR:
-    return 8;
-  case Part::SUPINE:
-    return 9;
-  case Part::PREP:
-    return 10;
-  case Part::CONJ:
-    return 11;
-  case Part::INTERJ:
-    return 12;
-  case Part::NONE:
-    return 13;
+    case Part::X:
+      return 0;
+    case Part::N:
+      return 1;
+    case Part::PRON:
+      return 2;
+    case Part::PACK:
+      return 3;
+    case Part::ADJ:
+      return 4;
+    case Part::NUM:
+      return 5;
+    case Part::ADV:
+      return 6;
+    case Part::V:
+      return 7;
+    case Part::VPAR:
+      return 8;
+    case Part::SUPINE:
+      return 9;
+    case Part::PREP:
+      return 10;
+    case Part::CONJ:
+      return 11;
+    case Part::INTERJ:
+      return 12;
+    case Part::NONE:
+      return 13;
   }
   return 13;
 }
@@ -409,43 +107,43 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
   using enum Part;
   const unsigned none = 0;
   switch (q.part) {
-  case N:
-  case PRON:
-  case PACK:
-  case VPAR:
-  case SUPINE:
-    return std::tuple{unsigned{q.which},
-                      sortValue(q.variant),
-                      sortValue(q.number),
-                      sortValue(q.caseOf),
-                      sortValue(q.gender),
-                      none,
-                      none};
-  case ADJ:
-    return std::tuple{unsigned{q.which},
-                      sortValue(q.variant),
-                      sortValue(q.number),
-                      sortValue(q.caseOf),
-                      sortValue(q.gender),
-                      sortValue(q.comparison),
-                      none};
-  case NUM:
-    return std::tuple{unsigned{q.which},
-                      sortValue(q.variant),
-                      sortValue(q.number),
-                      sortValue(q.caseOf),
-                      sortValue(q.gender),
-                      sortValue(q.numeralSort),
-                      none};
-  case V:
-    return std::tuple{unsigned{q.which},  sortValue(q.variant), sortValue(q.number), sortValue(q.tense),
-                      sortValue(q.voice), sortValue(q.mood),    sortValue(q.person)};
-  case ADV:
-    return std::tuple{sortValue(q.comparison), none, none, none, none, none, none};
-  case PREP:
-    return std::tuple{sortValue(q.caseOf), none, none, none, none, none, none};
-  default:
-    return std::tuple{none, none, none, none, none, none, none};
+    case N:
+    case PRON:
+    case PACK:
+    case VPAR:
+    case SUPINE:
+      return std::tuple{unsigned{q.which.value},
+                        sortValue(q.variant),
+                        sortValue(q.number),
+                        sortValue(q.caseOf),
+                        sortValue(q.gender),
+                        none,
+                        none};
+    case ADJ:
+      return std::tuple{unsigned{q.which.value},
+                        sortValue(q.variant),
+                        sortValue(q.number),
+                        sortValue(q.caseOf),
+                        sortValue(q.gender),
+                        sortValue(q.comparison),
+                        none};
+    case NUM:
+      return std::tuple{unsigned{q.which.value},
+                        sortValue(q.variant),
+                        sortValue(q.number),
+                        sortValue(q.caseOf),
+                        sortValue(q.gender),
+                        sortValue(q.numeralSort),
+                        none};
+    case V:
+      return std::tuple{unsigned{q.which.value}, sortValue(q.variant), sortValue(q.number), sortValue(q.tense),
+                        sortValue(q.voice),      sortValue(q.mood),    sortValue(q.person)};
+    case ADV:
+      return std::tuple{sortValue(q.comparison), none, none, none, none, none, none};
+    case PREP:
+      return std::tuple{sortValue(q.caseOf), none, none, none, none, none, none};
+    default:
+      return std::tuple{none, none, none, none, none, none, none};
   }
 }
 
@@ -458,7 +156,7 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
 //  declension decides.
 [[nodiscard]] inline bool listedBefore(const Analysis& left, std::size_t leftEnding, const Analysis& right,
                                        std::size_t rightEnding) {
-  const bool quPronouns = left.part == Part::PRON && left.which == 1 && right.part == Part::PRON;
+  const bool quPronouns = left.part == Part::PRON && left.which.value == 1 && right.part == Part::PRON;
   if (quPronouns ? left.variant != right.variant : !(left == right))
     return quPronouns ? left.variant.value < right.variant.value : inflectionsLess(left, right);
   if (leftEnding != rightEnding)
@@ -512,35 +210,35 @@ template <typename Gloss> [[nodiscard]] constexpr bool isPackon(Declension decle
 
 [[nodiscard]] constexpr bool medieval(Age age) noexcept {
   switch (age) {
-  case Age::F:
-  case Age::G:
-  case Age::H:
-    return true;
-  case Age::X:
-  case Age::A:
-  case Age::B:
-  case Age::C:
-  case Age::D:
-  case Age::E:
-    return false;
+    case Age::F:
+    case Age::G:
+    case Age::H:
+      return true;
+    case Age::X:
+    case Age::A:
+    case Age::B:
+    case Age::C:
+    case Age::D:
+    case Age::E:
+      return false;
   }
   return false;
 }
 
 [[nodiscard]] constexpr bool uncommonInflection(Frequency frequency) noexcept {
   switch (frequency) {
-  case Frequency::X:
-  case Frequency::A:
-  case Frequency::B:
-    return false;
-  case Frequency::C:
-  case Frequency::D:
-  case Frequency::E:
-  case Frequency::F:
-  case Frequency::I:
-  case Frequency::M:
-  case Frequency::N:
-    return true;
+    case Frequency::X:
+    case Frequency::A:
+    case Frequency::B:
+      return false;
+    case Frequency::C:
+    case Frequency::D:
+    case Frequency::E:
+    case Frequency::F:
+    case Frequency::I:
+    case Frequency::M:
+    case Frequency::N:
+      return true;
   }
   return false;
 }
@@ -566,7 +264,7 @@ template <typename Gloss> [[nodiscard]] constexpr bool isPackon(Declension decle
   return tense == Tense::PERF || tense == Tense::PLUP || tense == Tense::FUTP;
 }
 
-// An inflection row's share of Allowed_Stem; the entry's share is its verb kind and the stem the reading prints.
+// INFO: An inflection row's share of Allowed_Stem; the entry's share is its verb kind and the stem the reading prints.
 struct AllowSet {
   enum Bit : unsigned char {
     IsVerb = 1 << 0,
@@ -628,594 +326,6 @@ template <typename Stem>
   if (kind == VerbKind::SEMIDEP && allow.has(AllowSet::SemidepDrop))
     allowed = false;
   return allowed;
-}
-
-[[nodiscard]] constexpr const char* name(Part value) noexcept {
-  switch (value) {
-  case Part::X:
-    return "X";
-  case Part::N:
-    return "N";
-  case Part::PRON:
-    return "PRON";
-  case Part::V:
-    return "V";
-  case Part::ADJ:
-    return "ADJ";
-  case Part::ADV:
-    return "ADV";
-  case Part::PREP:
-    return "PREP";
-  case Part::NUM:
-    return "NUM";
-  case Part::CONJ:
-    return "CONJ";
-  case Part::INTERJ:
-    return "INTERJ";
-  case Part::PACK:
-    return "PACK";
-  case Part::SUPINE:
-    return "SUPINE";
-  case Part::VPAR:
-    return "VPAR";
-  case Part::NONE:
-    return "NONE";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Case value) noexcept {
-  switch (value) {
-  case Case::X:
-    return "X";
-  case Case::NOM:
-    return "NOM";
-  case Case::VOC:
-    return "VOC";
-  case Case::GEN:
-    return "GEN";
-  case Case::LOC:
-    return "LOC";
-  case Case::DAT:
-    return "DAT";
-  case Case::ABL:
-    return "ABL";
-  case Case::ACC:
-    return "ACC";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Number value) noexcept {
-  switch (value) {
-  case Number::X:
-    return "X";
-  case Number::S:
-    return "S";
-  case Number::P:
-    return "P";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Gender value) noexcept {
-  switch (value) {
-  case Gender::X:
-    return "X";
-  case Gender::M:
-    return "M";
-  case Gender::F:
-    return "F";
-  case Gender::N:
-    return "N";
-  case Gender::C:
-    return "C";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Comparison value) noexcept {
-  switch (value) {
-  case Comparison::X:
-    return "X";
-  case Comparison::POS:
-    return "POS";
-  case Comparison::COMP:
-    return "COMP";
-  case Comparison::SUPER:
-    return "SUPER";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(NumeralSort value) noexcept {
-  switch (value) {
-  case NumeralSort::X:
-    return "X";
-  case NumeralSort::CARD:
-    return "CARD";
-  case NumeralSort::ORD:
-    return "ORD";
-  case NumeralSort::DIST:
-    return "DIST";
-  case NumeralSort::ADVERB:
-    return "ADVERB";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Tense value) noexcept {
-  switch (value) {
-  case Tense::X:
-    return "X";
-  case Tense::PRES:
-    return "PRES";
-  case Tense::IMPF:
-    return "IMPF";
-  case Tense::FUT:
-    return "FUT";
-  case Tense::PERF:
-    return "PERF";
-  case Tense::PLUP:
-    return "PLUP";
-  case Tense::FUTP:
-    return "FUTP";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Voice value) noexcept {
-  switch (value) {
-  case Voice::X:
-    return "X";
-  case Voice::ACTIVE:
-    return "ACTIVE";
-  case Voice::PASSIVE:
-    return "PASSIVE";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Mood value) noexcept {
-  switch (value) {
-  case Mood::X:
-    return "X";
-  case Mood::IND:
-    return "IND";
-  case Mood::SUB:
-    return "SUB";
-  case Mood::IMP:
-    return "IMP";
-  case Mood::INF:
-    return "INF";
-  case Mood::PPL:
-    return "PPL";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(NounKind value) noexcept {
-  switch (value) {
-  case NounKind::X:
-    return "X";
-  case NounKind::S:
-    return "S";
-  case NounKind::M:
-    return "M";
-  case NounKind::A:
-    return "A";
-  case NounKind::G:
-    return "G";
-  case NounKind::N:
-    return "N";
-  case NounKind::P:
-    return "P";
-  case NounKind::T:
-    return "T";
-  case NounKind::L:
-    return "L";
-  case NounKind::W:
-    return "W";
-  case NounKind::p:
-    return "p";
-  case NounKind::t:
-    return "t";
-  case NounKind::w:
-    return "w";
-  case NounKind::x:
-    return "x";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(PronounKind value) noexcept {
-  switch (value) {
-  case PronounKind::X:
-    return "X";
-  case PronounKind::PERS:
-    return "PERS";
-  case PronounKind::REL:
-    return "REL";
-  case PronounKind::REFLEX:
-    return "REFLEX";
-  case PronounKind::DEMONS:
-    return "DEMONS";
-  case PronounKind::INTERR:
-    return "INTERR";
-  case PronounKind::INDEF:
-    return "INDEF";
-  case PronounKind::ADJECT:
-    return "ADJECT";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(PackonKind value) noexcept {
-  switch (value) {
-  case PackonKind::X:
-    return "X";
-  case PackonKind::INTERR:
-    return "INTERR";
-  case PackonKind::REL:
-    return "REL";
-  case PackonKind::INDEF:
-    return "INDEF";
-  case PackonKind::ADJECT:
-    return "ADJECT";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(VerbKind value) noexcept {
-  switch (value) {
-  case VerbKind::X:
-    return "X";
-  case VerbKind::TO_BE:
-    return "TO_BE";
-  case VerbKind::TO_BEING:
-    return "TO_BEING";
-  case VerbKind::GEN:
-    return "GEN";
-  case VerbKind::DAT:
-    return "DAT";
-  case VerbKind::ABL:
-    return "ABL";
-  case VerbKind::TRANS:
-    return "TRANS";
-  case VerbKind::INTRANS:
-    return "INTRANS";
-  case VerbKind::IMPERS:
-    return "IMPERS";
-  case VerbKind::DEP:
-    return "DEP";
-  case VerbKind::SEMIDEP:
-    return "SEMIDEP";
-  case VerbKind::PERFDEF:
-    return "PERFDEF";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Age value) noexcept {
-  switch (value) {
-  case Age::X:
-    return "X";
-  case Age::A:
-    return "A";
-  case Age::B:
-    return "B";
-  case Age::C:
-    return "C";
-  case Age::D:
-    return "D";
-  case Age::E:
-    return "E";
-  case Age::F:
-    return "F";
-  case Age::G:
-    return "G";
-  case Age::H:
-    return "H";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Frequency value) noexcept {
-  switch (value) {
-  case Frequency::X:
-    return "X";
-  case Frequency::A:
-    return "A";
-  case Frequency::B:
-    return "B";
-  case Frequency::C:
-    return "C";
-  case Frequency::D:
-    return "D";
-  case Frequency::E:
-    return "E";
-  case Frequency::F:
-    return "F";
-  case Frequency::I:
-    return "I";
-  case Frequency::M:
-    return "M";
-  case Frequency::N:
-    return "N";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Area value) noexcept {
-  switch (value) {
-  case Area::X:
-    return "X";
-  case Area::A:
-    return "A";
-  case Area::B:
-    return "B";
-  case Area::D:
-    return "D";
-  case Area::E:
-    return "E";
-  case Area::G:
-    return "G";
-  case Area::L:
-    return "L";
-  case Area::P:
-    return "P";
-  case Area::S:
-    return "S";
-  case Area::T:
-    return "T";
-  case Area::W:
-    return "W";
-  case Area::Y:
-    return "Y";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Geography value) noexcept {
-  switch (value) {
-  case Geography::X:
-    return "X";
-  case Geography::A:
-    return "A";
-  case Geography::B:
-    return "B";
-  case Geography::C:
-    return "C";
-  case Geography::D:
-    return "D";
-  case Geography::E:
-    return "E";
-  case Geography::F:
-    return "F";
-  case Geography::G:
-    return "G";
-  case Geography::H:
-    return "H";
-  case Geography::I:
-    return "I";
-  case Geography::J:
-    return "J";
-  case Geography::K:
-    return "K";
-  case Geography::N:
-    return "N";
-  case Geography::P:
-    return "P";
-  case Geography::Q:
-    return "Q";
-  case Geography::R:
-    return "R";
-  case Geography::S:
-    return "S";
-  case Geography::U:
-    return "U";
-  }
-  return nullptr;
-}
-
-[[nodiscard]] constexpr const char* name(Source value) noexcept {
-  switch (value) {
-  case Source::X:
-    return "X";
-  case Source::A:
-    return "A";
-  case Source::B:
-    return "B";
-  case Source::C:
-    return "C";
-  case Source::D:
-    return "D";
-  case Source::E:
-    return "E";
-  case Source::F:
-    return "F";
-  case Source::G:
-    return "G";
-  case Source::H:
-    return "H";
-  case Source::I:
-    return "I";
-  case Source::J:
-    return "J";
-  case Source::K:
-    return "K";
-  case Source::L:
-    return "L";
-  case Source::M:
-    return "M";
-  case Source::N:
-    return "N";
-  case Source::O:
-    return "O";
-  case Source::P:
-    return "P";
-  case Source::Q:
-    return "Q";
-  case Source::R:
-    return "R";
-  case Source::S:
-    return "S";
-  case Source::T:
-    return "T";
-  case Source::U:
-    return "U";
-  case Source::V:
-    return "V";
-  case Source::W:
-    return "W";
-  case Source::Y:
-    return "Y";
-  case Source::Z:
-    return "Z";
-  }
-  return nullptr;
-}
-
-namespace detail {
-
-// A name with its length, padded so that it can be copied as one 8-byte word.
-struct Word {
-  std::array<char, 8> text{};
-  std::size_t size{};
-};
-
-// One past the last value of E that has a name.
-template <typename E>
-constexpr std::size_t kNamed = [] {
-  std::size_t count = 0;
-  for (std::size_t value = 0; value < 256; ++value)
-    if (name(E{static_cast<unsigned char>(value)}) != nullptr)
-      count = value + 1;
-  return count;
-}();
-
-// Every name of E by value, then "?" for a value with none.
-template <typename E>
-constexpr auto kWords = [] {
-  std::array<Word, kNamed<E> + 1> words{};
-  for (std::size_t value = 0; value < words.size(); ++value) {
-    const char* text = value < kNamed<E> ? name(E{static_cast<unsigned char>(value)}) : nullptr;
-    text = text != nullptr ? text : "?";
-    Word& word = words[value];
-    for (; text[word.size] != '\0'; ++word.size)
-      word.text.at(word.size) = text[word.size];
-    // NOTE: A full word would leave no room for the copy's padding.
-    word.text.at(word.size) = '\0';
-  }
-  return words;
-}();
-
-// The whole line, built unchecked: no name passes 7 letters, so the longest line (a VPAR: part, two numbers, six
-//  fields) and the 8-byte copy that ends it fit. describe then copies it out as snprintf would.
-struct Line {
-  static constexpr std::size_t kBytes = 8 + 2 * 3 + 6 * 8 + 8;
-  std::array<char, kBytes> text;
-  std::size_t used{};
-
-  constexpr void put(char c) noexcept { text[used++] = c; }
-  template <typename E> constexpr void word(E value) noexcept {
-    const std::size_t at = std::to_underlying(value);
-    const Word& word = kWords<E>[at < kNamed<E> ? at : kNamed<E>];
-    for (std::size_t i = 0; i < word.text.size(); ++i)
-      text[used + i] = word.text[i];
-    used += word.size;
-  }
-  constexpr void digit(unsigned char value) noexcept { put(value <= 9 ? static_cast<char>('0' + value) : '?'); }
-  template <typename E> constexpr void field(E value) noexcept {
-    put(' ');
-    word(value);
-  }
-  constexpr void number(char prefix, unsigned char value) noexcept {
-    put(' ');
-    put(prefix);
-    digit(value);
-  }
-};
-
-} // namespace detail
-
-// INFO: The line WORDS prints for an inflection. Like snprintf: writes at most `size` bytes, the terminator included,
-//  and returns the length of the whole line.
-constexpr std::size_t describe(const Analysis& analysis, char* out, std::size_t size) noexcept {
-  detail::Line line;
-  line.word(analysis.part);
-  switch (analysis.part) {
-  case Part::N:
-  case Part::PRON:
-  case Part::ADJ:
-  case Part::NUM:
-    line.number('D', analysis.which);
-    line.number('V', analysis.variant.value);
-    break;
-  case Part::V:
-  case Part::VPAR:
-  case Part::SUPINE:
-    line.number('C', analysis.which);
-    line.number('V', analysis.variant.value);
-    break;
-  default:
-    break;
-  }
-
-  switch (analysis.part) {
-  case Part::N:
-  case Part::PRON:
-  case Part::SUPINE:
-    line.field(analysis.caseOf);
-    line.field(analysis.number);
-    line.field(analysis.gender);
-    break;
-  case Part::ADJ:
-    line.field(analysis.caseOf);
-    line.field(analysis.number);
-    line.field(analysis.gender);
-    line.field(analysis.comparison);
-    break;
-  case Part::NUM:
-    line.field(analysis.caseOf);
-    line.field(analysis.number);
-    line.field(analysis.gender);
-    line.field(analysis.numeralSort);
-    break;
-  case Part::ADV:
-    line.field(analysis.comparison);
-    break;
-  case Part::V:
-    line.field(analysis.tense);
-    line.field(analysis.voice);
-    line.field(analysis.mood);
-    if (analysis.person.value != 0) {
-      line.put(' ');
-      line.digit(analysis.person.value);
-    }
-    line.field(analysis.number);
-    break;
-  case Part::VPAR:
-    line.field(analysis.caseOf);
-    line.field(analysis.number);
-    line.field(analysis.gender);
-    line.field(analysis.tense);
-    line.field(analysis.voice);
-    line.field(analysis.mood);
-    break;
-  case Part::PREP:
-    line.field(analysis.caseOf);
-    break;
-  default:
-    break;
-  }
-  if (size != 0) {
-    const std::size_t kept = line.used < size ? line.used : size - 1;
-    for (std::size_t i = 0; i < kept; ++i)
-      out[i] = line.text[i];
-    out[kept] = '\0';
-  }
-  return line.used;
 }
 
 } // namespace latin

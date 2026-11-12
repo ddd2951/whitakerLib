@@ -6,9 +6,9 @@
 
 namespace expand {
 
-// Readings and Swept line up with Forms by position.
+// NOTE: Readings and Swept line up with Forms by position.
 struct Forms {
-  ByLetter byLetter;
+  ByLetter byLetter{};
 };
 
 Forms forms(const Sorted& sorted, const AdverbCorrections& corrections);

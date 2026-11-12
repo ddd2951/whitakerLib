@@ -14,52 +14,52 @@ namespace expand::internal {
 
 using namespace latin;
 
-[[nodiscard]] constexpr bool licenses(const Noun& d, const inflected::Noun& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Noun& d, const inflected::Noun& i) {
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant) &&
          genderMatches(d.gender, i.gender);
 }
 // INFO: Process_Qu_Pronouns and Process_Packons want the exact declension: the inflection's declension and
 //  variant must be the entry's.
-[[nodiscard]] constexpr bool exactDeclension(auto declension, auto variant, auto inflectionDeclension,
-                                             auto inflectionVariant) noexcept {
+[[nodiscard]] constexpr bool exactDeclension(const auto declension, const auto variant, const auto inflectionDeclension,
+                                             const auto inflectionVariant) {
   return declension == inflectionDeclension && variant == inflectionVariant;
 }
-[[nodiscard]] constexpr bool licenses(const Pronoun& d, const inflected::Pronoun& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Pronoun& d, const inflected::Pronoun& i) {
   return d.declension.value == 1
              ? exactDeclension(d.declension, d.declensionVariant, i.declension, i.declensionVariant)
              : declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant);
 }
-[[nodiscard]] constexpr bool licenses(const Adjective& d, const inflected::Adjective& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Adjective& d, const inflected::Adjective& i) {
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant) &&
          comparisonMatches(d.comparison, i.comparison);
 }
-[[nodiscard]] constexpr bool licenses(const Numeral& d, const inflected::Numeral& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Numeral& d, const inflected::Numeral& i) {
   return declensionMatches(d.declension, d.declensionVariant, i.declension, i.declensionVariant);
 }
-[[nodiscard]] constexpr bool licenses(const Adverb& d, const inflected::Adverb& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Adverb& d, const inflected::Adverb& i) {
   return comparisonMatches(d.comparison, i.comparison);
 }
-[[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Verb& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Verb& i) {
   return conjugationMatches(d.conjugation, d.conjugationVariant, i.conjugation, i.conjugationVariant);
 }
 // INFO: Reduce_Stem_List with Eff_Part: VPAR and SUPINE rows join V entries.
-[[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Participle& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Participle& i) {
   return conjugationMatches(d.conjugation, d.conjugationVariant, i.conjugation, i.conjugationVariant);
 }
-[[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Supine& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Verb& d, const inflected::Supine& i) {
   return conjugationMatches(d.conjugation, d.conjugationVariant, i.conjugation, i.conjugationVariant);
 }
-[[nodiscard]] constexpr bool licenses(const Preposition& d, const inflected::Preposition& i) noexcept {
+[[nodiscard]] constexpr bool licenses(const Preposition& d, const inflected::Preposition& i) {
   return d.caseOf == i.caseOf;
 }
-[[nodiscard]] constexpr bool licenses(const Conjunction&, const inflected::Conjunction&) noexcept { return true; }
-[[nodiscard]] constexpr bool licenses(const Interjection&, const inflected::Interjection&) noexcept { return true; }
+[[nodiscard]] constexpr bool licenses(const Conjunction&, const inflected::Conjunction&) { return true; }
+[[nodiscard]] constexpr bool licenses(const Interjection&, const inflected::Interjection&) { return true; }
 // NOTE: A packon has no overload: it is half a word and joins a TACKON.
 
 template <typename D, typename I>
 concept MayPair = requires(const D& d, const I& i) { licenses(d, i); };
 
-[[nodiscard]] constexpr bool licenses(const latin::Entry& dictionary, const latin::Inflection& inflection) noexcept {
+[[nodiscard]] constexpr bool licenses(const latin::Entry& dictionary, const latin::Inflection& inflection) {
   return std::visit(
       [](const auto& d, const auto& i) {
         if constexpr (MayPair<decltype(d), decltype(i)>)
@@ -70,10 +70,9 @@ concept MayPair = requires(const D& d, const I& i) { licenses(d, i); };
       dictionary, inflection);
 }
 
-[[nodiscard]] constexpr bool packonLicenses(const latin::Entry& dictionary,
-                                            const latin::Inflection& inflection) noexcept {
-  const auto* packon = std::get_if<latin::Packon>(&dictionary);
-  const auto* pronoun = std::get_if<latin::inflected::Pronoun>(&inflection);
+[[nodiscard]] constexpr bool packonLicenses(const latin::Entry& dictionary, const latin::Inflection& inflection) {
+  const auto* const packon = std::get_if<latin::Packon>(&dictionary);
+  const auto* const pronoun = std::get_if<latin::inflected::Pronoun>(&inflection);
   return packon != nullptr && pronoun != nullptr &&
          exactDeclension(packon->declension, packon->declensionVariant, pronoun->declension,
                          pronoun->declensionVariant);

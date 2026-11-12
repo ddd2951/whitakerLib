@@ -6,3 +6,6 @@ SortIncludes: Never
 PointerAlignment: Left
 ReferenceAlignment: Pointer
 ColumnLimit: 120
+IndentCaseLabels: true
+AttributeMacros: [WHITAKER_TAG]
+ReflowComments: false

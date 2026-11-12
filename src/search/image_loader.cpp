@@ -1,4 +1,5 @@
 #include "image.hpp"
+#include "two_ended.hpp"
 
 #include "facts.hpp"
 
@@ -16,9 +17,9 @@ namespace {
 Image sLoaded;
 } // namespace
 
-bool loadImage(std::span<const std::byte> bytes, std::string& failure) {
+bool loadImage(const std::span<const std::byte> bytes, std::string& failure) {
   assert(bytes.size() >= kHeaderBytes + kSectionCount * kDirectoryBytes);
-  const auto* frame = reinterpret_cast<const unsigned char*>(bytes.data());
+  const auto* const frame = reinterpret_cast<const unsigned char*>(bytes.data());
   Image image = frameOf(frame);
   if (const std::string_view fault = frameFault(image, bytes.size()); !fault.empty()) {
     failure = fault;
@@ -32,30 +33,6 @@ bool loadImage(std::span<const std::byte> bytes, std::string& failure) {
   return true;
 }
 
-std::vector<std::string> spellings() {
-  struct Visit {
-    std::uint32_t state;
-    std::string text;
-  };
-  std::vector<std::string> result;
-  result.reserve(header().spellingCount);
-  std::vector<Visit> pending{{header().root, {}}};
-  while (!pending.empty()) {
-    Visit visit = std::move(pending.back());
-    pending.pop_back();
-    const auto state = readRecord<StateRecord>(recordAt(*sImage, Section::States, visit.state));
-    if (state.resultCount != 0)
-      result.push_back(visit.text);
-    std::uint32_t transition = state.firstTransition;
-    for (unsigned letter = 0; letter < facts::kLetterCount; ++letter) {
-      if ((state.letterMask & (1u << letter)) == 0)
-        continue;
-      const auto edge = readRecord<TransitionRecord>(recordAt(*sImage, Section::Transitions, transition++));
-      pending.push_back(Visit{edge.target, visit.text + static_cast<char>('a' + letter)});
-    }
-  }
-  std::ranges::sort(result);
-  return result;
-}
+std::vector<std::string> spellings() { return two_ended::spellings(false); }
 
 } // namespace whitaker::relationship
