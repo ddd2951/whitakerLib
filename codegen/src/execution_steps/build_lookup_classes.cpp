@@ -8,7 +8,7 @@
 #include "storage/dropped.hpp"
 #include "storage/rows.hpp"
 #include "storage/stems.hpp"
-#include "storage/unique_base.hpp"
+#include "word/word.hpp"
 #include <algorithm>
 #include <map>
 #include <tuple>
@@ -24,14 +24,13 @@ void execution_steps::lookup_tables::buildLookupClasses() {
   using storage::dropped;
   using storage::rows;
   using storage::stems;
-  using storage::uniqueBase;
   namespace te = whitaker::two_ended;
   std::map<ClassKey, unsigned> classIds{};
   for (const auto& [address, ids] : byStem) {
     const auto [dictionary, column] = address;
-    const bool unique = dictionary >= uniqueBase;
+    const bool unique = dictionary >= word::kUniqueBase;
     const auto r =
-        expand::readingOf(unique ? expand::Origin{expand::Unique{word::UniquesRow{dictionary - uniqueBase}}}
+        expand::readingOf(unique ? expand::Origin{expand::Unique{word::UniquesRow{dictionary - word::kUniqueBase}}}
                                  : expand::Origin{expand::Joined{word::DictlineRow{dictionary}, word::InflectsRow{0},
                                                                  latin::StemKey{static_cast<unsigned char>(column)}}});
     // INFO: Empty + empty can only spell the rejected empty input. Empty stems with real endings stay.

@@ -64,7 +64,7 @@ cmake --build build-codegen --target image                   # data/whitaker.dat
 
 ## Pipeline
 
-Gen is 66 steps, each a function declared in one file,
+Gen is 65 steps, each a function declared in one file,
 `src/execution_steps/steps.hpp`, in 12 phases. They read and parse WORDS' four
 files, expand every stem and ending into WORDS' readings, then build, encode,
 check and publish the image. `main()` is one line.

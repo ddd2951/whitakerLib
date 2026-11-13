@@ -161,16 +161,14 @@ namespace image_destination {
 } // namespace image_destination
 
 namespace image_data {
-[[= tag::forInspector]] void prepareImageData();
 [[
   = tag::forInspector, = tag::Gate{^^addons::parseAddonsRecords}, = tag::Reads{^^storage::addons},
   = tag::Writes{^^storage::addonRows}
 ]] void classifyAddons();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::prepareImageData}, = tag::Gate{^^image_data::classifyAddons},
-  = tag::Reads{^^storage::addons}, = tag::Reads{^^storage::addonRows},
-  = tag::Reads{^^storage::lines<^^source::scheme::addons>}, = tag::Writes{^^storage::image},
-  = tag::Writes{^^storage::suffixBase}
+  = tag::forInspector, = tag::Gate{^^image_data::classifyAddons}, = tag::Reads{^^storage::addons},
+  = tag::Reads{^^storage::addonRows}, = tag::Reads{^^storage::lines<^^source::scheme::addons>},
+  = tag::Writes{^^storage::image}, = tag::Writes{^^storage::suffixBase}
 ]] void storeAddons();
 [[
   = tag::forInspector, = tag::Gate{^^image_data::storeAddons}, = tag::Gate{^^dictline::addEsse},

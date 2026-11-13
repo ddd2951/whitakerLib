@@ -42,13 +42,12 @@ struct FormAddress {
 static_assert(std::is_trivially_copyable_v<FormAddress>);
 
 [[nodiscard]] FormAddress addressOf(const expand::Origin& origin) {
-  constexpr std::uint32_t uniqueBase = word::kDictlineWords;
   return std::visit(
       []<typename T>(const T& value) -> FormAddress {
         if constexpr (std::is_same_v<T, expand::Joined>)
           return {value.entry.value, value.column.value};
         else
-          return {uniqueBase + value.entry.value, 1};
+          return {word::kUniqueBase + value.entry.value, 1};
       },
       origin);
 }

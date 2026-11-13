@@ -60,7 +60,7 @@ Paperwhite's can't run it.
 - **Walking through a text.** ← → (or a click) moves word by word, and the panel
   shows that word. Drag or Shift-select several words to see each spelling once,
   with how often it occurs. `1`–`4` switch the views below.
-- **Readable.** Each reading in words, with its meaning, grammar, stem and
+- **Readings.** Each reading in words, with its meaning, grammar, stem and
   ending, and add-ons.
 - **API.** What your code gets for that word, every field by its name, in C++,
   C or Python (`b` switches).

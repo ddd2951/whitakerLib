@@ -11,10 +11,10 @@
 #include "storage/row_ids.hpp"
 #include "storage/rows.hpp"
 #include "storage/classes.hpp"
-#include "storage/unique_base.hpp"
 #include "storage/mixed.hpp"
 #include "storage/dropped_duplicates.hpp"
 #include "storage/compression_duplicates.hpp"
+#include "word/word.hpp"
 #include <algorithm>
 #include <bit>
 
@@ -32,7 +32,6 @@ void execution_steps::lookup_tables::deriveLookupBounds() {
   using storage::out;
   using storage::rowIds;
   using storage::rows;
-  using storage::uniqueBase;
   unsigned maximumFirst = 0, maximumRun = 0, maximumCount = 0;
   std::uint32_t frontLetters = 0, backLetters = 0;
   for (const auto* const nodes : {&front, &back})
@@ -73,7 +72,7 @@ void execution_steps::lookup_tables::deriveLookupBounds() {
       << "ull <= 4294967295ull);\n";
   out << "static_assert(" << maxRows << " <= 64);\nstatic_assert(" << cells.size() << " <= 65536);\nstatic_assert("
       << rowIds.size() << " <= 65536);\nstatic_assert(" << rows.size() << " <= 32768);\nstatic_assert("
-      << classes.size() << " < 65536);\nstatic_assert(" << uniqueBase + source::scheme::uniques::kEntriesPerFile
+      << classes.size() << " < 65536);\nstatic_assert(" << word::kUniqueBase + source::scheme::uniques::kEntriesPerFile
       << " <= 65536);\n";
   out << "static_assert(" << mixed << " == 0, \"mixed ending lengths require Array_Stems ordering\");\n";
   out << "// " << droppedDuplicates << " duplicate rows dropped inside cells\n";

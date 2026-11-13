@@ -52,7 +52,6 @@ add_executable(gen_binary
     src/execution_steps/make_readings.cpp
     src/execution_steps/sweep_readings.cpp
     src/execution_steps/index_results.cpp
-    src/execution_steps/prepare_image_data.cpp
     src/execution_steps/classify_addons.cpp
     src/execution_steps/store_addons.cpp
     src/execution_steps/store_dictionary_words.cpp

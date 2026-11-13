@@ -32,6 +32,8 @@ inline constexpr InflectsRow kAdverbPositive{source::scheme::inflects::kEntriesP
 inline constexpr InflectsRow kAdverbSuperlative{kAdverbPositive.value + 1};
 
 inline constexpr std::uint32_t kDictlineWords{kEsse.value + 1};
+// INFO: UNIQUES' words are numbered after DICTLINE's.
+inline constexpr std::uint32_t kUniqueBase{kDictlineWords};
 inline constexpr std::uint32_t kInflectsWords{kAdverbSuperlative.value + 1};
 
 struct Column {

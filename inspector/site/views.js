@@ -1,4 +1,4 @@
-// INFO: Puts the library's HTML for the selection on screen. Readable, API and Trace come 50 spellings at a time as
+// INFO: Puts the library's HTML for the selection on screen. Readings, API and Trace come 50 spellings at a time as
 //  the view scrolls, since a whole book at once would stall the page; Statistics comes whole.
 export const VIEWS = ['readable', 'api', 'trace', 'statistics'];
 
