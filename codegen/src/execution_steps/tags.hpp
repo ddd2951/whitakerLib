@@ -22,13 +22,4 @@ struct Writes {
 };
 static_assert(std::is_trivially_copyable_v<Writes>);
 
-struct ForInspector {};
-static_assert(std::is_trivially_copyable_v<ForInspector>);
-
-struct ForOrcale {};
-static_assert(std::is_trivially_copyable_v<ForOrcale>);
-
-inline constexpr ForInspector forInspector{};
-inline constexpr ForOrcale forOrcale{};
-
 } // namespace execution_steps::tag

@@ -74,59 +74,56 @@
 namespace execution_steps {
 
 namespace dictline {
-[[ = tag::forInspector, = tag::Writes{^^storage::lines<^^source::scheme::dictline>} ]] void readDictline();
+[[= tag::Writes{^^storage::lines<^^source::scheme::dictline>}]] void readDictline();
 [[
-  = tag::forInspector, = tag::Gate{^^readDictline}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
+  = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Writes{^^storage::records<^^source::scheme::dictline>}
 ]] void indexDictlineRecords();
 [[
-  = tag::forInspector, = tag::Gate{^^indexDictlineRecords}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
+  = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::records<^^source::scheme::dictline>}, = tag::Writes{^^storage::dictline}
 ]] void parseDictlineRecords();
-[[ = tag::forInspector, = tag::Gate{^^parseDictlineRecords}, = tag::Writes{^^storage::dictline} ]] void addEsse();
+[[= tag::Writes{^^storage::dictline}]] void addEsse();
 } // namespace dictline
 
 namespace inflects {
-[[ = tag::forInspector, = tag::Writes{^^storage::lines<^^source::scheme::inflects>} ]] void readInflects();
+[[= tag::Writes{^^storage::lines<^^source::scheme::inflects>}]] void readInflects();
 [[
-  = tag::forInspector, = tag::Gate{^^readInflects}, = tag::Reads{^^storage::lines<^^source::scheme::inflects>},
+  = tag::Reads{^^storage::lines<^^source::scheme::inflects>},
   = tag::Writes{^^storage::records<^^source::scheme::inflects>}
 ]] void indexInflectsRecords();
 [[
-  = tag::forInspector, = tag::Gate{^^indexInflectsRecords}, = tag::Reads{^^storage::lines<^^source::scheme::inflects>},
+  = tag::Reads{^^storage::lines<^^source::scheme::inflects>},
   = tag::Reads{^^storage::records<^^source::scheme::inflects>}, = tag::Writes{^^storage::inflects}
 ]] void parseInflectsRecords();
-[[ = tag::forInspector, = tag::Gate{^^parseInflectsRecords},
-   = tag::Writes{^^storage::inflects} ]] void addAdverbInflections();
+[[= tag::Writes{^^storage::inflects}]] void addAdverbInflections();
 } // namespace inflects
 
 namespace uniques {
-[[ = tag::forInspector, = tag::Writes{^^storage::lines<^^source::scheme::uniques>} ]] void readUniques();
+[[= tag::Writes{^^storage::lines<^^source::scheme::uniques>}]] void readUniques();
 [[
-  = tag::forInspector, = tag::Gate{^^readUniques}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
+  = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
   = tag::Writes{^^storage::records<^^source::scheme::uniques>}
 ]] void indexUniquesRecords();
 [[
-  = tag::forInspector, = tag::Gate{^^indexUniquesRecords}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
+  = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
   = tag::Reads{^^storage::records<^^source::scheme::uniques>}, = tag::Writes{^^storage::uniques}
 ]] void parseUniquesRecords();
 } // namespace uniques
 
 namespace addons {
-[[ = tag::forInspector, = tag::Writes{^^storage::lines<^^source::scheme::addons>} ]] void readAddons();
+[[= tag::Writes{^^storage::lines<^^source::scheme::addons>}]] void readAddons();
 [[
-  = tag::forInspector, = tag::Gate{^^readAddons}, = tag::Reads{^^storage::lines<^^source::scheme::addons>},
-  = tag::Writes{^^storage::records<^^source::scheme::addons>}
+  = tag::Reads{^^storage::lines<^^source::scheme::addons>}, = tag::Writes{^^storage::records<^^source::scheme::addons>}
 ]] void indexAddonsRecords();
 [[
-  = tag::forInspector, = tag::Gate{^^indexAddonsRecords}, = tag::Reads{^^storage::lines<^^source::scheme::addons>},
-  = tag::Reads{^^storage::records<^^source::scheme::addons>}, = tag::Writes{^^storage::addons}
+  = tag::Reads{^^storage::lines<^^source::scheme::addons>}, = tag::Reads{^^storage::records<^^source::scheme::addons>},
+  = tag::Writes{^^storage::addons}
 ]] void parseAddonsRecords();
 } // namespace addons
 
 namespace candidates {
 [[
-  = tag::forInspector, = tag::Gate{^^dictline::addEsse}, = tag::Gate{^^inflects::parseInflectsRecords},
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::inflects},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::lines<^^source::scheme::inflects>}, = tag::Writes{^^storage::kept}
@@ -135,58 +132,44 @@ namespace candidates {
 
 namespace expansion {
 [[
-  = tag::forInspector, = tag::Gate{^^candidates::makeCandidates}, = tag::Gate{^^uniques::parseUniquesRecords},
-  = tag::Gate{^^inflects::addAdverbInflections}, = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::inflects},
-  = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
-  = tag::Writes{^^storage::kept}
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::uniques},
+  = tag::Reads{^^storage::lines<^^source::scheme::uniques>}, = tag::Writes{^^storage::kept}
 ]] void prepareForms();
 [[
-  = tag::forInspector, = tag::Gate{^^prepareForms}, = tag::Reads{^^storage::dictline},
-  = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::uniques}, = tag::Writes{^^storage::kept}
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::uniques},
+  = tag::Writes{^^storage::kept}
 ]] void makeReadings();
 [[
-  = tag::forInspector, = tag::Gate{^^makeReadings}, = tag::Reads{^^storage::inflects},
-  = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
+  = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::lines<^^source::scheme::inflects>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
   = tag::Writes{^^storage::kept}
 ]] void sweepReadings();
-[[
-  = tag::forInspector, = tag::Gate{^^sweepReadings}, = tag::Reads{^^storage::kept}, = tag::Writes{^^storage::starts},
-  = tag::Writes{^^storage::total}
-]] void indexResults();
+[[ = tag::Reads{^^storage::kept}, = tag::Writes{^^storage::starts},
+   = tag::Writes{^^storage::total} ]] void indexResults();
 } // namespace expansion
 
 namespace image_destination {
-[[ = tag::forInspector, = tag::Writes{^^storage::destination} ]] void prepareImageDestination();
+[[= tag::Writes{^^storage::destination}]] void prepareImageDestination();
 } // namespace image_destination
 
 namespace image_data {
+[[ = tag::Reads{^^storage::addons}, = tag::Writes{^^storage::addonRows} ]] void classifyAddons();
 [[
-  = tag::forInspector, = tag::Gate{^^addons::parseAddonsRecords}, = tag::Reads{^^storage::addons},
-  = tag::Writes{^^storage::addonRows}
-]] void classifyAddons();
-[[
-  = tag::forInspector, = tag::Gate{^^image_data::classifyAddons}, = tag::Reads{^^storage::addons},
-  = tag::Reads{^^storage::addonRows}, = tag::Reads{^^storage::lines<^^source::scheme::addons>},
-  = tag::Writes{^^storage::image}, = tag::Writes{^^storage::suffixBase}
+  = tag::Reads{^^storage::addons}, = tag::Reads{^^storage::addonRows},
+  = tag::Reads{^^storage::lines<^^source::scheme::addons>}, = tag::Writes{^^storage::image},
+  = tag::Writes{^^storage::suffixBase}
 ]] void storeAddons();
+[[ = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques},
+   = tag::Writes{^^storage::image} ]] void storeDictionaryWords();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::storeAddons}, = tag::Gate{^^dictline::addEsse},
-  = tag::Gate{^^uniques::parseUniquesRecords}, = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques},
-  = tag::Writes{^^storage::image}
-]] void storeDictionaryWords();
-[[
-  = tag::forInspector, = tag::Gate{^^image_data::classifyAddons}, = tag::Reads{^^storage::addonRows},
-  = tag::Reads{^^storage::addons}, = tag::Reads{^^storage::lines<^^source::scheme::addons>},
-  = tag::Writes{^^storage::packons}
+  = tag::Reads{^^storage::addonRows}, = tag::Reads{^^storage::addons},
+  = tag::Reads{^^storage::lines<^^source::scheme::addons>}, = tag::Writes{^^storage::packons}
 ]] void numberPackons();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::storeDictionaryWords}, = tag::Gate{^^image_data::numberPackons},
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::packons}, = tag::Writes{^^storage::classGrammars}, = tag::Writes{^^storage::image}
 ]] void buildDictionaryClasses();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::buildDictionaryClasses}, = tag::Gate{^^expansion::indexResults},
   = tag::Reads{^^storage::kept}, = tag::Reads{^^storage::starts}, = tag::Reads{^^storage::total},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::lines<^^source::scheme::inflects>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
@@ -196,31 +179,27 @@ namespace image_data {
   = tag::Writes{^^storage::descriptionIds}, = tag::Writes{^^storage::source}
 ]] void collectReadings();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::collectReadings}, = tag::Reads{^^storage::kept},
-  = tag::Reads{^^storage::starts}, = tag::Reads{^^storage::total},
+  = tag::Reads{^^storage::kept}, = tag::Reads{^^storage::starts}, = tag::Reads{^^storage::total},
   = tag::Reads{^^storage::lines<^^source::scheme::uniques>}, = tag::Writes{^^storage::source},
   = tag::Writes{^^storage::image}
 ]] void groupSpellings();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::groupSpellings}, = tag::Gate{^^inflects::parseInflectsRecords},
   = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::lines<^^source::scheme::inflects>},
   = tag::Writes{^^storage::endingOrder}, = tag::Writes{^^storage::image}
 ]] void orderInflections();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::orderInflections}, = tag::Reads{^^storage::classGrammars},
-  = tag::Reads{^^storage::endingOrder}, = tag::Reads{^^storage::inflects}, = tag::Writes{^^storage::image},
-  = tag::Writes{^^storage::descriptionIds}
+  = tag::Reads{^^storage::classGrammars}, = tag::Reads{^^storage::endingOrder}, = tag::Reads{^^storage::inflects},
+  = tag::Writes{^^storage::image}, = tag::Writes{^^storage::descriptionIds}
 ]] void licenseDictionaryClasses();
 [[
-  = tag::forInspector, = tag::Gate{^^image_data::licenseDictionaryClasses}, = tag::Reads{^^storage::addonRows},
-  = tag::Reads{^^storage::addons}, = tag::Reads{^^storage::endingOrder}, = tag::Reads{^^storage::suffixBase},
-  = tag::Reads{^^storage::inflects}, = tag::Writes{^^storage::image}, = tag::Writes{^^storage::descriptionIds}
+  = tag::Reads{^^storage::addonRows}, = tag::Reads{^^storage::addons}, = tag::Reads{^^storage::endingOrder},
+  = tag::Reads{^^storage::suffixBase}, = tag::Reads{^^storage::inflects}, = tag::Writes{^^storage::image},
+  = tag::Writes{^^storage::descriptionIds}
 ]] void licenseSuffixes();
 } // namespace image_data
 
 namespace lookup_tables {
 [[
-  = tag::forInspector, = tag::Gate{^^dictline::addEsse}, = tag::Gate{^^inflects::addAdverbInflections},
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::inflects},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::lines<^^source::scheme::inflects>}, = tag::Writes{^^storage::byStem},
@@ -228,172 +207,126 @@ namespace lookup_tables {
   = tag::Writes{^^storage::compressionDuplicates}, = tag::Writes{^^storage::rows}, = tag::Writes{^^storage::rules}
 ]] void makeLookupRules();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::makeLookupRules}, = tag::Gate{^^uniques::parseUniquesRecords},
   = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
   = tag::Writes{^^storage::candidateCounts}, = tag::Writes{^^storage::byStem}, = tag::Writes{^^storage::rows},
   = tag::Writes{^^storage::rules}
 ]] void addUniqueRules();
+[[ = tag::Reads{^^storage::byStem}, = tag::Reads{^^storage::rows},
+   = tag::Writes{^^storage::perfectSuffixes} ]] void collectPerfectSuffixes();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::addUniqueRules}, = tag::Reads{^^storage::byStem},
-  = tag::Reads{^^storage::rows}, = tag::Writes{^^storage::perfectSuffixes}
-]] void collectPerfectSuffixes();
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::makeLookupRules}, = tag::Gate{^^lookup_tables::addUniqueRules},
   = tag::Writes{^^storage::candidateCapacity}, = tag::Writes{^^storage::candidateCounts},
   = tag::Writes{^^storage::lengths}
 ]] void measureCandidateCapacity();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::addUniqueRules}, = tag::Gate{^^dictline::addEsse},
   = tag::Reads{^^storage::byStem}, = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::dictline},
   = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::uniques},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
   = tag::Writes{^^storage::classes}, = tag::Writes{^^storage::dropped}, = tag::Writes{^^storage::stems}
 ]] void buildLookupClasses();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::buildLookupClasses}, = tag::Gate{^^dictline::addEsse},
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Writes{^^storage::stems}
 ]] void addAffixStems();
-[[ = tag::forInspector, = tag::Gate{^^lookup_tables::addAffixStems},
-   = tag::Writes{^^storage::stems} ]] void sortLookupStems();
+[[= tag::Writes{^^storage::stems}]] void sortLookupStems();
+[[ = tag::Reads{^^storage::rows}, = tag::Writes{^^storage::order},
+   = tag::Writes{^^storage::arrayOrder} ]] void rankLookupRules();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::addUniqueRules}, = tag::Reads{^^storage::rows},
-  = tag::Writes{^^storage::order}, = tag::Writes{^^storage::arrayOrder}
-]] void rankLookupRules();
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::sortLookupStems}, = tag::Gate{^^lookup_tables::buildLookupClasses},
-  = tag::Gate{^^lookup_tables::addUniqueRules}, = tag::Reads{^^storage::stems}, = tag::Reads{^^storage::classes},
-  = tag::Reads{^^storage::rows}, = tag::Writes{^^storage::stemRuns}, = tag::Writes{^^storage::endingRuns}
+  = tag::Reads{^^storage::stems}, = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::rows},
+  = tag::Writes{^^storage::stemRuns}, = tag::Writes{^^storage::endingRuns}
 ]] void groupStemSpellings();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::groupStemSpellings}, = tag::Writes{^^storage::endingRuns},
-  = tag::Writes{^^storage::endings}, = tag::Writes{^^storage::endingIds}, = tag::Writes{^^storage::reversed}
+  = tag::Writes{^^storage::endingRuns}, = tag::Writes{^^storage::endings}, = tag::Writes{^^storage::endingIds},
+  = tag::Writes{^^storage::reversed}
 ]] void numberEndings();
+[[ = tag::Reads{^^storage::stemRuns}, = tag::Writes{^^storage::front} ]] void buildStemTrie();
+[[ = tag::Reads{^^storage::reversed}, = tag::Writes{^^storage::back} ]] void buildEndingTrie();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::groupStemSpellings}, = tag::Reads{^^storage::stemRuns},
-  = tag::Writes{^^storage::front}
-]] void buildStemTrie();
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::numberEndings}, = tag::Reads{^^storage::reversed},
-  = tag::Writes{^^storage::back}
-]] void buildEndingTrie();
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::buildLookupClasses}, = tag::Gate{^^lookup_tables::sortLookupStems},
-  = tag::Gate{^^lookup_tables::numberEndings}, = tag::Gate{^^lookup_tables::addUniqueRules},
-  = tag::Gate{^^lookup_tables::rankLookupRules}, = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::stems},
-  = tag::Reads{^^storage::endingIds}, = tag::Reads{^^storage::endings}, = tag::Reads{^^storage::order},
-  = tag::Reads{^^storage::rows}, = tag::Writes{^^storage::cells}, = tag::Writes{^^storage::cellOf},
-  = tag::Writes{^^storage::rowIds}, = tag::Writes{^^storage::masks}, = tag::Writes{^^storage::maxRows},
-  = tag::Writes{^^storage::droppedDuplicates}
+  = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::stems}, = tag::Reads{^^storage::endingIds},
+  = tag::Reads{^^storage::endings}, = tag::Reads{^^storage::order}, = tag::Reads{^^storage::rows},
+  = tag::Writes{^^storage::cells}, = tag::Writes{^^storage::cellOf}, = tag::Writes{^^storage::rowIds},
+  = tag::Writes{^^storage::masks}, = tag::Writes{^^storage::maxRows}, = tag::Writes{^^storage::droppedDuplicates}
 ]] void buildLookupCells();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::buildStemTrie}, = tag::Gate{^^lookup_tables::buildEndingTrie},
-  = tag::Gate{^^lookup_tables::buildLookupCells}, = tag::Gate{^^lookup_tables::makeLookupRules},
-  = tag::Gate{^^lookup_tables::addUniqueRules}, = tag::Reads{^^storage::front}, = tag::Reads{^^storage::back},
-  = tag::Reads{^^storage::maxRows}, = tag::Reads{^^storage::cells}, = tag::Reads{^^storage::rowIds},
-  = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::mixed},
-  = tag::Reads{^^storage::droppedDuplicates}, = tag::Reads{^^storage::compressionDuplicates},
-  = tag::Writes{^^storage::out}
+  = tag::Reads{^^storage::front}, = tag::Reads{^^storage::back}, = tag::Reads{^^storage::maxRows},
+  = tag::Reads{^^storage::cells}, = tag::Reads{^^storage::rowIds}, = tag::Reads{^^storage::rows},
+  = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::mixed}, = tag::Reads{^^storage::droppedDuplicates},
+  = tag::Reads{^^storage::compressionDuplicates}, = tag::Writes{^^storage::out}
 ]] void deriveLookupBounds();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::deriveLookupBounds},
-  = tag::Gate{^^lookup_tables::collectPerfectSuffixes}, = tag::Gate{^^lookup_tables::measureCandidateCapacity},
-  = tag::Gate{^^lookup_tables::numberEndings}, = tag::Reads{^^storage::perfectSuffixes},
-  = tag::Reads{^^storage::candidateCapacity}, = tag::Reads{^^storage::endings}, = tag::Writes{^^storage::out}
+  = tag::Reads{^^storage::perfectSuffixes}, = tag::Reads{^^storage::candidateCapacity},
+  = tag::Reads{^^storage::endings}, = tag::Writes{^^storage::out}
 ]] void buildPerfectSuffixTrie();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::buildPerfectSuffixTrie},
-  = tag::Gate{^^lookup_tables::buildStemTrie}, = tag::Reads{^^storage::front}, = tag::Writes{^^storage::result},
-  = tag::Writes{^^storage::states}, = tag::Writes{^^storage::below}, = tag::Writes{^^storage::root}
+  = tag::Gate{^^lookup_tables::buildPerfectSuffixTrie}, = tag::Reads{^^storage::front},
+  = tag::Writes{^^storage::result}, = tag::Writes{^^storage::states}, = tag::Writes{^^storage::below},
+  = tag::Writes{^^storage::root}
 ]] void canonicalizeStemTrie();
+[[ = tag::Reads{^^storage::front}, = tag::Reads{^^storage::stems},
+   = tag::Writes{^^storage::result} ]] void numberStemRuns();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::canonicalizeStemTrie}, = tag::Reads{^^storage::front},
-  = tag::Reads{^^storage::stems}, = tag::Writes{^^storage::result}
-]] void numberStemRuns();
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::numberStemRuns}, = tag::Reads{^^storage::states},
-  = tag::Reads{^^storage::below}, = tag::Reads{^^storage::root}, = tag::Writes{^^storage::result}
+  = tag::Reads{^^storage::states}, = tag::Reads{^^storage::below}, = tag::Reads{^^storage::root},
+  = tag::Writes{^^storage::result}
 ]] void packSharedStemSlots();
+[[ = tag::Reads{^^storage::result}, = tag::Reads{^^storage::back},
+   = tag::Writes{^^storage::out} ]] void buildLookupHeads();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::packSharedStemSlots}, = tag::Gate{^^lookup_tables::buildEndingTrie},
-  = tag::Reads{^^storage::result}, = tag::Reads{^^storage::back}, = tag::Writes{^^storage::out}
-]] void buildLookupHeads();
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::buildLookupHeads}, = tag::Gate{^^lookup_tables::sortLookupStems},
-  = tag::Gate{^^lookup_tables::buildEndingTrie}, = tag::Reads{^^storage::back}, = tag::Reads{^^storage::stems},
-  = tag::Writes{^^storage::result}, = tag::Writes{^^storage::out}
+  = tag::Reads{^^storage::back}, = tag::Reads{^^storage::stems}, = tag::Writes{^^storage::result},
+  = tag::Writes{^^storage::out}
 ]] void packLookupStems();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::packLookupStems}, = tag::Gate{^^lookup_tables::addUniqueRules},
-  = tag::Gate{^^lookup_tables::rankLookupRules}, = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::order},
-  = tag::Reads{^^storage::arrayOrder}, = tag::Writes{^^storage::result}, = tag::Writes{^^storage::out}
+  = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::order}, = tag::Reads{^^storage::arrayOrder},
+  = tag::Writes{^^storage::result}, = tag::Writes{^^storage::out}
 ]] void packLookupRules();
 [[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::packLookupRules}, = tag::Gate{^^lookup_tables::buildLookupCells},
-  = tag::Gate{^^lookup_tables::numberEndings}, = tag::Reads{^^storage::cells}, = tag::Reads{^^storage::classes},
-  = tag::Reads{^^storage::endings}, = tag::Reads{^^storage::cellOf}, = tag::Reads{^^storage::rowIds},
-  = tag::Reads{^^storage::out}, = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::stems},
-  = tag::Reads{^^storage::dropped}, = tag::Reads{^^storage::masks}, = tag::Reads{^^storage::maxRows},
-  = tag::Writes{^^storage::result}, = tag::Writes{^^storage::console}
+  = tag::Reads{^^storage::cells}, = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::endings},
+  = tag::Reads{^^storage::cellOf}, = tag::Reads{^^storage::rowIds}, = tag::Reads{^^storage::out},
+  = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::stems}, = tag::Reads{^^storage::dropped},
+  = tag::Reads{^^storage::masks}, = tag::Reads{^^storage::maxRows}, = tag::Writes{^^storage::result},
+  = tag::Writes{^^storage::console}
 ]] void compressLookupCells();
 } // namespace lookup_tables
 
 namespace finish_image_data {
-[[
-  = tag::forInspector, = tag::Gate{^^lookup_tables::compressLookupCells}, = tag::Gate{^^image_data::licenseSuffixes},
-  = tag::Reads{^^storage::result}, = tag::Writes{^^storage::image}
-]] void attachLookupTables();
-[[ = tag::forInspector, = tag::Gate{^^finish_image_data::attachLookupTables},
-   = tag::Writes{^^storage::image} ]] void copyLookupStems();
-[[
-  = tag::forInspector, = tag::Gate{^^finish_image_data::copyLookupStems}, = tag::Gate{^^image_data::licenseSuffixes},
-  = tag::Writes{^^storage::image}, = tag::Writes{^^storage::descriptionIds}
-]] void assignRuleDescriptions();
-[[
-  = tag::forInspector, = tag::Gate{^^finish_image_data::assignRuleDescriptions}, = tag::Writes{^^storage::image}
-]] void assignRuleLabels();
-[[ = tag::forInspector, = tag::Gate{^^finish_image_data::assignRuleLabels},
-   = tag::Writes{^^storage::image} ]] void buildAffixTables();
+[[ = tag::Reads{^^storage::result}, = tag::Writes{^^storage::image} ]] void attachLookupTables();
+[[= tag::Writes{^^storage::image}]] void copyLookupStems();
+[[ = tag::Writes{^^storage::image}, = tag::Writes{^^storage::descriptionIds} ]] void assignRuleDescriptions();
+[[= tag::Writes{^^storage::image}]] void assignRuleLabels();
+[[= tag::Writes{^^storage::image}]] void buildAffixTables();
 } // namespace finish_image_data
 
 namespace encoding {
-[[
-  = tag::forInspector, = tag::Gate{^^finish_image_data::buildAffixTables}, = tag::Reads{^^storage::image},
-  = tag::Writes{^^storage::encodedImage}, = tag::Writes{^^storage::console}
-]] void encodeImage();
+[[ = tag::Reads{^^storage::image}, = tag::Writes{^^storage::encodedImage},
+   = tag::Writes{^^storage::console} ]] void encodeImage();
 } // namespace encoding
 
 namespace image_file {
 [[
-  = tag::forInspector, = tag::Gate{^^encoding::encodeImage}, = tag::Gate{^^image_destination::prepareImageDestination},
   = tag::Reads{^^storage::destination}, = tag::Reads{^^storage::encodedImage}, = tag::Writes{^^storage::temporaryImage}
 ]] void writeTemporaryImage();
 [[
-  = tag::forInspector, = tag::Gate{^^image_file::writeTemporaryImage}, = tag::Reads{^^storage::temporaryImage},
-  = tag::Writes{^^storage::loadedImage}, = tag::Writes{^^whitaker::relationship::sImage}
+  = tag::Reads{^^storage::temporaryImage}, = tag::Writes{^^storage::loadedImage},
+  = tag::Writes{^^whitaker::relationship::sImage}
 ]] void loadTemporaryImage();
 [[
-  = tag::forInspector, = tag::Gate{^^image_file::loadTemporaryImage}, = tag::Reads{^^storage::loadedImage},
-  = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::imageSpellings}
+  = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage},
+  = tag::Writes{^^storage::imageSpellings}
 ]] void enumerateImageSpellings();
 [[
-  = tag::forInspector, = tag::Gate{^^image_file::enumerateImageSpellings}, = tag::Reads{^^storage::imageSpellings},
-  = tag::Reads{^^storage::kept}, = tag::Reads{^^storage::starts}, = tag::Reads{^^storage::total},
-  = tag::Reads{^^storage::lines<^^source::scheme::dictline>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
-  = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage}
+  = tag::Reads{^^storage::imageSpellings}, = tag::Reads{^^storage::kept}, = tag::Reads{^^storage::starts},
+  = tag::Reads{^^storage::total}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
+  = tag::Reads{^^storage::lines<^^source::scheme::uniques>}, = tag::Reads{^^storage::loadedImage},
+  = tag::Reads{^^whitaker::relationship::sImage}
 ]] void checkImageReadings();
 [[
-  = tag::forInspector, = tag::Gate{^^image_file::loadTemporaryImage}, = tag::Reads{^^storage::dictline},
-  = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
   = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::console}
 ]] void checkDictionaryWords();
 [[
-  = tag::forInspector, = tag::Gate{^^image_file::loadTemporaryImage}, = tag::Reads{^^storage::loadedImage},
-  = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::console}
+  = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage},
+  = tag::Writes{^^storage::console}
 ]] void checkAddonTables();
 [[
-  = tag::forInspector, = tag::Gate{^^image_file::checkImageReadings}, = tag::Gate{^^image_file::checkDictionaryWords},
-  = tag::Gate{^^image_file::checkAddonTables}, = tag::Reads{^^storage::destination},
+  = tag::Gate{^^image_file::checkImageReadings}, = tag::Reads{^^storage::destination},
   = tag::Reads{^^storage::temporaryImage}, = tag::Reads{^^storage::encodedImage}, = tag::Writes{^^storage::console}
 ]] void publishImage();
 } // namespace image_file
