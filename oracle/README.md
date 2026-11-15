@@ -7,19 +7,11 @@ While working on whitakerLib I kept running into two issues:
 
 So I made this oracle to try and fix both.
 
-The idea is simple. We capture the output of Ada WORDS using the books you give it. Since the same word can appear
+The idea is simple. It capture the output of Ada WORDS using the books you give it. Since the same word can appear
 thousands of times, we only store the answer once to save space.
 We then run whitakerLib against those stored answers without having to rerun Ada.
 
-An earlier warm-cache comparison of the 102 books took about 26 seconds
-(median of three). That is historical development timing, not a release
-benchmark. No comparable Ada timing was recorded.
-
-I've mostly increased the accuracy by slowly looking at the biggest mismatches and figuring out what caused them.
-We have now reached the point where every mismatch in the pinned collection of books has a known cause.
-We also ended up finding 20 bugs in the original WORDS along the way, some of which would crash the program.
-The comparisons use a patched WORDS build. All 19 completed fixes and their
-regression tests are available in my [combined_fixes branch][combined-fixes].
+The comparisons use a patched WORDS build [combined_fixes branch][combined-fixes].
 
 The [book list](../data/booklist.md) records the texts and per-book results.
 The saved answers record the local build as `5dd8ca5`; its Ada source matches
@@ -137,10 +129,6 @@ So far, I've found 20. Some give incorrect readings, others silently drop answer
 
 If WORDS has a bug, I don't really want to reproduce that bug in whitakerLib just to get a matching result.
 
-Nine fixes have been sent to the upstream project. Seven of them are merged
-and two are waiting for review. The ninth, #152, was closed by mistake upstream
-and is not merged yet. The remaining fixes are local and not sent yet.
-
 The comparisons currently use my local patched WORDS build, `5dd8ca5`.
 Its source revision and build details are saved with the captures, so I can
 track exactly what produced each answer. Its full source, every fix combined,
@@ -178,10 +166,8 @@ fixes for all findings except #20, which is still being investigated.
 The first fix for #20 answered pilula and seconda but crashed on roboraria while grouping the output.
 It is excluded from the comparison build and remains under investigation.
 
-## Where we are now
+## Where it is now
 
-These are the results of the final 0.3.0 report, `20261030T211216`. 0.4.0 gives
-the same report, byte for byte.
 The pinned collection contains 102 Latin books, with 4,662,505 word occurrences.
 
 | Result | Tokens | Percentage |
@@ -193,26 +179,12 @@ The pinned collection contains 102 Latin books, with 4,662,505 word occurrences.
 
 Every word is counted, including WORDS' guesses, which whitakerLib doesn't currently implement.
 
-Of the remaining 12 word occurrences, we've found the cause of each:
-
+Of the remaining 12 word occurrences:
 | Words | Occurrences | Cause |
 | --- | ---: | --- |
 | Seven run-together words over 24 letters (eosdemiuvencosetquattuoriugerum, ...) | 7 | The library's input limit; WORDS answers UNKNOWN. |
 | pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. Our first fix gave regressions (WORDS crashed on another word in the books), so we are still looking at it. |
 | basa, basin | 2 | WORDS prints a reading again for a second dictionary record that shares the stem; this grouping rule is not ported. |
-
-The current accuracy only reflects the books tested so far. As more texts are added, the percentage may go down as we uncover new differences, not necessarily because the library has gotten worse.
-
-If you'd like to add another text or book, feel free to open an issue. As long as it's publicly available and not behind a paywall, I'm happy to add it.
-
-## Roadmap
-
-A few things I'd like to add over time:
-- **Runtime coverage:** Measure which library branches the books exercise,
-  then add fixtures for uncovered paths or document why they are unreached.
-- **More constructed words:** Test words built from WORDS' rules, not just words found in books.
-- **More books:** Keep expanding the corpus to find new differences.
-- **Lib against Lib:** Compare two versions of whitakerLib to catch changes between releases.
 
 ## Reports
 
@@ -243,17 +215,6 @@ captured spelling, including its fields and pairings (`=` equal, `!` differs,
 start with grouped differences, then inspect the affected spellings. A new
 unmatched line or changed field gives a concrete place to investigate.
 Pairing or shared-record inconsistencies invalidate the run.
-
-## Files
-
-- [oracle](oracle): registration, capture, build and comparison commands.
-- [src/](src/): capture loading, Ada parsing, library layout, comparison and probe.
-- `fixtures/`: where constructed inputs go, registered separately from books (none at present).
-- `stored/books.tsv`: registered paths, hashes, book/fixture kind and probe selection.
-- `stored/captures/<version>/`: token lists, provenance and shared raw answers
-  under `answers/<batch>/`; older per-book answers remain readable.
-- `stored/reports/`: comparison history; the latest full run also writes the
-  [book list](../data/booklist.md).
 
 Captures and reports are local generated artifacts, not bundled with the
 source. Keep their saved answers and provenance intact. Texts come from the
