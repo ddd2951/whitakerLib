@@ -4,33 +4,43 @@
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
 #include "storage/stems.hpp"
 #include "word/word.hpp"
-#include <map>
-#include <set>
-#include <tuple>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <string>
 #include <utility>
 
 namespace rel = whitaker::relationship;
 
 void execution_steps::lookup_tables::addAffixStems() {
   using storage::stems;
-  // INFO: Affixes reach stems with no plain reading, and some plain stems are absent from the affix table.
-  //  Share the union, preserving each pass's membership rather than treating those sets as identical.
-  std::map<std::tuple<std::string, unsigned, unsigned>, unsigned> addresses{};
-  for (unsigned i = 0; i < stems.size(); ++i)
-    addresses.emplace(std::tuple{emitter::normalize(stems[i].text), stems[i].dictionary, stems[i].column}, i);
+  // TODO: Derive stem order once.
+  // NOTE: Plain and affix lookups can use different stems.
+  // NOTE: buildLookupClasses orders stems uniquely by dictionary and physical column.
+  const auto address = [](const storage::SourceStem& stem) { return std::pair{stem.dictionary, stem.column}; };
+  assert(std::ranges::adjacent_find(stems, std::greater_equal{}, address) == stems.end());
+  const std::size_t originalSize = stems.size();
+  std::size_t existing{};
   for (unsigned dictionary = 0; dictionary < word::kDictlineWords; ++dictionary) {
     const auto& entry = word::entry(word::DictlineRow{dictionary});
-    std::set<std::pair<std::string, unsigned>> seen{};
     for (unsigned column = 1; column <= facts::kStemColumnCount; ++column) {
       const auto text = expand::stemAt(entry, latin::StemKey{static_cast<unsigned char>(column)});
       const auto key = expand::internal::stemKeyOfColumn(entry, static_cast<std::uint8_t>(column));
-      if (!text || text->empty() || !key || !seen.emplace(emitter::normalize(*text), key->value).second)
+      // NOTE: Representative keys are distinct within a dictionary word.
+      if (!text || text->empty() || !key)
         continue;
-      const auto [it, fresh] = addresses.emplace(std::tuple{emitter::normalize(*text), dictionary, column - 1},
-                                                 static_cast<unsigned>(stems.size()));
-      if (fresh)
+
+      const auto target = std::pair{dictionary, column - 1};
+      while (existing < originalSize && address(stems[existing]) < target)
+        ++existing;
+      const bool found = existing < originalSize && address(stems[existing]) == target;
+      const std::size_t index = found ? existing : stems.size();
+      if (!found)
         stems.push_back({std::string(*text), dictionary, column - 1, 0, rel::kNoLookupClass});
-      auto& stem = stems[it->second];
+      auto& stem = stems[index];
+      assert(emitter::normalize(stem.text) == emitter::normalize(*text));
       stem.stemKey = key->value;
       stem.part = latin::partOf(entry.grammar);
     }

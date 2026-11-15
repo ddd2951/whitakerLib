@@ -16,7 +16,7 @@ struct Group {
 
 int run(const fs::path& captures, const fs::path& out, std::vector<std::string> names) {
   std::uint64_t bookTokens = 0;
-  const auto spellings = load(captures, names, bookTokens);
+  const auto spellings = loadCaptures(captures, names, bookTokens);
   if (!fs::create_directories(out))
     throw std::runtime_error("output must be new: " + out.string());
 
@@ -43,13 +43,9 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
       ++formsDiffering[d];
     auto& v = verdicts[std::to_underlying(s.verdict)];
     ++v.spellings, v.tokens += seen.tokens;
-    const auto kinds = [](const std::vector<Line>& lines) {
-      return lines | std::views::transform(&Line::kind) | std::ranges::to<std::vector>();
-    };
-    // INFO: UNKNOWN with "*" where the library answers a plain UNKNOWN: WORDS' guess, all of it trimmed (pergamum is
-    //  perg + amum with TRIM_OUTPUT N). The library does everything else WORDS does, so nothing else is left to trim.
-    const bool trimmedGuess =
-        kinds(s.ada) == std::vector{Kind::Unknown, Kind::Trimmed} && kinds(s.library) == std::vector{Kind::Unknown};
+    // INFO: An UNKNOWN with "*" is a fully trimmed WORDS guess, as in pergamum.
+    const bool trimmedGuess = std::ranges::equal(s.ada, std::array{Kind::Unknown, Kind::Trimmed}, {}, &Line::kind) &&
+                              std::ranges::equal(s.library, std::array{Kind::Unknown}, {}, &Line::kind);
     // NOTE: The library takes WORDS' other routes (Syncope, Word mod, Slur) and prints them, so they are not guesses.
     const bool trick =
         s.verdict == Verdict::Differs &&
@@ -76,19 +72,19 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
           ++t.spellings, t.tokens += seen.tokens;
       }
       if (p.differs) {
-        auto& g = differences[pattern(p)];
+        const auto description = pattern(p);
+        auto& g = differences[description];
         ++g.lines;
-        if (groups.insert(pattern(p)).second) {
+        if (groups.insert(description).second) {
           ++g.spellings, g.tokens += seen.tokens;
           if (g.examples.size() < 8)
             g.examples.push_back(word);
         }
-        // NOTE: On a trick spelling the trick's are WORDS' lines the library has no counterpart for, and the library's
-        //  UNKNOWN; readings the library gives stay its own.
+        // NOTE: Keep the library's own readings even when WORDS used a trick.
         if (!trick || (p.library && p.library->kind != Kind::Unknown)) {
-          auto& o = ownDifferences[pattern(p)];
+          auto& o = ownDifferences[description];
           ++o.lines;
-          if (ownGroups.insert(pattern(p)).second) {
+          if (ownGroups.insert(description).second) {
             ++o.spellings, o.tokens += seen.tokens;
             if (o.examples.size() < 8)
               o.examples.push_back(word);
@@ -180,14 +176,14 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
       formsRebuilt, std::ranges::fold_left(formsDiffering | std::views::values, 0ull, std::plus{}),
       formsDiffering.size());
   sum << "report: " << out.string() << '\n';
-  write(out / "forms_rebuilt.txt", [&](std::ostream& f) {
+  writeFile(out / "forms_rebuilt.txt", [&](std::ostream& f) {
     for (const auto& [d, n] : formsDiffering)
       f << n << '\t' << d << '\n';
   });
   std::cout << sum.str();
-  write(out / "summary.txt", [&](std::ostream& f) { f << sum.str(); });
+  writeFile(out / "summary.txt", [&](std::ostream& f) { f << sum.str(); });
 
-  write(out / "rules.tsv", [&](std::ostream& f) {
+  writeFile(out / "rules.tsv", [&](std::ostream& f) {
     f << "rule\tkind\tlines\tspellings\ttokens\twhy\texamples\n";
     for (std::size_t r = 0; r < rules.size(); ++r) {
       f << kRules[r].name << '\t' << kRules[r].kind << '\t' << rules[r].lines << '\t' << rules[r].spellings << '\t'
@@ -201,7 +197,7 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
        {std::pair{"differences.tsv", &differences}, {"differences_own.tsv", &ownDifferences}}) {
     std::vector<std::pair<std::string, Group>> sorted(groups->begin(), groups->end());
     std::ranges::stable_sort(sorted, std::greater{}, [](const auto& p) { return p.second.tokens; });
-    write(out / file, [&](std::ostream& f) {
+    writeFile(out / file, [&](std::ostream& f) {
       f << "tokens\tspellings\tlines\tdifference\texamples\n";
       for (const auto& [k, g] : sorted) {
         f << g.tokens << '\t' << g.spellings << '\t' << g.lines << '\t' << k << '\t';
@@ -212,14 +208,14 @@ int run(const fs::path& captures, const fs::path& out, std::vector<std::string> 
     });
   }
   std::ranges::stable_sort(listed, std::greater{}, &std::pair<std::uint64_t, std::string>::first);
-  write(out / "lines.txt", [&](std::ostream& f) {
+  writeFile(out / "lines.txt", [&](std::ostream& f) {
     f << "! differs   ~ maps through the rules in {}   left: Ada as printed   right: the library laid out as WORDS "
          "would\n\n";
     for (const auto& [t, text] : listed)
       f << text << '\n';
   });
-  write(out / "unmapped.tsv", [&](std::ostream& f) { f << unmapped.str(); });
-  // NOTE: Either one leaves the figures above without a sure reference; the wrapper then keeps the book list as it was.
+  writeFile(out / "unmapped.tsv", [&](std::ostream& f) { f << unmapped.str(); });
+  // NOTE: Without a reliable reference, the wrapper keeps the existing book list.
   if (!formsDiffering.empty()) {
     std::cerr << "self-check failed: the Dictionary_Form rebuild differs, see forms_rebuilt.txt\n";
     return 1;

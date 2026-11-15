@@ -55,8 +55,7 @@ std::vector<Field> compareFields(const Line& a, const Line& l, Rules& rules) {
         spelled("ending", a.ending, l.ending);
       }
       auto q = a.qual, lib = l.qual;
-      // INFO: Print_Modified_Qual: a deponent's voice field is blank in IND .. INF and in a participle, whatever it
-      //  holds (ACTIVE for a future participle): only where WORDS shows no voice and the mood is one of those.
+      // INFO: Print_Modified_Qual blanks deponent voice in IND .. INF and participles, even when it is ACTIVE.
       if (l.deponent && !q.contains("ACTIVE") && !q.contains("PASSIVE")) {
         const auto words = tester::wordsOf(lib);
         const bool blanked = std::ranges::any_of(words, [](const std::string_view w) {
@@ -68,8 +67,7 @@ std::vector<Field> compareFields(const Line& a, const Line& l, Rules& rules) {
             break;
           }
       }
-      // INFO: WORDS prints a verb's person 0 (INF 0 X, MANE's X X X 0 X); whitaker_describe leaves it out. After the
-      //  deponent's voice, so the two words line up.
+      // INFO: WORDS prints a verb's person 0, which whitaker_describe leaves out.
       if (const auto w = tester::wordsOf(q), v = tester::wordsOf(lib);
           !w.empty() && w[0] == "V" && w.size() >= 2 && w[w.size() - 2] == "0" && v.size() + 1 == w.size()) {
         std::string without;
@@ -79,7 +77,7 @@ std::vector<Field> compareFields(const Line& a, const Line& l, Rules& rules) {
         q = without, rules.insert(Rule::PersonZero);
       }
       const auto x = qualifierFields(q), y = qualifierFields(lib);
-      // NOTE: The library names the part twice, in pos and in its grammar; both must be WORDS'.
+      // NOTE: Both library part fields must agree with WORDS.
       put("part", x[0], l.pos == y[0] ? y[0] : y[0] + " pos " + l.pos, x[0] == y[0] && l.pos == y[0]);
       put("declension/conjugation", x[1], y[1], x[1] == y[1]);
       put("grammar", x[2], y[2], x[2] == y[2]);
@@ -233,9 +231,8 @@ Spelling compare(const std::string& word, const std::string_view response, const
         s.pairs.push_back(std::move(pairs[y]));
     k = end;
   }
-  // INFO: A route's marker and explanation are an entry of their own in WORDS' layout, with no dictionary form, so the
-  //  form line after them is printed again. The library returns no route (a gap), so its layout cannot repeat it: an
-  //  Ada form line the same as the one before the route lines is the route's, not a difference.
+  // INFO: WORDS prints a route as an entry with no form, so the next form can repeat.
+  //  The library has no route entry, so the repeated Ada form is not a difference.
   for (auto& p : s.pairs) {
     if (!p.differs || p.library || p.ada->kind != Kind::Form)
       continue;

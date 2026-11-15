@@ -47,7 +47,7 @@ std::string fieldsOf(const Line& l, const bool library) {
 int show(const fs::path& captures, const std::vector<std::string>& words) {
   std::vector<std::string> names;
   std::uint64_t bookTokens = 0;
-  const auto spellings = load(captures, names, bookTokens, true);
+  const auto spellings = loadCaptures(captures, names, bookTokens, true);
   for (const auto& word : words) {
     const auto seen = spellings.find(word);
     std::cout << "######## " << word << '\n';

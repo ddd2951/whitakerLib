@@ -102,8 +102,7 @@ Record dictlineRecord(const std::string_view line) {
   return r;
 }
 
-// INFO: Load_Uniques (support_utils-line_stuff.adb): the word as the only stem, the part entry from the qualifier and
-//  kind; codes and meaning as DICTLINE has them.
+// INFO: Load_Uniques uses the word as its stem, the qualifier and kind for its part, and DICTLINE-style codes.
 Record uniqueRecord(const std::string_view word, const std::string_view qualifier, const std::string_view meaning) {
   Record r{};
   r.stems[0] = trim(word);

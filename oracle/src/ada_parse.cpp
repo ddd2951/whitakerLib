@@ -11,8 +11,7 @@ namespace {
 
 using namespace std::string_view_literals;
 
-// INFO: Line starts, from the literals in words_engine-tricks.adb: every pseudo record a trick adds, and every text it
-//  stores in Xp.Xxx/Yyy_Meaning.
+// INFO: Line starts from words_engine-tricks.adb, including trick records and explanations.
 constexpr std::array kMarkers{"Syncope"sv, "Word mod"sv, "Slur "sv, "Two words"sv, "Bad Roman Numeral"sv};
 constexpr std::array kExplanations{"Syncopated perfect"sv,
                                    "An initial '"sv,

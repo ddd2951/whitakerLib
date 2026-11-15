@@ -7,15 +7,11 @@ While working on whitakerLib I kept running into two issues:
 
 So I made this oracle to try and fix both.
 
-The idea is simple. It capture the output of Ada WORDS using the books you give it. Since the same word can appear
-thousands of times, we only store the answer once to save space.
-We then run whitakerLib against those stored answers without having to rerun Ada.
+The oracle captures Ada WORDS' answers for the books you give it. It stores each word's answer once, even if the
+word appears many times. I can then compare whitakerLib against those answers without rerunning Ada.
 
-The comparisons use a patched WORDS build [combined_fixes branch][combined-fixes].
-
-The [book list](../data/booklist.md) records the texts and per-book results.
-The saved answers record the local build as `5dd8ca5`; its Ada source matches
-the published revision linked below.
+The comparisons use a [patched WORDS build][combined-fixes]. The [book list](../data/booklist.md) records the
+texts and per-book results.
 
 ## Run it
 
@@ -45,36 +41,31 @@ Use:
 - `--lib DIR` for another library tree
 - `--store DIR` for a separate capture and report store
 
-Register plain ASCII words, one per line;
+Register plain ASCII words, one per line.
 `oracle -a -x FILE` registers a fixture outside the book totals. Missing, stale or incomplete captures stop a comparison.
 
-## How the oracle compares whitakerLib and the original WORDS
+## How it compares answers
 
-WORDS and whitakerLib don't return their answers in the same way.
+WORDS prints its answers for an 80-column terminal and groups readings under dictionary entries. whitakerLib
+returns records with typed fields and forms.
 
-WORDS prints its answers for an 80-column terminal, while whitakerLib returns typed fields such as enums, numbers and strings.
-
-WORDS groups readings under dictionary entries; whitakerLib returns records with their forms.
-
-The oracle uses WORDS' own printing rules to show the library's matches as WORDS would have printed them.
-
-Afterward it lines up the results and checks:
+The oracle formats the library's answers using WORDS' printing rules, lines them up with the captured answers and
+checks:
 - Every line from WORDS has a corresponding line from the library, and vice versa.
 - The readings appear in the same order.
 - Every value WORDS shows corresponds to a library field with the same value.
 - Readings sharing a dictionary entry agree on its fields.
 
-For dictionary information, the oracle also reads WORDS' own records using the library's entry IDs, rather than
-trusting the library to provide both sides of the comparison. WORDS prints one dictionary form line for records
-with the same dictionary form, leaving out repeated information. The library gives each record its own codes.
-Even when WORDS leaves out a dictionary form line, the oracle checks that record directly against WORDS' own records.
+The oracle also reads WORDS' dictionary records using the library's entry IDs. This lets it check dictionary fields
+even when WORDS leaves out a repeated dictionary form line.
 
 Things like spacing, how WORDS prints a value, or meanings cut short to fit the terminal don't count as
 differences if the underlying values agree.
 
-We count the results as:
+The report groups results as:
+- **Match:** WORDS and the library agree.
 - **Gap:** WORDS returns something the library doesn't support.
-- **Difference:** Something else doesn't match, and we need to figure out why.
+- **Difference:** Something else doesn't match.
 
 As an example look at `arma`:
 WORDS prints three noun readings under `armum`, then the imperative of `armo`.
@@ -87,7 +78,7 @@ The library returns two records containing four forms:
 | arm.a N 2 2 ACC P N | 4769, armum | ACC P N |
 | arm.a V 1 1 PRES ACTIVE IMP 2 S | 4770, armo | PRES ACTIVE IMP 2 S |
 
-`oracle -s arma` shows all eight printed lines paired: four readings,
+`oracle -s arma` shows all eight printed lines paired. These are four readings,
 two dictionary forms and two meanings, with every field equal.
 
 The layout follows WORDS' `Put_Parse_Details` and `Put_Dictionary_Form`,
@@ -97,45 +88,32 @@ lines of the same kind are compared field by field. Nothing left over is ignored
 The printing rules are deliberately narrow:
 - Fold case and j/i, v/u where WORDS does.
 - Strip a meaning of leading continuation bars and compare its first 79 characters.
-- Allow an omitted person 0 and WORDS' blank deponent voice; hidden values are not compared.
+- Allow an omitted person 0 and WORDS' blank deponent voice. Hidden values are not compared.
 - Check constructed numeral meanings against the numeral's value and sort.
 
-Each rule is counted in the report; changes need review against the Ada routine.
+Each rule is counted in the report. Changes need review against the Ada routine.
 The rule table is in [lines.hpp](src/lines.hpp), field comparisons in
 [compare.cpp](src/compare.cpp), and layout in [library_lines.cpp](src/library_lines.cpp).
 
 ## Validating the oracle
 
-I've set up a few checks to make sure the oracle itself isn't missing anything:
-- Every field in the library has to be accounted for.
-- Change each field on purpose and check that the oracle catches it.
-- Rebuild WORDS' printed forms from its own dictionary records.
-- Make sure every line from both sides is accounted for.
-- Check that readings sharing a dictionary entry agree on its fields.
-- When the oracle changes, show which words get different results.
+The oracle checks that every field in `WhitakerRecord` and `WhitakerForm` is accounted for. The
+[probe](src/probe.cpp) changes each mapped field, record and form to check that the comparison notices. Fields
+WORDS doesn't show must leave the result unchanged.
 
-Reflection checks the field table in [probe.cpp](src/probe.cpp) against
-`WhitakerRecord` and `WhitakerForm`. The probe mutates every mapped field, then
-each record or form alone, to catch fields checked only at the start of an
-answer. Fields WORDS doesn't show must leave the comparison unchanged. The independent dictionary
-reader refuses mismatched source data; every run also rebuilds WORDS' numbered
-dictionary forms and checks them against the captures.
+Every run checks that both sides' lines are accounted for and that readings from the same dictionary entry agree.
+It also checks the source data and rebuilds WORDS' numbered dictionary forms against the captures. When the oracle
+changes, I compare reports to see which words get different results.
 
 ## Bugs found in WORDS
 
-Something I didn't originally expect was how many bugs the comparisons would uncover in WORDS itself.
+The comparisons have also uncovered bugs in WORDS. I've listed them below. I don't want to reproduce them in
+whitakerLib just to get matching results.
 
-So far, I've found 20. Some give incorrect readings, others silently drop answers, and a few can crash WORDS entirely.
-
-If WORDS has a bug, I don't really want to reproduce that bug in whitakerLib just to get a matching result.
-
-The comparisons currently use my local patched WORDS build, `5dd8ca5`.
-Its source revision and build details are saved with the captures, so I can
-track exactly what produced each answer. Its full source, every fix combined,
-is the pinned `combined_fixes` branch of my fork,
-[`ddd2951/whitakers-words`](https://github.com/ddd2951/whitakers-words/tree/combined_fixes),
-at `da6b35f`. The [WORDS fix notes](WORDS_FIXES.md) give each fix with regression
-examples from WORDS' own test folders.
+The saved answers use my local WORDS build, `5dd8ca5`. Its source matches the `combined_fixes` branch of my fork,
+[`ddd2951/whitakers-words`](https://github.com/ddd2951/whitakers-words/tree/combined_fixes), at `da6b35f`. The
+captures keep the source revision and build details. The [WORDS fix notes](WORDS_FIXES.md) list the fixes and
+regression examples.
 
 The findings keep the numbers they were given when found. The build includes
 fixes for all findings except #20, which is still being investigated.
@@ -161,14 +139,14 @@ fixes for all findings except #20, which is still being investigated.
 | 17 | Qu folding | The qu/cu test does not fold v to u. | Not posted yet |
 | 18 | Nested tackons | The outer tackon sweep drops an accepted inner tackon marker. | Not posted yet |
 | 19 | Ending lookup | The ending index uses the raw final letter, so final v finds none. | Not posted yet |
-| 20 | Lost full results (open) | Fixed parse arrays overflow; the exception is swallowed as UNKNOWN. | Not posted yet |
+| 20 | Lost full results (open) | Fixed parse arrays overflow and the exception is swallowed as UNKNOWN. | Not posted yet |
 
 The first fix for #20 answered pilula and seconda but crashed on roboraria while grouping the output.
 It is excluded from the comparison build and remains under investigation.
 
 ## Where it is now
 
-The pinned collection contains 102 Latin books, with 4,662,505 word occurrences.
+These are the results for 0.4.0. The pinned collection contains 102 Latin books, with 4,662,505 word occurrences.
 
 | Result | Tokens | Percentage |
 | --- | ---: | ---: |
@@ -182,22 +160,11 @@ Every word is counted, including WORDS' guesses, which whitakerLib doesn't curre
 Of the remaining 12 word occurrences:
 | Words | Occurrences | Cause |
 | --- | ---: | --- |
-| Seven run-together words over 24 letters (eosdemiuvencosetquattuoriugerum, ...) | 7 | The library's input limit; WORDS answers UNKNOWN. |
-| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. Our first fix gave regressions (WORDS crashed on another word in the books), so we are still looking at it. |
-| basa, basin | 2 | WORDS prints a reading again for a second dictionary record that shares the stem; this grouping rule is not ported. |
+| Seven run-together words over 24 letters (eosdemiuvencosetquattuoriugerum, ...) | 7 | The library's input limit. WORDS answers UNKNOWN. |
+| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. My first fix caused a crash on another word in the books, so I am still looking at it. |
+| basa, basin | 2 | WORDS prints a reading again for a second dictionary record that shares the stem. This grouping rule is not ported. |
 
 ## Reports
-
-The saved report above starts with:
-
-```text
-256045 spellings, 4662505 tokens
-
-  maps: every field WORDS shows is equal    249262 spellings ( 97.35%)   4642934 tokens ( 99.58%)
-  maps but for gaps                              0 spellings (  0.00%)         0 tokens (  0.00%)
-  differs                                     6783 spellings (  2.65%)     19571 tokens (  0.42%)
-    of which WORDS used a trick               6772 spellings (  2.64%)     19559 tokens (  0.42%)
-```
 
 Each run writes a new directory under `stored/reports/`:
 - `summary.txt`: totals, field comparisons, unmatched lines and rule counts.
@@ -209,17 +176,14 @@ Each run writes a new directory under `stored/reports/`:
 - `oracle`: the tested library revision and capture path.
 - `fixtures/`: the same reports for fixtures, outside book totals.
 
-Use `oracle -r` for the latest summary and `oracle -s WORD` to inspect a
-captured spelling, including its fields and pairings (`=` equal, `!` differs,
-`~` gap). After a library change, compare the old and new report directories:
-start with grouped differences, then inspect the affected spellings. A new
-unmatched line or changed field gives a concrete place to investigate.
-Pairing or shared-record inconsistencies invalidate the run.
+In the word view, `=` means equal, `!` means different and `~` means a gap. After a library change, compare the
+old and new reports. Start with grouped differences, then inspect the affected words. Pairing or shared-record
+inconsistencies invalidate the run.
 
 Captures and reports are local generated artifacts, not bundled with the
 source. Keep their saved answers and provenance intact. Texts come from the
-Perseus Digital Library's canonical-latinLit collection (CC BY-SA 4.0);
-the book list identifies the selection. The WORDS revision and fixes are
+Perseus Digital Library's canonical-latinLit collection (CC BY-SA 4.0).
+The book list identifies the selection. The WORDS revision and fixes are
 recorded above so results can be tied to the reference actually tested.
 
 [combined-fixes]: https://github.com/ddd2951/whitakers-words/tree/combined_fixes

@@ -85,8 +85,8 @@ At build time `src/execution_steps/run.hpp` collects the steps by reflection,
 checks that every gate names a step and that the waits have no cycle, direct
 or through other steps (the build stops if they do), and works out the order
 and what may run at once. A step starts as soon as everything it waits for has
-finished. Gen takes about 5 s and publishes the same image byte
-for byte, run after run. Nothing else lists the steps.
+finished. Gen produces the same image byte for byte, run after run. Nothing
+else lists the steps.
 
 The weak point is that the Reads and Writes tags are kept by hand on each
 declaration in `steps.hpp`, written from reading each step's code. The build

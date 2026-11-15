@@ -18,8 +18,7 @@ struct Record {
   std::string meaning{};
 };
 
-// INFO: DICTLINE.GEN's records in order, then the esse makedict adds, then UNIQUES.LAT's: the order WORDS numbers them
-//  in and whitakerLib's entry.id follows.
+// INFO: WORDS numbers DICTLINE, synthetic esse, then UNIQUES. whitakerLib uses the same entry IDs.
 class Dictionary {
 public:
   explicit Dictionary(const std::filesystem::path& data);

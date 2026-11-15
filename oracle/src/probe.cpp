@@ -125,7 +125,7 @@ void mutations(const std::string_view prefix, std::function<T&(Root&)> get,
 
 int probe(const fs::path& captures, std::vector<std::string> names) {
   std::uint64_t bookTokens = 0;
-  const auto spellings = load(captures, names, bookTokens);
+  const auto spellings = loadCaptures(captures, names, bookTokens);
   const auto differing = [](const Spelling& s) {
     std::set<std::string> out;
     for (const auto& p : s.pairs) {
@@ -148,8 +148,7 @@ int probe(const fs::path& captures, std::vector<std::string> names) {
       all);
   mutations<WhitakerForm, WhitakerForm>(
       "form", std::function<WhitakerForm&(WhitakerForm&)>([](WhitakerForm& f) -> WhitakerForm& { return f; }), all);
-  // NOTE: Each record and form alone too: WORDS prints a line shared by neighbouring entries once, so a change to
-  //  one of them must still be noticed.
+  // NOTE: WORDS can print one line for neighbouring entries, so a change to either must be noticed.
   std::map<std::string, std::array<std::size_t, 2>> counts;
   for (const auto& [word, seen] : spellings) {
     auto& [records, forms] = counts[word];

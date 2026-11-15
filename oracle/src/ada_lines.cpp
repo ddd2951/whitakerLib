@@ -12,8 +12,7 @@ constexpr std::array kInflectionLabels{"Archaic"sv,  "Early"sv,   "Classic"sv, "
                                        "Medieval"sv, "Scholar"sv, "Modern"sv,  "mostfreq"sv, "sometime"sv,
                                        "uncommon"sv, "infreq"sv,  "rare"sv,    "veryrare"sv, "inscript"sv};
 
-// INFO: "am.o  V  1 1 PRES ACTIVE IND 1 S  Early". A stem and ending of 21 characters or more run into the part
-//  ("conperendination.ibusN"), since WORDS sets the qualifier's column after them.
+// INFO: WORDS puts the part at column 22, so long stems and endings can run into it (conperendination.ibusN).
 std::optional<Line> inflectionLine(const std::string_view raw) {
   const auto words = tester::wordsOf(raw);
   if (words.size() < 2 || raw.front() == ' ')
@@ -21,7 +20,7 @@ std::optional<Line> inflectionLine(const std::string_view raw) {
   std::string first(words[0]);
   std::vector<std::string> rest(words.begin() + 1, words.end());
   if (std::ranges::contains(kParts, std::string_view(rest[0]))) {
-    // INFO: Put_Inflection sets the part's column to 22: a meaning whose second word is a part name is no reading.
+    // NOTE: A meaning can have a part name as its second word.
     if (first.size() > 20 || raw.size() <= 21 || !raw.substr(21).starts_with(rest[0]))
       return std::nullopt;
   } else {

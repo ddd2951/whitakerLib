@@ -9,7 +9,7 @@ template <typename E> std::string name(const std::uint8_t value) {
   return n ? n : "?";
 }
 
-// INFO: The oracle's route codes: ReadingDetail's route, with a syncope's rule (II to IS) from its Derivation.
+// INFO: Route codes include the syncope rule from ReadingDetail's derivation.
 inline constexpr std::uint8_t kRouteDirect = 0, kRouteSyncopeII = 1, kRouteSyncopeS = 2, kRouteSyncopeR = 3,
                               kRouteSyncopeIer = 4, kRouteSyncopeIs = 5, kRouteAdverb = 6, kRouteSlur = 7,
                               kRouteWordMod = 8;
@@ -82,8 +82,7 @@ std::string dictionaryLabels(const WhitakerEntry& e) {
   return out;
 }
 
-// INFO: Put_Inflection_Flags: the inflection's age unless X, its frequency from C on (list_package.adb's Inflection_Age
-//  and Inflection_Frequency).
+// INFO: Put_Inflection_Flags prints age unless X and frequency from C on (list_package.adb).
 std::string inflectionLabels(const std::uint8_t age, const std::uint8_t frequency) {
   static const std::map<std::string, std::string> ageLabels{{"A", "Archaic"}, {"B", "Early"}, {"C", "Classic"},
                                                             {"D", "Late"},    {"E", "Later"}, {"F", "Medieval"},
@@ -323,8 +322,8 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     }
     entries.push_back(std::move(e));
   }
-  // INFO: The addons an entry starts with: those not carried by the entry before it. A prefix inside a suffix
-  //  (Apply_Suffix's else arm) prints again with each suffix record: appenninum.
+  // INFO: New addons start where they differ from the previous entry. A prefix inside a suffix prints again
+  //  with each suffix record (Apply_Suffix, appenninum).
   const auto newAddons = [&](const std::size_t j) {
     const auto& addons = entries[j].addons;
     const auto kind = [&](const std::size_t a) {
@@ -350,8 +349,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
       {"Syncope  ier=>iver", "Syncopated perfect often drops the 'v' and contracts vowel"},
       {"Syncope s/x => +is", "Syncopated perfect sometimes drops the 'is' after 's' or 'x'"},
   }};
-  // INFO: A route's lines again where its rule's readings end and another's begin (sesti: the syncope inside
-  //  Try_Slury's se/ce reading, then Pass' own).
+  // INFO: Route lines repeat when the rule changes (sesti has Try_Slury's syncope and then Pass' own).
   const auto newRoute = [&](const std::size_t j) {
     return entries[j].route != kRouteDirect && (j == 0 || entries[j - 1].route != entries[j].route ||
                                                 entries[j - 1].first->spelling_rule != entries[j].first->spelling_rule);
@@ -363,13 +361,12 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   bool explained = false, adverbExplained = false, spellingExplained = false;
   const std::vector<Line>* previousReadings = nullptr;
   std::string previousForm;
-  // INFO: No entry yet, an addon's or a route's included: WORDS prints the first entry's form line whatever it is.
+  // INFO: WORDS prints the first entry's form, including an addon's or route's.
   bool first = true;
   for (std::size_t j = 0; j < entries.size(); ++j) {
     const auto& e = entries[j];
     const auto& m = *e.first;
-    // INFO: Addon lines before the first entry carrying them; before its route lines too, as Enclitic puts its tackon
-    //  record in front of everything it found.
+    // INFO: Enclitic puts its tackon before the entry and its route lines.
     auto starting = newAddons(j);
     const Entry* carrier = &e;
     // INFO: Fix_Adverb copies the addon records right in front of its adjective run, once, before its SUFFIX record
@@ -500,8 +497,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
         l.text = collapsed(why), out.push_back(l), explained = true;
       previousReadings = nullptr, previousForm.clear(), first = false;
     }
-    // INFO: Readings, skipped when the same as the previous entry's. WORDS compares whole stem and inflection records,
-    //  labels too; case, j and v are the same value.
+    // INFO: WORDS skips readings matching the previous entry, including labels, folding case, j and v.
     const auto same = [](const std::vector<Line>& a, const std::vector<Line>& b) {
       return std::ranges::equal(a, b, [](const Line& x, const Line& y) {
         return tester::folded(x.stem) == tester::folded(y.stem) &&
@@ -549,8 +545,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
     };
     if (e.roman || j + 1 == entries.size() || entries[j + 1].roman || !newAddons(j + 1).empty() || newRoute(j + 1) ||
         adverbBlock(j + 1) || raw(e) != raw(entries[j + 1]) || library(e) != library(entries[j + 1])) {
-      // INFO: Put_Meaning_Line: a numeral with a value has its meaning made up from the value; blank when its sort has
-      //  none.
+      // INFO: Put_Meaning_Line constructs a numeral's meaning from its value, or leaves it blank for some sorts.
       if (!e.roman && name<latin::Part>(m.entry.part) == "NUM" && m.entry.numeral_value > 0) {
         auto l = meaningLine(
             constructedMeaning(m.entry.numeral_value, name<latin::Part>(e.firstForm ? e.firstForm->grammar.part : 0),

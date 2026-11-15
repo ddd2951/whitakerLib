@@ -199,10 +199,10 @@ Spelling compare(const std::string& word, std::string_view response, const Mutat
 std::string pattern(const Pairing& p);
 std::string readFile(const fs::path& path);
 // INFO: Throws if the file cannot be opened or fully written.
-void write(const fs::path& path, const std::function<void(std::ostream&)>& fill);
-std::map<std::string, Seen> load(const fs::path& captures, std::vector<std::string>& names, std::uint64_t& bookTokens,
-                                 bool skipIncomplete = false);
-int importAnswers(const fs::path& captures, const fs::path& out);
+void writeFile(const fs::path& path, const std::function<void(std::ostream&)>& fill);
+std::map<std::string, Seen> loadCaptures(const fs::path& captures, std::vector<std::string>& names,
+                                        std::uint64_t& bookTokens, bool skipIncomplete = false);
+int importBookAnswers(const fs::path& captures, const fs::path& out);
 int show(const fs::path& captures, const std::vector<std::string>& words);
 int probe(const fs::path& captures, std::vector<std::string> names);
 int run(const fs::path& captures, const fs::path& out, std::vector<std::string> names);

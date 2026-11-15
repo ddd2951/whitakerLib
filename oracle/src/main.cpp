@@ -16,7 +16,7 @@ int main(const int argc, char** const argv) {
     if (std::string_view(argv[1]) == "--import") {
       if (argc != 4)
         throw std::runtime_error("--import needs a capture set and an output directory");
-      return lines::importAnswers(argv[2], argv[3]);
+      return lines::importBookAnswers(argv[2], argv[3]);
     }
     return lines::run(argv[1], argv[2], {argv + 3, argv + argc});
   } catch (const std::exception& error) {
