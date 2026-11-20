@@ -11,6 +11,10 @@
 #include <vector>
 #include <type_traits>
 
+namespace whitaker {
+struct DictionaryWordStems;
+}
+
 namespace whitaker::relationship {
 
 // INFO: The current thread's last dictionary lookup; the next lookup replaces its candidates.
@@ -82,6 +86,7 @@ void nextReading(std::uint32_t& cursor, std::uint16_t& lexeme, latin::packed::Re
 [[nodiscard]] InflectionRecord inflection(std::uint16_t index);
 [[nodiscard]] StemRecord stemRecord(std::uint32_t index);
 [[nodiscard]] Run stemRange(std::string_view text);
+[[nodiscard]] DictionaryWordStems stems(std::uint16_t dictionary);
 [[nodiscard]] StemEntry stemEntry(std::uint32_t index);
 [[nodiscard]] Run endingRun(std::string_view text);
 [[nodiscard]] std::pair<latin::Age, latin::Frequency> readingLabels(std::uint16_t description,

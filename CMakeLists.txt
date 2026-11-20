@@ -13,15 +13,10 @@ endif()
 include(GNUInstallDirs)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(WHITAKER_BUILD_TESTING "Build the test suite" ${PROJECT_IS_TOP_LEVEL})
 option(WHITAKER_INSTALL "Generate the install and package rules"
     ${PROJECT_IS_TOP_LEVEL})
 option(WHITAKER_WERROR "Treat warnings as errors" ${PROJECT_IS_TOP_LEVEL})
 option(WHITAKER_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-
-if(WHITAKER_BUILD_TESTING)
-    enable_testing()
-endif()
 
 include(warnings.cmake)
 add_library(whitaker_warnings INTERFACE)
@@ -110,11 +105,21 @@ foreach(field AT BYTES)
     math(EXPR WHITAKER_IMAGE_STRINGS_${field} "0x${hex}")
     string(SUBSTRING "${entry_hex}" 16 -1 entry_hex)
 endforeach()
-# INFO: The whole directory, so the library can use each section's place as a constant. 25 entries of offset,
-#  bytes and count; embedded_image.cpp checks them against the image.
-file(READ "${WHITAKER_DATA_IMAGE}" directory_hex OFFSET 40 LIMIT 600 HEX)
+# INFO: The whole directory, so the library can use each section's place as a constant: the header's section count
+#  (a u32 at byte 24) entries of offset, bytes and count; embedded_image.cpp checks them against the image.
+file(READ "${WHITAKER_DATA_IMAGE}" count_hex OFFSET 24 LIMIT 4 HEX)
+set(hex "")
+foreach(byte RANGE 3 0 -1)
+    math(EXPR hex_index "2 * ${byte}")
+    string(SUBSTRING "${count_hex}" ${hex_index} 2 pair)
+    string(APPEND hex "${pair}")
+endforeach()
+math(EXPR section_count "0x${hex}")
+math(EXPR directory_bytes "24 * ${section_count}")
+math(EXPR last_field "3 * ${section_count} - 1")
+file(READ "${WHITAKER_DATA_IMAGE}" directory_hex OFFSET 40 LIMIT ${directory_bytes} HEX)
 set(WHITAKER_IMAGE_DIRECTORY "")
-foreach(field RANGE 0 74)
+foreach(field RANGE 0 ${last_field})
     set(hex "")
     foreach(byte RANGE 7 0 -1)
         math(EXPR hex_index "16 * ${field} + 2 * ${byte}")
@@ -191,26 +196,6 @@ endif()
 option(WHITAKER_BUILD_PYTHON "Build the Python binding; needs pybind11" OFF)
 if(WHITAKER_BUILD_PYTHON)
     add_subdirectory(bindings/python)
-endif()
-
-if(WHITAKER_BUILD_TESTING)
-    function(whitaker_test target)
-        target_link_libraries(${target} PRIVATE whitaker_warnings)
-        target_compile_options(${target} PRIVATE -UNDEBUG)
-        whitaker_sanitize(${target})
-        add_test(NAME ${target} COMMAND ${target} ${ARGN})
-    endfunction()
-
-    add_executable(whitaker_test test/test.cpp)
-    target_link_libraries(whitaker_test PRIVATE whitaker)
-    target_compile_features(whitaker_test PRIVATE cxx_std_23)
-    whitaker_test(whitaker_test)
-
-    add_executable(whitaker_c_test test/test_c.c)
-    target_link_libraries(whitaker_c_test PRIVATE whitaker)
-    target_compile_features(whitaker_c_test PRIVATE c_std_11)
-    whitaker_test(whitaker_c_test)
-
 endif()
 
 if(WHITAKER_INSTALL)

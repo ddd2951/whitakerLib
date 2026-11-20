@@ -67,6 +67,7 @@ add_executable(gen_binary
     src/execution_steps/enumerate_image_spellings.cpp
     src/execution_steps/check_image_readings.cpp
     src/execution_steps/check_dictionary_words.cpp
+    src/execution_steps/check_dictionary_word_stems.cpp
     src/execution_steps/check_addon_tables.cpp
     src/execution_steps/publish_image.cpp
     src/execution_steps/encode_image.cpp
@@ -76,6 +77,8 @@ add_executable(gen_binary
     src/execution_steps/assign_rule_labels.cpp
     src/execution_steps/assign_rule_descriptions.cpp
     src/execution_steps/copy_lookup_stems.cpp
+    src/execution_steps/group_dictionary_stems.cpp
+    src/execution_steps/mark_stem_letters.cpp
     src/execution_steps/compress_lookup_cells.cpp
     src/execution_steps/pack_lookup_rules.cpp
     src/execution_steps/pack_lookup_stems.cpp

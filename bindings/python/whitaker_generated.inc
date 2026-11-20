@@ -11,6 +11,8 @@ py::object toPython(const whitaker::Derivation& value);
 py::object toPython(const whitaker::AddonStep& value);
 py::object toPython(const whitaker::Row& value);
 py::object toPython(const latin::packed::Reading& value);
+py::object toPython(const whitaker::DictionaryWordStems& value);
+py::object toPython(const whitaker::Stem& value);
 py::object toPython(const whitaker::SpellingRule& value);
 
 py::object toPython(const whitaker::ReadingDetail& value) {
@@ -106,6 +108,20 @@ py::object toPython(const latin::packed::Reading& value) {
   fields["entry"] = py::int_(value.entry);
   fields["g"] = [&] { py::list items; for (auto item : value.g) items.append(py::int_(item)); return items; }();
   fields["changes"] = py::int_(value.changes);
+  return record(fields);
+}
+
+py::object toPython(const whitaker::DictionaryWordStems& value) {
+  py::dict fields;
+  fields["stems"] = [&] { py::list items; for (auto item : value.stems) items.append(toPython(item)); return items; }();
+  fields["count"] = py::int_(value.count);
+  return record(fields);
+}
+
+py::object toPython(const whitaker::Stem& value) {
+  py::dict fields;
+  fields["key"] = py::int_(value.key);
+  fields["spelling"] = text(value.spelling);
   return record(fields);
 }
 
@@ -355,5 +371,6 @@ void bindGenerated(py::module_& m) {
 
   m.def("addonSpelling", [](std::uint16_t id) { return text(whitaker::addonSpelling(id)); }, py::arg("id"));
   m.def("addonMeaning", [](std::uint16_t id) { return text(whitaker::addonMeaning(id)); }, py::arg("id"));
+  m.def("stems", [](std::uint16_t id) { return toPython(whitaker::stems(static_cast<whitaker::DictionaryWordId>(id))); }, py::arg("id"));
   m.def("spellingRule", [](std::uint8_t rule) { return toPython(whitaker::spellingRule(rule)); }, py::arg("rule"));
 }

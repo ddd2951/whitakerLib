@@ -165,11 +165,13 @@ void clear(Result& result) noexcept {
     result.storage->dataBytes = 0;
 }
 
-ReadingDetail decode(const Result& result, const WordId word, const Reading& r) noexcept {
+ReadingDetail detail(const Result& result, const WordId word, const std::size_t readingIndex) noexcept {
   ReadingDetail out{};
-  const auto text = spelling(result, word);
-  if (text.empty() && std::to_underlying(word) >= result.wordCount)
+  const auto all = readings(result, word);
+  if (readingIndex >= all.size())
     return out;
+  const Reading& r = all[readingIndex];
+  const auto text = spelling(result, word);
   Change c{};
   if (r.changes) {
     const auto* const pool = result.data + result.words[std::to_underlying(word)].firstData + text.size() + 2;
@@ -184,5 +186,6 @@ unsigned imageFormat() noexcept { return rel::kVersion; }
 const char* imageChecksum() noexcept { return WHITAKER_IMAGE_SHA256; }
 const char* addonSpelling(const std::uint16_t id) noexcept { return rel::addon(id).fix.data(); }
 const char* addonMeaning(const std::uint16_t id) noexcept { return rel::addon(id).meaning; }
+DictionaryWordStems stems(const DictionaryWordId id) noexcept { return rel::stems(std::to_underlying(id)); }
 SpellingRule spellingRule(const std::uint8_t rule) noexcept { return parse::spellingRule(rule); }
 } // namespace whitaker

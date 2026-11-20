@@ -447,6 +447,14 @@ struct PassRun {
   return out;
 }
 
+[[nodiscard]] std::string stemsLine(const whitaker::DictionaryWordStems& stems) {
+  std::string out;
+  for (unsigned i = 0; i < stems.count; ++i)
+    if (i == 0 || std::string_view{stems.stems[i].spelling} != stems.stems[i - 1].spelling)
+      out += (out.empty() ? "stems " : ", ") + std::string{stems.stems[i].spelling};
+  return out;
+}
+
 struct Value {
   std::string_view field;
   std::string value;
@@ -509,6 +517,9 @@ void addWords(Tokens& out, std::string_view text) {
   addWords(tokens, orEmpty(kindName(head(record).dictionaryWord.part, head(record).dictionaryWord.kind.value)));
   if (head(record).form.spellingRuleId)
     tokens.insert("respelled");
+  const whitaker::DictionaryWordStems stems = whitaker::stems(head(record).dictionaryWordId);
+  for (const whitaker::Stem& s : std::span{stems.stems, stems.count})
+    tokens.insert(term("stem", s.spelling));
   for (const whitaker::AddonStep& step : std::span{head(record).addons, head(record).addonCount}) {
     tokens.insert(std::string{orEmpty(spokenName("addon", byte(step.kind)))});
     tokens.insert(lower(orEmpty(whitaker::addonSpelling(step.id))));
@@ -531,8 +542,8 @@ void lookUp(const std::string& spelling) {
     word.index = whitaker::wordCount(t.result) - 1;
     word.firstBlock = t.blocks.size();
     const whitaker::WordId added{word.index};
-    for (const auto& r : whitaker::readings(t.result, added)) {
-      const whitaker::ReadingDetail detail = whitaker::decode(t.result, added, r);
+    for (std::size_t r = 0; r < whitaker::readingCount(t.result, added); ++r) {
+      const whitaker::ReadingDetail detail = whitaker::detail(t.result, added, r);
       const auto same = [](const whitaker::ReadingDetail& a, const whitaker::ReadingDetail& b) {
         if (a.dictionaryWordId != b.dictionaryWordId || a.form.grammar.part != b.form.grammar.part ||
             a.route != b.route || a.form.spellingRuleId != b.form.spellingRuleId || a.addonCount != b.addonCount)
@@ -598,9 +609,10 @@ void readable(const Word& word) {
     h.open("div", "record")
         .element("div", "meaning",
                  id == whitaker::kNoDictionaryWord ? std::to_string(e.numeralValue.value) + " " + meaning : meaning);
-    h.element("div", "meta",
-              joined({cls.empty() ? orEmpty(head(record).partName) : cls, route == "direct" ? "" : route,
-                      spellingLine(record), addons.empty() ? "" : "add-ons: " + addons}));
+    h.element(
+        "div", "meta",
+        joined({cls.empty() ? orEmpty(head(record).partName) : cls, stemsLine(whitaker::stems(id)),
+                route == "direct" ? "" : route, spellingLine(record), addons.empty() ? "" : "add-ons: " + addons}));
     for (std::size_t f = record.first; f < record.first + record.count; ++f) {
       const whitaker::Form& form = loadedText.details[f].form;
       const std::uint8_t stem = loadedText.details[f].stemKey;

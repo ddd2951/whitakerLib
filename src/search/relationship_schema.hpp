@@ -45,11 +45,14 @@ enum class Section : std::uint32_t {
   SuffixBack,
   AddonIds,
   FrontRuns,
+  DictionaryStemRuns,
+  DictionaryStems,
+  StemLetters,
   count,
 };
 
 inline constexpr std::array<char, 8> kMagic{'W', 'H', 'I', 'T', 'R', 'E', 'L', '\0'};
-inline constexpr std::uint32_t kVersion = 11;
+inline constexpr std::uint32_t kVersion = 12;
 inline constexpr std::uint32_t kSectionCount = static_cast<std::uint32_t>(Section::count);
 
 // INFO: Record sizes. Every section but Strings is an array of one record.
@@ -920,6 +923,9 @@ inline constexpr std::size_t kTrimmedReadingBytes = recordBytes<TrimmedReadingRe
     case Section::CellIndex:
       return recordBytes<CellIndex>();
     case Section::FrontRuns:
+    case Section::DictionaryStemRuns:
+    case Section::DictionaryStems:
+    case Section::StemLetters:
     case Section::CellOf:
     case Section::RowIds:
     case Section::AddonIds:

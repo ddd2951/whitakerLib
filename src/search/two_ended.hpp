@@ -185,6 +185,57 @@ template <typename Found> [[gnu::always_inline]] inline void walkFront(const std
   }
 }
 
+// INFO: walkFront the other way: the letters of the stem numbered `target` into `letters`, folded as the lookup
+//  stores them.
+inline void walkFront(const std::uint32_t target, const std::span<char, facts::kMaxWordCharacters> letters) {
+  using namespace relationship;
+  const auto* const base = imageRecord(Section::Front, 0);
+  std::uint64_t slot = frontSlotAt(base, 0);
+  std::uint32_t index = 0;
+  for (unsigned i = 0;; ++i) {
+    const auto stem = static_cast<std::uint32_t>(slot >> (kFrontMaskBits + kFrontFirstBits + kFrontOffsetBits)) & 1u;
+    if (stem && index == target)
+      return;
+    assert(i < letters.size());
+    const auto mask = static_cast<std::uint32_t>(slot & ((std::uint64_t{1} << kFrontMaskBits) - 1));
+    const auto first =
+        static_cast<std::uint32_t>((slot >> kFrontMaskBits) & ((std::uint64_t{1} << kFrontFirstBits) - 1));
+    std::uint64_t next = 0;
+    std::uint32_t nextIndex = 0;
+    unsigned letter = 26, rank = 0;
+    for (auto rest = mask; rest; rest &= rest - 1, ++rank) {
+      const auto child = frontSlotAt(base, first + rank);
+      const auto at = index + stem +
+                      static_cast<std::uint32_t>((child >> (kFrontMaskBits + kFrontFirstBits)) &
+                                                 ((std::uint64_t{1} << kFrontOffsetBits) - 1));
+      if (at > target)
+        break;
+      next = child;
+      nextIndex = at;
+      letter = static_cast<unsigned>(std::countr_zero(rest));
+    }
+    assert(letter < 26);
+    letters[i] = static_cast<char>('a' + letter);
+    slot = next;
+    index = nextIndex;
+  }
+}
+
+// INFO: A stem walkFront spelled, as its source spells it: the kth u or i back to v or j where bit k of `marks` says
+//  so, then its leading capitals (markStemLetters in gen).
+inline void unfold(const std::span<char, facts::kMaxWordCharacters> letters, const std::uint16_t marks) {
+  unsigned folds = 0;
+  for (char& c : letters) {
+    if (c != 'u' && c != 'i')
+      continue;
+    if ((unsigned{marks} >> folds) & 1u)
+      c = c == 'u' ? 'v' : 'j';
+    ++folds;
+  }
+  for (unsigned i = 0; i < (unsigned{marks} >> 8) && i < letters.size(); ++i)
+    letters[i] = static_cast<char>(letters[i] - 'a' + 'A');
+}
+
 enum class Stage : int { walks, candidates, ordering, adverbs, sweep, compress, append };
 struct Candidate {
   std::uint32_t stem{};

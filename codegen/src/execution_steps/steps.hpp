@@ -289,6 +289,12 @@ namespace lookup_tables {
 namespace finish_image_data {
 [[ = tag::Reads{^^storage::result}, = tag::Writes{^^storage::image} ]] void attachLookupTables();
 [[= tag::Writes{^^storage::image}]] void copyLookupStems();
+[[= tag::Writes{^^storage::image}]] void groupDictionaryStems();
+[[
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques},
+  = tag::Reads{^^storage::lines<^^source::scheme::dictline>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
+  = tag::Writes{^^storage::image}
+]] void markStemLetters();
 [[ = tag::Writes{^^storage::image}, = tag::Writes{^^storage::descriptionIds} ]] void assignRuleDescriptions();
 [[= tag::Writes{^^storage::image}]] void assignRuleLabels();
 [[= tag::Writes{^^storage::image}]] void buildAffixTables();
@@ -321,6 +327,10 @@ namespace image_file {
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
   = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::console}
 ]] void checkDictionaryWords();
+[[
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
+  = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::console}
+]] void checkDictionaryWordStems();
 [[
   = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage},
   = tag::Writes{^^storage::console}

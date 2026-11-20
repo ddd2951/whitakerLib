@@ -50,6 +50,12 @@ static_assert(offsetof(WhitakerReadingDetail, addons) == offsetof(whitaker::Read
 static_assert(offsetof(WhitakerReadingDetail, addonCount) == offsetof(whitaker::ReadingDetail, addonCount));
 static_assert(offsetof(WhitakerReadingDetail, route) == offsetof(whitaker::ReadingDetail, route));
 static_assert(offsetof(WhitakerReadingDetail, stemKey) == offsetof(whitaker::ReadingDetail, stemKey));
+static_assert(sizeof(WhitakerStem) == sizeof(whitaker::Stem) && alignof(WhitakerStem) == alignof(whitaker::Stem));
+static_assert(offsetof(WhitakerStem, key) == offsetof(whitaker::Stem, key));
+static_assert(offsetof(WhitakerStem, spelling) == offsetof(whitaker::Stem, spelling));
+static_assert(sizeof(WhitakerDictionaryWordStems) == sizeof(whitaker::DictionaryWordStems) && alignof(WhitakerDictionaryWordStems) == alignof(whitaker::DictionaryWordStems));
+static_assert(offsetof(WhitakerDictionaryWordStems, stems) == offsetof(whitaker::DictionaryWordStems, stems));
+static_assert(offsetof(WhitakerDictionaryWordStems, count) == offsetof(whitaker::DictionaryWordStems, count));
 static_assert(sizeof(WhitakerSpellingRule) == sizeof(whitaker::SpellingRule) && alignof(WhitakerSpellingRule) == alignof(whitaker::SpellingRule));
 static_assert(offsetof(WhitakerSpellingRule, first) == offsetof(whitaker::SpellingRule, first));
 static_assert(offsetof(WhitakerSpellingRule, second) == offsetof(whitaker::SpellingRule, second));
@@ -96,6 +102,10 @@ extern "C" const char* whitaker_addon_spelling(uint16_t id) {
 
 extern "C" const char* whitaker_addon_meaning(uint16_t id) {
   return whitaker::addonMeaning(id);
+}
+
+extern "C" WhitakerDictionaryWordStems whitaker_stems(uint16_t id) {
+  return std::bit_cast<WhitakerDictionaryWordStems>(whitaker::stems(static_cast<whitaker::DictionaryWordId>(id)));
 }
 
 extern "C" WhitakerSpellingRule whitaker_spelling_rule(uint8_t rule) {

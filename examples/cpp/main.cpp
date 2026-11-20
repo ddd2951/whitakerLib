@@ -69,8 +69,8 @@ void analyzeBatch(const std::vector<std::string>& words, std::vector<Tally>& tal
       continue;
     const auto forms = whitaker::readings(result);
     tally.readings += static_cast<long>(forms.size());
-    for (const auto& reading : forms) {
-      const whitaker::ReadingDetail detail = whitaker::decode(result, whitaker::WordId{0}, reading);
+    for (std::size_t r = 0; r < forms.size(); ++r) {
+      const whitaker::ReadingDetail detail = whitaker::detail(result, whitaker::WordId{0}, r);
       const auto& form = detail.form;
       char line[64];
       latin::describe(form.grammar, line, sizeof line);

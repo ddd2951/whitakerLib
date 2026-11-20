@@ -42,6 +42,10 @@ struct ImageData {
   std::vector<rel::InflectionLabelRecord> inflectionLabels{};
   std::vector<rel::TrimmedReadingRecord> trimmedReadings{};
   std::vector<rel::StemRecord> stems{};
+  // INFO: The stem rows grouped by dictionary word, and where each word's rows start, as FrontRuns for spellings.
+  std::vector<std::uint16_t> dictionaryStemRuns{}, dictionaryStems{};
+  // INFO: For each stem row, what folding took from its source spelling (markStemLetters).
+  std::vector<std::uint16_t> stemLetters{};
   std::vector<Word> words{};
   std::vector<Analysis> analyses{};
 };

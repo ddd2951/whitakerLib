@@ -81,6 +81,22 @@ enum class DictionaryWordId : std::uint16_t {};
 inline constexpr DictionaryWordId kFirstUnique{39336};
 inline constexpr DictionaryWordId kNoDictionaryWord{0xFFFF};
 
+// INFO: One of a dictionary word's stems: its key, 1 to 4 as a reading's stemKey (0 for a unique's one stem), and
+//  its spelling as DICTLINE or UNIQUES spells it.
+struct Stem {
+  std::uint8_t key{};
+  char spelling[kMaxWordLength + 1]{};
+};
+static_assert(std::is_trivially_copyable_v<Stem>);
+
+// INFO: A dictionary word's stems, by key, spelled as DICTLINE or UNIQUES spells them; a key with no stem has none
+//  here.
+struct DictionaryWordStems {
+  Stem stems[4]{};
+  std::uint8_t count{};
+};
+static_assert(std::is_trivially_copyable_v<DictionaryWordStems>);
+
 // INFO: How a reading was reached besides the dictionary: a restored syncope, an adverb made from an adjective.
 struct Derivation {
   latin::Syncope syncope : 3;
@@ -120,7 +136,7 @@ struct SpellingRule {
 };
 static_assert(std::is_trivially_copyable_v<SpellingRule>);
 
-// INFO: One reading, packed; detail() or decode() unpacks it.
+// INFO: One reading, packed; detail() unpacks it.
 using Reading = latin::packed::Reading;
 static_assert(sizeof(Reading) == 8);
 static_assert(std::is_trivially_copyable_v<Reading>);
@@ -253,16 +269,9 @@ WHITAKER_TAG(bind) [[nodiscard]] inline std::size_t readingCount(const Result& r
   return readings(result, word).size();
 }
 
-// INFO: A reading of the word, decoded.
-[[nodiscard]] WHITAKER_TAG(api) ReadingDetail decode(const Result& result, WordId word,
-                                                     const Reading& reading) noexcept;
-
 // INFO: Reading `readingIndex` of the word, decoded.
-WHITAKER_TAG(bind) [[nodiscard]] inline ReadingDetail detail(const Result& result, WordId word,
-                                                             std::size_t readingIndex) noexcept {
-  const auto all = readings(result, word);
-  return readingIndex < all.size() ? decode(result, word, all[readingIndex]) : ReadingDetail{};
-}
+WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) ReadingDetail detail(const Result& result, WordId word,
+                                                                        std::size_t readingIndex) noexcept;
 
 // INFO: The whole result as a table of Rows, in order.
 WHITAKER_TAG(bind) [[nodiscard]] inline auto rows(const Result& result) noexcept {
@@ -283,6 +292,8 @@ WHITAKER_TAG(bind) [[nodiscard]] inline auto rows(const Result& result) noexcept
 
 WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) const char* addonSpelling(std::uint16_t id) noexcept;
 WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) const char* addonMeaning(std::uint16_t id) noexcept;
+
+WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) DictionaryWordStems stems(DictionaryWordId id) noexcept;
 
 // INFO: Zeroed for rule 0, which is none.
 WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) SpellingRule spellingRule(std::uint8_t rule) noexcept;

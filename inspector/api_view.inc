@@ -395,5 +395,6 @@ inline constexpr const char* kCalls[][3] = {
   {"whitaker::rows(result)", "(none: C reads by index)", "result.rows()"},
   {"whitaker::addonSpelling(id)", "whitaker_addon_spelling(id)", "whitaker.addonSpelling(id)"},
   {"whitaker::addonMeaning(id)", "whitaker_addon_meaning(id)", "whitaker.addonMeaning(id)"},
+  {"whitaker::stems(id)", "whitaker_stems(id)", "whitaker.stems(id)"},
   {"whitaker::spellingRule(rule)", "whitaker_spelling_rule(rule)", "whitaker.spellingRule(rule)"},
 };

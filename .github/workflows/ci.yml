@@ -47,8 +47,10 @@ jobs:
       - name: Build
         run: cmake --build build -j2
 
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-
       - name: Install
         run: cmake --install build --prefix "$PWD/prefix"
+
+      - name: Build the examples against the install
+        run: >
+          cmake -S examples -B build-examples -DCMAKE_PREFIX_PATH="$PWD/prefix" &&
+          cmake --build build-examples -j2

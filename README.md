@@ -129,10 +129,9 @@ owner, holding a batch's words and readings, and everything else reads it.
 - A word is a `WordId`, its place in the result. `spelling()`, `trimmed()`,
   `readings()` and `readingCount()` take one, and past the last word they give
   the empty value.
-- `detail(result, word, reading)` decodes one reading into its `dictionaryWord` (what
-  the dictionary says of the word, which no ending changes), its `form` (stem,
-  ending and grammar) and its meaning and add-ons. `decode()` does the same for a
-  reading you already hold.
+- `detail(result, word, readingIndex)` decodes one reading into its `dictionaryWord`
+  (what the dictionary says of the word, which no ending changes), its `form` (stem,
+  ending and grammar) and its meaning and add-ons.
 - A reading is stored as 8 bytes of plain data (`latin::packed::Reading`, what
   `readings()` gives), and `detail()` decodes one into a `ReadingDetail` (160 bytes
   today) only when you ask. The result keeps the 8 bytes, plus a change record
@@ -260,14 +259,12 @@ and `whitaker.h`.
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-ctest --test-dir build --output-on-failure
 cmake --install build --prefix /your/prefix
 ```
 
 The options are `WHITAKER_SANITIZE` (ASan and UBSan), `WHITAKER_BUILD_PYTHON` (needs
-pybind11), and `WHITAKER_BUILD_TESTING`, `WHITAKER_INSTALL` and `WHITAKER_WERROR`,
-which are on when whitakerLib is the top-level project and off under
-`add_subdirectory()`.
+pybind11), and `WHITAKER_INSTALL` and `WHITAKER_WERROR`, which are on when
+whitakerLib is the top-level project and off under `add_subdirectory()`.
 
 The install provides a CMake package and a relocatable `whitaker.pc`.
 
@@ -279,8 +276,7 @@ target_link_libraries(your_target PRIVATE Whitaker::whitaker)
 `bindings/c` and `bindings/python` are generated from the header, and
 `inspector/` is built with Emscripten (above). `examples/cpp` reads on several
 threads and compares them with one thread, and `examples/c` prints every reading
-of the words given. ctest runs one C++
-and one C program over the public API.
+of the words given.
 
 ## Contributing
 

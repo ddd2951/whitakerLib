@@ -190,7 +190,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   std::vector<std::vector<WhitakerAddonStep>> steps;
   for (std::size_t i = 0; i < readings.size(); ++i) {
     auto& d = details[i];
-    d = whitaker::decode(result, analyzed, readings[i]);
+    d = whitaker::detail(result, analyzed, i);
     const auto& e = d.dictionaryWord;
     const auto& f = d.form;
     const auto& g = f.grammar;

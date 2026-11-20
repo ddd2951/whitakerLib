@@ -356,6 +356,16 @@ typedef struct WhitakerReadingDetail {
   uint8_t stemKey;
 } WhitakerReadingDetail;
 
+typedef struct WhitakerStem {
+  uint8_t key;
+  char spelling[25];
+} WhitakerStem;
+
+typedef struct WhitakerDictionaryWordStems {
+  WhitakerStem stems[4];
+  uint8_t count;
+} WhitakerDictionaryWordStems;
+
 typedef struct WhitakerSpellingRule {
   const char* first;
   const char* second;
@@ -376,6 +386,7 @@ size_t whitaker_reading_count(const WhitakerResult* result, size_t word);
 WhitakerReadingDetail whitaker_detail(const WhitakerResult* result, size_t word, size_t readingIndex);
 const char* whitaker_addon_spelling(uint16_t id);
 const char* whitaker_addon_meaning(uint16_t id);
+WhitakerDictionaryWordStems whitaker_stems(uint16_t id);
 WhitakerSpellingRule whitaker_spelling_rule(uint8_t rule);
 
 #ifdef __cplusplus

@@ -118,6 +118,9 @@ inline constexpr std::uint64_t kImageAfterAt = WHITAKER_IMAGE_STRINGS_AT + WHITA
       return "Invalid: image section width";
   }
   if (sectionOf(image, Section::Entries).count != sectionOf(image, Section::Dictionaries).count ||
+      sectionOf(image, Section::DictionaryStemRuns).count != sectionOf(image, Section::Dictionaries).count + 1 ||
+      sectionOf(image, Section::DictionaryStems).count != sectionOf(image, Section::Stems).count ||
+      sectionOf(image, Section::StemLetters).count != sectionOf(image, Section::Stems).count ||
       sectionOf(image, Section::Addons).count > std::numeric_limits<std::uint16_t>::max())
     return "Invalid: image section counts";
   return {};

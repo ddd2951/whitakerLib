@@ -127,6 +127,9 @@ void appendWord(std::vector<unsigned char>& out, const std::uint64_t word, const
   section(rel::Section::SuffixBack, t.suffixBack.size(), nodes(t.suffixBack));
   section(rel::Section::AddonIds, t.addonIds.size(), all(t.addonIds));
   section(rel::Section::FrontRuns, t.frontRuns.size(), all(t.frontRuns));
+  section(rel::Section::DictionaryStemRuns, imageData.dictionaryStemRuns.size(), all(imageData.dictionaryStemRuns));
+  section(rel::Section::DictionaryStems, imageData.dictionaryStems.size(), all(imageData.dictionaryStems));
+  section(rel::Section::StemLetters, imageData.stemLetters.size(), all(imageData.stemLetters));
 
   rel::storeRecord(image.bytes.data(),
                    rel::HeaderRecord{.magic = rel::kMagic,

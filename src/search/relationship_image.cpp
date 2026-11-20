@@ -1,5 +1,7 @@
 #include "relationship_image.hpp"
 
+#include <whitaker.hpp>
+
 #include "facts.hpp"
 #include "image.hpp"
 #include "two_ended.hpp"
@@ -140,6 +142,45 @@ ClassRowRecord classRow(const std::uint32_t index) { return read<ClassRowRecord>
 InflectionRecord inflection(const std::uint16_t index) { return read<InflectionRecord>(Section::Inflections, index); }
 
 StemRecord stemRecord(const std::uint32_t index) { return read<StemRecord>(Section::Stems, index); }
+
+static_assert(kMaxWordLength == facts::kMaxWordCharacters);
+DictionaryWordStems stems(const std::uint16_t dictionary) {
+  DictionaryWordStems out{};
+  const auto runs = std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::FrontRuns).count));
+  const auto push = [&out](const std::uint8_t key, const whitaker::Stem& stem) {
+    assert(out.count < std::size(out.stems));
+    auto at = out.count++;
+    for (; at > 0 && out.stems[at - 1].key > key; --at)
+      out.stems[at] = out.stems[at - 1];
+    out.stems[at] = stem;
+    out.stems[at].key = key;
+  };
+  if (dictionary + 1u >= section(Section::DictionaryStemRuns).count)
+    return out;
+  const auto first = read16(at(Section::DictionaryStemRuns, dictionary));
+  const auto end = read16(at(Section::DictionaryStemRuns, dictionary + 1u));
+  for (std::uint32_t member = first; member < end; ++member) {
+    const std::uint32_t row = read16(at(Section::DictionaryStems, member));
+    const auto record = stemRecord(row);
+    // INFO: A stem row's spelling is the last whose run starts at or before it.
+    const auto spelling = *std::ranges::prev(std::ranges::upper_bound(
+        runs, row, {}, [](const std::uint32_t i) { return std::uint32_t{read16(at(Section::FrontRuns, i))}; }));
+    whitaker::Stem stem{};
+    const std::span<char, facts::kMaxWordCharacters> letters{stem.spelling, facts::kMaxWordCharacters};
+    two_ended::walkFront(spelling, letters);
+    two_ended::unfold(letters, read16(at(Section::StemLetters, row)));
+    // INFO: Key 0 is the first and second stems spelled alike. 255 is a row the affix tables never key: a unique's,
+    //  which has no key, or esse's empty second stem, whose key is its column.
+    if (record.stemKey == 0) {
+      push(1, stem);
+      push(2, stem);
+    } else if (record.stemKey != 255)
+      push(record.stemKey, stem);
+    else
+      push(dictionary >= std::to_underlying(kFirstUnique) ? 0 : static_cast<std::uint8_t>(column(record) + 1), stem);
+  }
+  return out;
+}
 
 Run stemRange(const std::string_view text) {
   // INFO: The front trie spells every stem row, so a row needs no text of its own.
