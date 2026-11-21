@@ -5,6 +5,7 @@
 #include "storage/image.hpp"
 #include "word/word.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <format>
 #include <string_view>
@@ -46,8 +47,7 @@ void execution_steps::finish_image_data::markStemLetters() {
     }
     const auto column = latin::StemKey{static_cast<unsigned char>(whitaker::relationship::column(stem) + 1)};
     const auto text = expand::stemAt(word::entry(word::DictlineRow{stem.dictionary}), column);
-    if (!text)
-      error::fatal(std::format("image: dictionary word {} has no stem in its stem row's column", stem.dictionary));
+    assert(text);
     image.stemLetters.push_back(lettersOf(*text));
   }
 }

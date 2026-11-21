@@ -81,7 +81,7 @@ inline constexpr std::uint8_t kPerfectStemColumn = 2;
       top = reading.stem;
       perfect = false;
     }
-    perfect = perfect || (reading.part == latin::Part::V && reading.stem == kPerfectStemColumn);
+    perfect = perfect || (reading.part == latin::Part::verb && reading.stem == kPerfectStemColumn);
   }
   return perfect;
 }

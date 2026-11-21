@@ -28,7 +28,7 @@ void licenseClasses(const std::vector<latin::Entry>& classGrammars, const Ending
     const latin::Entry& grammar = classGrammars[id];
     rel::ClassRecord& record = image.classes[id];
     const bool packon =
-        partOf(grammar) == latin::Part::PACK && ((record.rules >> rel::kRulePackonShift) & rel::kRulePackonMask) != 0;
+        partOf(grammar) == latin::Part::packon && ((record.rules >> rel::kRulePackonShift) & rel::kRulePackonMask) != 0;
     record.rowStart = static_cast<std::uint32_t>(image.classRows.size());
     for (std::uint32_t position = 0; position < endingOrder.size(); ++position) {
       const word::InflectsEntry& inflection = word::entry(word::InflectsRow{endingOrder[position].second});

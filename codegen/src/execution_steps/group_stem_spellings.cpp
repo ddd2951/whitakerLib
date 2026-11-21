@@ -6,7 +6,6 @@
 #include "storage/rows.hpp"
 #include "storage/stem_runs.hpp"
 #include "storage/stems.hpp"
-#include <tuple>
 
 namespace rel = whitaker::relationship;
 
@@ -22,5 +21,5 @@ void execution_steps::lookup_tables::groupStemSpellings() {
   }
   for (const auto& [ids, keep] : classes)
     for (const auto id : ids)
-      endingRuns.try_emplace(std::get<1>(rows[id]));
+      endingRuns.try_emplace(rows[id].suffix);
 }

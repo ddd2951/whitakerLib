@@ -8,7 +8,7 @@ void execution_steps::dictline::addEsse() {
       .stem2 = "",
       .stem3 = "fu",
       .stem4 = "fut",
-      .grammar = latin::Verb{latin::Conjugation{5}, latin::Variant{1}, latin::VerbKind::TO_BE},
+      .grammar = latin::Verb{latin::Conjugation{5}, latin::Variant{1}, latin::VerbKind::toBe},
       .labels = {.age = latin::Age::X,
                  .area = latin::Area::X,
                  .geography = latin::Geography::X,

@@ -66,6 +66,8 @@ void writeAddonTarget(rel::AddonRecord& result, const latin::addon::Target& valu
         } else if constexpr (std::is_same_v<Target, latin::Verb>) {
           result.target = {addonValue(target.conjugation), addonValue(target.conjugationVariant),
                            addonValue(target.verbKind), 0};
+        } else if constexpr (!std::is_same_v<Target, latin::addon::Any>) {
+          static_assert(false, "an add-on target kind with no layout");
         }
       },
       value);
@@ -93,7 +95,7 @@ void writeAddonTarget(rel::AddonRecord& result, const latin::addon::Target& valu
       .fix = strings.intern(normalize(tackon.fix)),
       .meaning = strings.intern(meaning),
       .kind = kind,
-      .root = latin::Part::X,
+      .root = latin::Part::any,
       .firstLetterAsSpelled = firstLetter(tackon.fix),
   };
   writeAddonTarget(result, tackon.grammar);
@@ -108,8 +110,10 @@ std::size_t internAddons(const AddonRows& addonRows, ImageData& image) {
           std::visit([&](const auto& value) { return addonRecord(value, addon.meaning, addon.kind, image.strings); },
                      addon.addon));
     }
-  return addonRows[std::to_underlying(latin::AddonKind::tickon)].size() +
-         addonRows[std::to_underlying(latin::AddonKind::prefix)].size();
+  std::size_t first = 0;
+  for (std::size_t kind = 0; kind < std::to_underlying(latin::AddonKind::suffix); ++kind)
+    first += addonRows[kind].size();
+  return first;
 }
 
 } // namespace

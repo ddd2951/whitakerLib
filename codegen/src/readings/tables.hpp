@@ -4,7 +4,7 @@
 #include <vector>
 namespace emitter {
 struct TwoEnded {
-  std::vector<whitaker::two_ended::Node> front{}, back{}, affixBack{}, prefixFront{}, suffixBack{};
+  std::vector<whitaker::two_ended::Node> back{}, affixBack{}, prefixFront{}, suffixBack{};
   std::vector<whitaker::relationship::StemRecord> stems{};
   std::vector<std::string> stemTexts{};
   std::vector<std::uint64_t> sharedFront{};

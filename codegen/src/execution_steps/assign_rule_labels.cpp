@@ -1,7 +1,7 @@
 #include "execution_steps/steps.hpp"
 
-#include "error/error.hpp"
 #include "storage/image.hpp"
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -22,8 +22,7 @@ void execution_steps::finish_image_data::assignRuleLabels() {
       const auto& suffix = image.twoEnded.ruleSuffixes[i];
       const auto it = labels.find({r.description, suffix});
       const auto [age, frequency] = it == labels.end() ? std::pair<latin::Age, latin::Frequency>{} : it->second;
-      if (std::to_underlying(age) > 15 || std::to_underlying(frequency) > 15 || suffix.size() > 255)
-        error::fatal("a rule label does not fit");
+      assert(std::to_underlying(age) <= 15 && std::to_underlying(frequency) <= 15 && suffix.size() <= 255);
       r.label = static_cast<std::uint8_t>(std::to_underlying(age) | (std::to_underlying(frequency) << 4));
       r.suffixLength = static_cast<std::uint8_t>(suffix.size());
     }

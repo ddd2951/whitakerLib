@@ -12,15 +12,15 @@ namespace {
 
 [[nodiscard]] bool makesAnAdverb(const Match& m) {
   const auto g = grammar(m);
-  const bool positive = g.comparison == latin::Comparison::POS && g.which.value == 1 && g.variant.value == 1;
-  return g.part == latin::Part::ADJ && g.caseOf == latin::Case::VOC && g.number == latin::Number::S &&
-         g.gender == latin::Gender::M && (positive || g.comparison == latin::Comparison::SUPER) &&
+  const bool positive = g.comparison == latin::Comparison::positive && g.which.value == 1 && g.variant.value == 1;
+  return g.part == latin::Part::adjective && g.caseOf == latin::Case::vocative && g.number == latin::Number::singular &&
+         g.gender == latin::Gender::masculine && (positive || g.comparison == latin::Comparison::superlative) &&
          m.entry < std::to_underlying(kFirstUnique);
 }
 
 [[nodiscard]] Match adverbOf(Work& out, const Match& adjective) {
   Match adverb = adjective;
-  adverb.part = latin::Part::ADV;
+  adverb.part = latin::Part::adverb;
   adverb.hasChange = false;
   adverb.stemKey = 0;
   adverb.g[0] = adverb.g[1] = 0;
@@ -43,7 +43,7 @@ namespace {
 
 [[nodiscard]] int adjectiveRunStart(const Work& out, const int end) {
   int begin = end - 1;
-  while (begin > 0 && part(out.matches[begin - 1]) == latin::Part::ADJ &&
+  while (begin > 0 && part(out.matches[begin - 1]) == latin::Part::adjective &&
          sameAddons(out, out.matches[begin - 1], out.matches[end - 1]))
     --begin;
   return begin;
@@ -57,11 +57,11 @@ namespace {
 
 // NOTE: The image made the adverbs of its own readings; these are the readings made at run time.
 void addAdverbOfEachAdjective(Work& out) {
-  if (std::any_of(out.matches, out.matches + out.count, [](const Match& m) { return part(m) == latin::Part::ADV; }))
+  if (std::any_of(out.matches, out.matches + out.count, [](const Match& m) { return part(m) == latin::Part::adverb; }))
     return;
   const int firstMade = out.count;
   for (int end = out.count; end > 0;) {
-    if (part(out.matches[end - 1]) != latin::Part::ADJ) {
+    if (part(out.matches[end - 1]) != latin::Part::adjective) {
       --end;
       continue;
     }
@@ -92,7 +92,7 @@ void addAdverbsOfAdjectives(Work& out) {
   unsigned parts = 0;
   for (int i = 0; i < out.count; ++i)
     parts |= 1u << std::to_underlying(part(out.matches[i]));
-  if (!(parts & ((1u << std::to_underlying(latin::Part::ADJ)) | (1u << std::to_underlying(latin::Part::ADV)))))
+  if (!(parts & ((1u << std::to_underlying(latin::Part::adjective)) | (1u << std::to_underlying(latin::Part::adverb)))))
     return;
   addAdverbOfEachAdjective(out);
   listAdverbsLast(out);

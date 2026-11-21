@@ -8,14 +8,14 @@ inflection, add-ons and Roman numerals included. With a C binding and a Python b
 both generated from the C++ header.
 
 - **Under a microsecond a word**, on average over [102 Latin books](data/booklist.md#books).
-- **1,205,496 spellings, 2,374,470 readings** in a 3.5 MB image embedded in
+- **1,205,496 spellings, 2,374,470 readings** in a 3.8 MB image embedded in
   the library, with no external data file at runtime, no database and no
   initialization.
 - **99.58% of words answered exactly as the Ada WORDS answers them**, every
   reading, record and add-on, in WORDS' order. The [oracle](oracle/README.md)
   explains the comparison.
-- **[Try it in your browser](https://ddd2951.github.io/whitakerLib/)** and see every reading of a text,
-  as the API returns it and as the lookup's trace.
+- **[Try it in your browser](https://ddd2951.github.io/whitakerLib/)**, in the
+  [inspector](#the-inspector).
 
 ## Why?
 
@@ -30,59 +30,45 @@ I'm no Latin expert. I come at this mostly from the programming side, and I
 don't think I've figured out anything new. What I have found is that Whitaker
 built something that really works. The more I've worked with WORDS, the more
 I've come to appreciate how he approached Latin, and his data is genuinely nice
-to work with. I think his ideas go much further than what the program itself
-shows today.
-
-I can't help wondering how far the same approach could be taken with other
-languages that follow similar patterns, and how much of what makes WORDS work is
-specific to Latin, rather than to the kind of data that fits this representation
-in the first place.
+to work with.
 
 Most Latin tools won't need lookups this quick and the generator could have been
 written without reflection, but both were fun to build. The reasons why are
 given in "Why reflection?" in `codegen/README.md`.
 
+## Built with whitakerLib
+
+- **Kindle and other e-readers**:
+  [whitakerLib-kindle](https://github.com/ddd2951/whitakerLib-kindle), a
+  KOReader plugin. Tap a word in the sentence you're reading to see its
+  readings, offline. About 1,100 lines of Lua, plus the library.
+- **Firefox**:
+  [whitakerLib-firefox](https://github.com/ddd2951/whitakerLib-firefox), an
+  extension. Double-click a Latin word on any page to see its readings,
+  offline. Under 600 lines, plus the library built to WebAssembly.
+
+<img src="docs/kindle.gif" width="270" alt="The KOReader plugin on a Kindle: tapping
+locos in the Aeneid shows its meanings and its forms"> <img src="docs/firefox.gif"
+width="540" alt="The Firefox extension: double-clicking Gallia and incolunt in
+Caesar's Gallic War, a popup shows each word's readings">
+
+I made these two to try the library in two quite different places: a desktop
+browser, as WebAssembly, and a Kindle from 2015. If it runs well in both, I
+figure it should work in plenty of other places too.
+
+I'm not planning any other apps myself, but I want to keep updating these two,
+mostly to find where the library is awkward to use or needs too much
+boilerplate. The plan is to move parts of both plugins into the library over
+time, so it does those things itself instead of each plugin working around it.
+The grammar names in 0.4.1 are the first of these.
+
 ## The inspector
 
-A page I built to test the library and find its bottlenecks, shipped so anyone
-can see what the library does in a browser. Paste some Latin and move through
-every reading, as the API returns it and as the lookup's trace. It's a
-debugging and exploration tool, not primarily a tool for reading Latin, even if
-it works for that. A rewrite of the page is planned, to try a few different
-things with it, so don't build anything that depends on it.
-
-It's online at [ddd2951.github.io/whitakerLib](https://ddd2951.github.io/whitakerLib/), rebuilt from `main` on
-every push. It runs fully in the page, the library compiled to WebAssembly, and
-sends nothing. It's a 3.8 MB download, about 1.2–1.6 MB over the network depending on
-the server's compression. It needs WebAssembly, so browsers such as the Kindle
-Paperwhite's can't run it.
-
-- **Walking through a text.** ← → (or a click) moves word by word, and the panel
-  shows that word. Drag or Shift-select several words to see each spelling once,
-  with how often it occurs. `1`–`4` switch the views below.
-- **Readings.** Each reading in words, with its meaning, grammar, stem and
-  ending, and add-ons.
-- **API.** What your code gets for that word, every field by its name, in C++,
-  C or Python (`b` switches).
-- **Trace.** Why the word got the readings it did. First the lookup's passes in
-  the order they run (as in [Inside](#inside)), each marked ran or not run, with
-  how many readings it added. Some passes run only when the earlier ones found
-  nothing. Then each reading with the pass that found it, its route (direct,
-  syncope, adverb, slur, word mod), its stem key, and its add-ons, outermost
-  first.
-- **Statistics.** For the selection, how fast the library looked it up,
-  readings per spelling, routes, and the words with no reading.
-- **Search** (`/`). Grammar (`abl pl`), a route (`syncope`), `unknown` for words
-  with no reading, or part of a spelling. ↑ ↓ step through the matches.
-
-To build and serve it yourself.
-
-```sh
-source ~/emsdk/emsdk_env.sh
-emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release
-cmake --build build-wasm
-python3 -m http.server -d build-wasm/site
-```
+A page I built to test the library and find its bottlenecks. Paste some Latin
+and move through every reading, with the API output (C++, C or Python) and the
+lookup trace. It's online at
+[ddd2951.github.io/whitakerLib](https://ddd2951.github.io/whitakerLib/), runs
+fully in the page as WebAssembly, and sends nothing.
 
 ## Arma virumque cano
 
@@ -101,12 +87,18 @@ So as far as single words go, Virgil might be singing of arms and the man, or
 telling you to arm the man for the wicker basket. Or for old age. Or for the
 white one. *cano* won't say which. The library gives you every reading.
 
-Choosing the meaning is the reader's part, as it always was.
+Choosing between them is left to whatever sits on top. My approach has been to
+make getting the readings so fast that a reader, a ranker or a parser can work
+with all of them, and with everything else the library gives. Every reading of
+all 63,398 words in the *Aeneid* takes a Kindle Paperwhite from 2015 about a
+second.
 
 ## API
 
-The project is pre-1.0 and its ABI is not frozen, but until 0.5.0 nothing in the
-C++ API changes or goes away. New calls and fields may be added.
+The project is pre-1.0 and its ABI is not frozen. Until 0.5.0, existing C++
+calls and fields won't be removed or changed, but new ones may be added.
+0.4.1 is an exception. The grammar values were renamed (`Case::NOM` is now
+`Case::nominative`), but kept their numbers.
 `include/whitaker.hpp` is C++23, and it opens with what every call promises.
 
 ```cpp
@@ -129,48 +121,45 @@ owner, holding a batch's words and readings, and everything else reads it.
 - A word is a `WordId`, its place in the result. `spelling()`, `trimmed()`,
   `readings()` and `readingCount()` take one, and past the last word they give
   the empty value.
-- `detail(result, word, readingIndex)` decodes one reading into its `dictionaryWord`
-  (what the dictionary says of the word, which no ending changes), its `form` (stem,
-  ending and grammar) and its meaning and add-ons.
 - A reading is stored as 8 bytes of plain data (`latin::packed::Reading`, what
-  `readings()` gives), and `detail()` decodes one into a `ReadingDetail` (160 bytes
-  today) only when you ask. The result keeps the 8 bytes, plus a change record
-  for a reading that has one (syncope, add-ons, a respelling), however many
-  fields you read.
+  `readings()` gives), plus a change record for a reading that has one (syncope,
+  add-ons, a respelling). `detail(result, word, readingIndex)` decodes one only
+  when you ask, into a `ReadingDetail` (160 bytes today): its `dictionaryWord`
+  (what the dictionary says of the word, which no ending changes), its `form`
+  (stem, ending and grammar), and its meaning and add-ons.
 - `rows(result)` is the whole batch as a table, one row per reading, a standard
   view over the result.
 - What a call lends goes stale on the next `analyze`, `append` or `clear`, and
   strings returned as `const char*` belong to the library. Different results run on
   different threads in parallel.
 
-The generated `<latin_generated.hpp>` companion gives Latin names and grammar
-descriptions, and `addonSpelling()`, `addonMeaning()` and `spellingRule()`
-describe the ids a reading carries.
+Grammar values are named in the reader's words (`Case::nominative`), and
+`label()` gives one as text ("future perfect"). The generated
+`<latin_generated.hpp>` companion gives Latin names and grammar descriptions,
+and `addonSpelling()`, `addonMeaning()` and `spellingRule()` describe the ids a
+reading carries.
 
 ### C and Python
 
 Both are generated from the C++ header's `WHITAKER_TAG(bind)` tags by `codegen`,
-with the same fields by the same names, and the build refuses to run while either
-is out of date with the header. For now, the inspector is the place to see them.
-Its API view shows every call and every field of a reading as C++, C or Python.
-Neither binding is settled until 0.5.0. Unlike the C++ API, the C and Python
-bindings may still change. There is no WebAssembly binding yet, since the
-inspector builds the library to WebAssembly for itself.
+with the same fields by the same names, and the build refuses to run while
+either is out of date with the header. For now, the inspector is the place to
+see them. Its API view shows every call and every field of a reading as C++, C
+or Python. Unlike the C++ API, the bindings may still change before 0.5.0. There
+is no WebAssembly binding yet, since the inspector builds the library to
+WebAssembly for itself.
 
-## What it does, and doesn't
+## Limitations
 
-- Returns every reading, in WORDS' order, with WORDS' add-ons (prefixes,
-  suffixes, tackons, packons and tickons).
-- Syncopated perfects read as their full forms, as in WORDS' main syncope
-  pass, so `amasti` reads as `amavisti`. `form.derivation.syncope` says which rule is used.
-- Case-insensitive. `j` folds with `i` and `v` with `u`, except in Roman
-  numerals and, as in WORDS, in the syncope pass. ASCII only.
-- `form.stemSpelling` is the matched stem and `form.ending` the inflection after it
-  (`am` + `o`), not a dictionary headword.
 - One word per call, with no tokenizing, parsing, ranking or translation.
+- ASCII only. Case-insensitive, and `j` folds with `i` and `v` with `u`, except
+  in Roman numerals and, as in WORDS, in the syncope pass. Long marks and
+  ligatures are left to the caller.
+- No headword yet. Each reading names its dictionary word, and `stems()` gives
+  that word's stems, but the citation form (*amo, amare, amavi, amatus*) isn't
+  built. `form.stemSpelling` is the matched stem and `form.ending` the ending
+  after it (`am` + `o`).
 - WORDS' word-split and bad Roman numeral guesses are not implemented.
-- Not a drop-in replacement for WORDS. It has the same data and follows the same
-  lookup rules closely, but it isn't identical for every input.
 
 ## Speed and accuracy
 
@@ -184,14 +173,13 @@ Reading the files and splitting them into words is not timed. Finding a word's
 readings alone, without decoding them, takes 421 ns a word natively and 610 ns
 in WebAssembly under Node. Ryzen 5 5600X, GCC 16, a Release build.
 
-**On a Kindle.** The library is tested and confirmed working on a Kindle
-Paperwhite 3 (Cortex-A9, about 1 GHz), cross-compiled with Clang as a Release
-build targeted at its CPU (`-O3 -mcpu=cortex-a9 -mfpu=neon`), with no other
-tuning. On 200,000 words evenly spaced through the books, it looks up each word
-and decodes every reading in 2.56 s on one thread, 12.8 µs a word. The lookup
-alone takes 8.8 µs.
-It returns the same 750,215 readings as the PC. The KOReader plugin comes in
-0.4.1.
+**On a Kindle.** The library runs on a Kindle Paperwhite 3 from 2015 (Cortex-A9,
+about 1 GHz), cross-compiled with Clang as a Release build targeted at its CPU
+(`-O3 -mcpu=cortex-a9 -mfpu=neon`), with no other tuning. On 200,000 words
+evenly spaced through the books, it looks up each word and decodes every reading
+in 2.56 s on one thread, 12.8 µs a word. The lookup alone takes 8.8 µs. It
+returns the same 750,215 readings as the PC. The KOReader plugin runs on it
+there (see [Built with whitakerLib](#built-with-whitakerlib)).
 
 **Accuracy.** Every word is compared with the answer from the Ada WORDS
 program, built using the same data, down to each reading with its stem, each
@@ -204,51 +192,30 @@ differences. That comparison uses the patched WORDS revision `5dd8ca5`,
 described in the [oracle README](oracle/README.md#bugs-found-in-words).
 
 Tracking down where the two disagree turned up several bugs in WORDS itself,
-some of which crashed it. Several of the fixes have been
-[merged upstream](https://github.com/mk270/whitakers-words/pulls?q=is%3Apr+author%3Addd2951),
-some are waiting for review, and others I still need to submit.
+some of which crashed it.
 
 ## Inside
 
-The steps a word goes through, in WORDS' order.
+From WORDS' files to a reading, in five steps.
 
-```text
-analyze(result, "adiitque")
-  findReadings
-    addWordReadings           the dictionary, qu- pronouns, packons, tackons
-    addRomanNumeral
-    addPrefixVariantReadings  only if nothing yet: inp- as imp-, adt- as att-
-    addSyncopeReadings        amasti as amavisti
-    addEncliticReadings       -que, -ne, -ve, -est off: adiit + que
-    addWordReadings           only if nothing yet: with prefixes and suffixes
-    addEncliticReadings       if still nothing: with prefixes and suffixes
-  addRespelledReadings        if still unknown and not a name: ae as e, ph as f, ...
-  addRespelledEncliticReadings if respelling found nothing: try without an enclitic
-  addAdverbsOfAdjectives      fidissimus gives fidissime
-```
+1. `codegen` reads WORDS' four files: DICTLINE, INFLECTS, UNIQUES and ADDONS.
+2. It expands every stem with every ending it takes, into the readings WORDS
+   would give.
+3. It packs them into the image, and checks the image's lookup against the
+   expansion on every spelling.
+4. At run time, `analyze()` looks each word up in the image, and runs WORDS'
+   passes (add-ons, syncope, respellings) for what the image alone can't answer.
+5. `detail()` decodes a reading only when you ask for it.
 
-The dictionary lookup itself is done ahead of time. `codegen` runs it over
-every stem and ending and stores the answers in the image
-(`codegen/README.md`).
+How much to pack into the image and how much to leave to run time has been one
+of the most fun parts of this project. Moving even a small part of the work
+into the image can make it explode in size, so it's a matter of finding a good
+middle ground. In one experiment I tried with every finished spelling in the image,
+enclitics included, it grew to about 93 MB. With prefixes and suffixes added
+it passed 1 GB before it was even a tenth done, so those stay at run time.
 
-For readers of the Ada source, where each WORDS procedure lives.
-
-| WORDS procedures | Library source |
-| --- | --- |
-| Parse_Latin_Word, Is_Capitalized | [whitaker.cpp](src/whitaker.cpp) |
-| Pass, Enclitic, Roman_Numerals, Perform_Syncope | [find_readings.cpp](src/parse/find_readings.cpp) |
-| Word, Process_Packons, Try_Tackons | [word_readings.cpp](src/parse/word_readings.cpp) |
-| Try_Slury, Try_Tricks, Tricks_Enclitic | [respellings.cpp](src/parse/respellings.cpp) |
-| Apply_Prefix, Apply_Suffix | [addon_readings.cpp](src/search/addon_readings.cpp) |
-| List_Sweep, Order_Parse_Array | [facts.hpp](src/facts.hpp), [latin.hpp](latin/latin.hpp) |
-| Handle_Adverb, Fix_Adverb | [adverb.cpp](src/parse/adverb.cpp) |
-
-## Roadmap
-
-- **0.4.1.** Some small updates, and a KOReader plugin (Kindle, Kobo,
-  PocketBook, Android) in a repository of its own, as a standalone tool. Long-press
-  a Latin word for every reading, offline.
-- **Later.** A rewrite, with the lookup itself generated from one description.
+`codegen/README.md` describes steps 1 to 3, and `src/whitaker.cpp` is where
+step 4 starts, with WORDS' passes in WORDS' order.
 
 ## Build
 
@@ -274,15 +241,11 @@ target_link_libraries(your_target PRIVATE Whitaker::whitaker)
 ```
 
 `bindings/c` and `bindings/python` are generated from the header, and
-`inspector/` is built with Emscripten (above). `examples/cpp` reads on several
-threads and compares them with one thread, and `examples/c` prints every reading
-of the words given.
+`inspector/` is built with Emscripten (`emcmake cmake`). `examples/cpp` reads on
+several threads and compares them with one thread, and `examples/c` prints every
+reading of the words given.
 
 ## Contributing
-
-It isn't an easy project to jump into yet, but I want it to become one people
-can join. From 0.4.0 on, the work goes in as many small commits instead of a
-few big ones, which should make it easier to follow.
 
 **Words.** If the library reads a word from a book differently than WORDS
 does, open an issue or a pull request. A link to the book, or a picture of the
@@ -302,10 +265,8 @@ The data is from Colonel William Whitaker's WORDS, revision `1f2f0fb0867a`
 They are not shipped. `data/source/MANIFEST.sha256` holds their hashes and
 `codegen/README.md` says how to fetch them, which only regenerating the image needs.
 
-`data/whitaker.dat` is image format 11, 3,473,257 bytes, SHA-256
-`8251ea4fb298a1b28e0fe978759d7b41a3cb84216fbc95cfc27a7d001d490d97`.
-`codegen/README.md` says how it is made and checked. It is checked in, so a
-build cannot change it silently.
+`data/whitaker.dat`, the image, is checked in, so a build cannot change it
+silently. `codegen/README.md` says how it is made and checked.
 
 The library is under the European Union Public Licence v. 1.2 (`LICENSE`).
 The WORDS data is a separate work under Whitaker's notice

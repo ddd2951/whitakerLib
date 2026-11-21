@@ -14,7 +14,7 @@ using namespace emitter;
 [[nodiscard]] inline std::uint16_t grammarRules(const latin::Entry& grammar, const std::uint16_t packon) {
   const latin::Part part = partOf(grammar);
   std::uint16_t rules = static_cast<std::uint16_t>(packon << rel::kRulePackonShift);
-  if (part == latin::Part::CONJ || part == latin::Part::INTERJ)
+  if (part == latin::Part::conjunction || part == latin::Part::interjection)
     rules |= rel::kRuleInterjOrConj;
   std::visit(
       [&rules](const auto& value) {

@@ -64,7 +64,7 @@ cmake --build build-codegen --target image                   # data/whitaker.dat
 
 ## Pipeline
 
-Gen is 65 steps, each a function declared in one file,
+Gen is 68 steps, each a function declared in one file,
 `src/execution_steps/steps.hpp`, in 12 phases. They read and parse WORDS' four
 files, expand every stem and ending into WORDS' readings, then build, encode,
 check and publish the image. `main()` is one line.
@@ -77,8 +77,10 @@ Each step is tagged with the steps it follows and the values it reads and
 writes.
 
 ```cpp
-[[ = tag::Gate{^^parseInflectsRecords},
-   = tag::Writes{^^storage::inflects} ]] void addAdverbInflections();
+[[ = tag::Gate{^^checkImageReadings}, = tag::Gate{^^checkDictionaryWords},
+   = tag::Gate{^^checkDictionaryWordStems}, = tag::Gate{^^checkAddonTables},
+   = tag::Reads{^^storage::destination},
+   = tag::Reads{^^storage::temporaryImage} ]] void publishImage();
 ```
 
 At build time `src/execution_steps/run.hpp` collects the steps by reflection,
@@ -120,9 +122,10 @@ Since then, a few places have shown where it really shines.
 - **Records filled member by member.** A `template for` over a struct's members
   parses each field into the next member, so a new member needs no parser
   change.
-- **Enum names are the source tokens.** `N`, `ADJ`, `TRANS` are read and
-  printed straight from the enumerators, with no name tables.
-- **Types know their part of speech.** `[[= Part::N]] struct Noun`, read by
+- **Source tokens as tags.** Each enumerator carries WORDS' token
+  (`nominative LATIN_WORDS("NOM")`), and `N`, `ADJ`, `TRANS` are read and
+  printed from the tags, with no name tables.
+- **Types know their part of speech.** `struct [[= Part::noun]] Noun`, read by
   `latin::partOf`, in place of hand-written switches.
 - **One index type per source file.** With `source::Index<^^scheme::dictline>`,
   a DICTLINE index can't be passed where an INFLECTS one is expected.

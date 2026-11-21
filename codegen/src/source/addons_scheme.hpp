@@ -26,9 +26,10 @@ inline constexpr std::size_t kFixMinFields{2};
 inline constexpr std::size_t kFixMaxFields{3};
 inline constexpr std::size_t kGrammarMaxFields{8};
 
-inline constexpr std::array kParts{latin::Part::N,    latin::Part::PRON,   latin::Part::V,   latin::Part::ADJ,
-                                   latin::Part::NUM,  latin::Part::PACK,   latin::Part::ADV, latin::Part::PREP,
-                                   latin::Part::CONJ, latin::Part::INTERJ, latin::Part::X};
+inline constexpr std::array kParts{latin::Part::noun,         latin::Part::pronoun,     latin::Part::verb,
+                                   latin::Part::adjective,    latin::Part::numeral,     latin::Part::packon,
+                                   latin::Part::adverb,       latin::Part::preposition, latin::Part::conjunction,
+                                   latin::Part::interjection, latin::Part::any};
 
 inline constexpr std::size_t kPrefixFields{2};
 inline constexpr std::size_t kTackonLeadFields{1};

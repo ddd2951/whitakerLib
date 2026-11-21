@@ -3,7 +3,7 @@
 // INFO: Gen's execution steps, one namespace per phase.
 //
 //  A step's tags are all the runner knows about it: Gate names a step it follows; Reads and Writes name the shared
-//  values it touches (storage::, whitaker::relationship::sImage, and storage::console for standard output).
+//  values it touches (storage:: and whitaker::relationship::sImage).
 //
 //  run.hpp discovers the steps through reflection, validates their tags at build time, and derives the execution
 //  order and what may run at once. Nothing else lists the steps.
@@ -28,11 +28,8 @@
 #include "storage/class_grammars.hpp"
 #include "storage/classes.hpp"
 #include "storage/compression_duplicates.hpp"
-#include "storage/console.hpp"
 #include "storage/description_ids.hpp"
 #include "storage/dictline.hpp"
-#include "storage/dropped.hpp"
-#include "storage/dropped_duplicates.hpp"
 #include "storage/encoded_image.hpp"
 #include "storage/ending_ids.hpp"
 #include "storage/ending_order.hpp"
@@ -44,11 +41,9 @@
 #include "storage/image_spellings.hpp"
 #include "storage/inflects.hpp"
 #include "storage/kept.hpp"
-#include "storage/lengths.hpp"
 #include "storage/lines.hpp"
 #include "storage/loaded_image.hpp"
 #include "storage/lookup_metadata.hpp"
-#include "storage/masks.hpp"
 #include "storage/max_rows.hpp"
 #include "storage/mixed.hpp"
 #include "storage/order.hpp"
@@ -203,7 +198,7 @@ namespace lookup_tables {
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::inflects},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::lines<^^source::scheme::inflects>}, = tag::Writes{^^storage::byStem},
-  = tag::Writes{^^storage::candidateCounts}, = tag::Writes{^^storage::lengths}, = tag::Writes{^^storage::mixed},
+  = tag::Writes{^^storage::candidateCounts}, = tag::Writes{^^storage::mixed},
   = tag::Writes{^^storage::compressionDuplicates}, = tag::Writes{^^storage::rows}, = tag::Writes{^^storage::rules}
 ]] void makeLookupRules();
 [[
@@ -213,15 +208,13 @@ namespace lookup_tables {
 ]] void addUniqueRules();
 [[ = tag::Reads{^^storage::byStem}, = tag::Reads{^^storage::rows},
    = tag::Writes{^^storage::perfectSuffixes} ]] void collectPerfectSuffixes();
-[[
-  = tag::Writes{^^storage::candidateCapacity}, = tag::Writes{^^storage::candidateCounts},
-  = tag::Writes{^^storage::lengths}
-]] void measureCandidateCapacity();
+[[ = tag::Writes{^^storage::candidateCapacity},
+   = tag::Writes{^^storage::candidateCounts} ]] void measureCandidateCapacity();
 [[
   = tag::Reads{^^storage::byStem}, = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::dictline},
   = tag::Reads{^^storage::inflects}, = tag::Reads{^^storage::uniques},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
-  = tag::Writes{^^storage::classes}, = tag::Writes{^^storage::dropped}, = tag::Writes{^^storage::stems}
+  = tag::Writes{^^storage::classes}, = tag::Writes{^^storage::stems}
 ]] void buildLookupClasses();
 [[
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
@@ -244,21 +237,20 @@ namespace lookup_tables {
   = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::stems}, = tag::Reads{^^storage::endingIds},
   = tag::Reads{^^storage::endings}, = tag::Reads{^^storage::order}, = tag::Reads{^^storage::rows},
   = tag::Writes{^^storage::cells}, = tag::Writes{^^storage::cellOf}, = tag::Writes{^^storage::rowIds},
-  = tag::Writes{^^storage::masks}, = tag::Writes{^^storage::maxRows}, = tag::Writes{^^storage::droppedDuplicates}
+  = tag::Writes{^^storage::maxRows}
 ]] void buildLookupCells();
 [[
   = tag::Reads{^^storage::front}, = tag::Reads{^^storage::back}, = tag::Reads{^^storage::maxRows},
   = tag::Reads{^^storage::cells}, = tag::Reads{^^storage::rowIds}, = tag::Reads{^^storage::rows},
-  = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::mixed}, = tag::Reads{^^storage::droppedDuplicates},
-  = tag::Reads{^^storage::compressionDuplicates}, = tag::Writes{^^storage::out}
+  = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::mixed}, = tag::Reads{^^storage::compressionDuplicates},
+  = tag::Writes{^^storage::out}
 ]] void deriveLookupBounds();
 [[
   = tag::Reads{^^storage::perfectSuffixes}, = tag::Reads{^^storage::candidateCapacity},
   = tag::Reads{^^storage::endings}, = tag::Writes{^^storage::out}
 ]] void buildPerfectSuffixTrie();
 [[
-  = tag::Gate{^^lookup_tables::buildPerfectSuffixTrie}, = tag::Reads{^^storage::front},
-  = tag::Writes{^^storage::result}, = tag::Writes{^^storage::states}, = tag::Writes{^^storage::below},
+  = tag::Reads{^^storage::front}, = tag::Writes{^^storage::states}, = tag::Writes{^^storage::below},
   = tag::Writes{^^storage::root}
 ]] void canonicalizeStemTrie();
 [[ = tag::Reads{^^storage::front}, = tag::Reads{^^storage::stems},
@@ -280,9 +272,7 @@ namespace lookup_tables {
 [[
   = tag::Reads{^^storage::cells}, = tag::Reads{^^storage::classes}, = tag::Reads{^^storage::endings},
   = tag::Reads{^^storage::cellOf}, = tag::Reads{^^storage::rowIds}, = tag::Reads{^^storage::out},
-  = tag::Reads{^^storage::rows}, = tag::Reads{^^storage::stems}, = tag::Reads{^^storage::dropped},
-  = tag::Reads{^^storage::masks}, = tag::Reads{^^storage::maxRows}, = tag::Writes{^^storage::result},
-  = tag::Writes{^^storage::console}
+  = tag::Writes{^^storage::result}
 ]] void compressLookupCells();
 } // namespace lookup_tables
 
@@ -301,8 +291,7 @@ namespace finish_image_data {
 } // namespace finish_image_data
 
 namespace encoding {
-[[ = tag::Reads{^^storage::image}, = tag::Writes{^^storage::encodedImage},
-   = tag::Writes{^^storage::console} ]] void encodeImage();
+[[ = tag::Reads{^^storage::image}, = tag::Writes{^^storage::encodedImage} ]] void encodeImage();
 } // namespace encoding
 
 namespace image_file {
@@ -325,19 +314,18 @@ namespace image_file {
 ]] void checkImageReadings();
 [[
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
-  = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::console}
+  = tag::Reads{^^whitaker::relationship::sImage}
 ]] void checkDictionaryWords();
 [[
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
-  = tag::Reads{^^whitaker::relationship::sImage}, = tag::Writes{^^storage::console}
+  = tag::Reads{^^whitaker::relationship::sImage}
 ]] void checkDictionaryWordStems();
+[[ = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage} ]] void checkAddonTables();
+// INFO: publishImage replaces the old image, so it waits for every check by name.
 [[
-  = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage},
-  = tag::Writes{^^storage::console}
-]] void checkAddonTables();
-[[
-  = tag::Gate{^^image_file::checkImageReadings}, = tag::Reads{^^storage::destination},
-  = tag::Reads{^^storage::temporaryImage}, = tag::Reads{^^storage::encodedImage}, = tag::Writes{^^storage::console}
+  = tag::Gate{^^image_file::checkImageReadings}, = tag::Gate{^^image_file::checkDictionaryWords},
+  = tag::Gate{^^image_file::checkDictionaryWordStems}, = tag::Gate{^^image_file::checkAddonTables},
+  = tag::Reads{^^storage::destination}, = tag::Reads{^^storage::temporaryImage}
 ]] void publishImage();
 } // namespace image_file
 

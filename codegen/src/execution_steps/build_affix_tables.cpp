@@ -1,5 +1,6 @@
 #include "execution_steps/steps.hpp"
 
+#include "helpers/trie.hpp"
 #include "storage/image.hpp"
 
 #include <algorithm>
@@ -18,34 +19,7 @@ using emitter::ImageData;
 // INFO: Extra front/back marks for the affix experiment. Terminals refer to existing endings and source-ordered
 //  add-on IDs; no licensed result, spelling frequency or book input is stored here.
 void affixMarks(ImageData& image) {
-  const auto trie = [](const std::map<std::string, rel::Run>& items) {
-    struct Temp {
-      std::map<char, unsigned> children{};
-      rel::Run run{};
-    };
-    std::vector<Temp> temp(1);
-    for (const auto& [text, run] : items) {
-      unsigned at = 0;
-      for (const char c : text) {
-        const auto [it, fresh] = temp[at].children.try_emplace(c, static_cast<unsigned>(temp.size()));
-        at = it->second;
-        if (fresh)
-          temp.emplace_back();
-      }
-      temp[at].run = run;
-    }
-    std::vector<unsigned> todo{0};
-    std::vector<rel::Node> nodes(temp.size());
-    for (unsigned i = 0; i < todo.size(); ++i) {
-      nodes[i].run = temp[todo[i]].run;
-      nodes[i].first = static_cast<unsigned>(todo.size());
-      for (const auto& [c, child] : temp[todo[i]].children) {
-        nodes[i].mask |= std::uint32_t{1} << (c - 'a');
-        todo.push_back(child);
-      }
-    }
-    return nodes;
-  };
+  using helpers::trie;
   auto& t = image.twoEnded;
   std::map<std::string, rel::Run> endings{};
   for (unsigned i = 0; i < image.endings.size(); ++i) {

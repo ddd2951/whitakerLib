@@ -6,6 +6,7 @@
 #include "storage/description_ids.hpp"
 #include "util/reflect_util.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <format>
 #include <limits>
@@ -29,8 +30,7 @@ using storage::DescriptionIds;
     error::fatal(std::format("image: description \"{}\" renders two grammars\n{}", description->first,
                              util::differences(image.grammars[description->second], analysis)));
   }
-  if (description->second > std::numeric_limits<std::uint16_t>::max())
-    error::fatal("image: more descriptions than 16 bits can name");
+  assert(description->second <= std::numeric_limits<std::uint16_t>::max());
   return static_cast<std::uint16_t>(description->second);
 }
 

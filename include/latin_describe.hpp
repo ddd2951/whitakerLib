@@ -77,16 +77,16 @@ constexpr std::size_t describe(const Analysis& analysis, char* out, std::size_t 
   detail::Line line;
   line.word(analysis.part);
   switch (analysis.part) {
-    case Part::N:
-    case Part::PRON:
-    case Part::ADJ:
-    case Part::NUM:
+    case Part::noun:
+    case Part::pronoun:
+    case Part::adjective:
+    case Part::numeral:
       line.number('D', analysis.which.value);
       line.number('V', analysis.variant.value);
       break;
-    case Part::V:
-    case Part::VPAR:
-    case Part::SUPINE:
+    case Part::verb:
+    case Part::participle:
+    case Part::supine:
       line.number('C', analysis.which.value);
       line.number('V', analysis.variant.value);
       break;
@@ -95,29 +95,29 @@ constexpr std::size_t describe(const Analysis& analysis, char* out, std::size_t 
   }
 
   switch (analysis.part) {
-    case Part::N:
-    case Part::PRON:
-    case Part::SUPINE:
+    case Part::noun:
+    case Part::pronoun:
+    case Part::supine:
       line.field(analysis.caseOf);
       line.field(analysis.number);
       line.field(analysis.gender);
       break;
-    case Part::ADJ:
+    case Part::adjective:
       line.field(analysis.caseOf);
       line.field(analysis.number);
       line.field(analysis.gender);
       line.field(analysis.comparison);
       break;
-    case Part::NUM:
+    case Part::numeral:
       line.field(analysis.caseOf);
       line.field(analysis.number);
       line.field(analysis.gender);
       line.field(analysis.numeralSort);
       break;
-    case Part::ADV:
+    case Part::adverb:
       line.field(analysis.comparison);
       break;
-    case Part::V:
+    case Part::verb:
       line.field(analysis.tense);
       line.field(analysis.voice);
       line.field(analysis.mood);
@@ -127,7 +127,7 @@ constexpr std::size_t describe(const Analysis& analysis, char* out, std::size_t 
       }
       line.field(analysis.number);
       break;
-    case Part::VPAR:
+    case Part::participle:
       line.field(analysis.caseOf);
       line.field(analysis.number);
       line.field(analysis.gender);
@@ -135,7 +135,7 @@ constexpr std::size_t describe(const Analysis& analysis, char* out, std::size_t 
       line.field(analysis.voice);
       line.field(analysis.mood);
       break;
-    case Part::PREP:
+    case Part::preposition:
       line.field(analysis.caseOf);
       break;
     default:

@@ -112,3 +112,51 @@ extern "C" WhitakerSpellingRule whitaker_spelling_rule(uint8_t rule) {
   return std::bit_cast<WhitakerSpellingRule>(whitaker::spellingRule(rule));
 }
 
+extern "C" const char* whitaker_part_label(WhitakerPart value) {
+  return latin::label(static_cast<latin::Part>(value));
+}
+
+extern "C" const char* whitaker_case_label(WhitakerCase value) {
+  return latin::label(static_cast<latin::Case>(value));
+}
+
+extern "C" const char* whitaker_number_label(WhitakerNumber value) {
+  return latin::label(static_cast<latin::Number>(value));
+}
+
+extern "C" const char* whitaker_gender_label(WhitakerGender value) {
+  return latin::label(static_cast<latin::Gender>(value));
+}
+
+extern "C" const char* whitaker_tense_label(WhitakerTense value) {
+  return latin::label(static_cast<latin::Tense>(value));
+}
+
+extern "C" const char* whitaker_voice_label(WhitakerVoice value) {
+  return latin::label(static_cast<latin::Voice>(value));
+}
+
+extern "C" const char* whitaker_mood_label(WhitakerMood value) {
+  return latin::label(static_cast<latin::Mood>(value));
+}
+
+extern "C" const char* whitaker_comparison_label(WhitakerComparison value) {
+  return latin::label(static_cast<latin::Comparison>(value));
+}
+
+extern "C" const char* whitaker_pronoun_kind_label(WhitakerPronounKind value) {
+  return latin::label(static_cast<latin::PronounKind>(value));
+}
+
+extern "C" const char* whitaker_packon_kind_label(WhitakerPackonKind value) {
+  return latin::label(static_cast<latin::PackonKind>(value));
+}
+
+extern "C" const char* whitaker_verb_kind_label(WhitakerVerbKind value) {
+  return latin::label(static_cast<latin::VerbKind>(value));
+}
+
+extern "C" const char* whitaker_numeral_sort_label(WhitakerNumeralSort value) {
+  return latin::label(static_cast<latin::NumeralSort>(value));
+}
+

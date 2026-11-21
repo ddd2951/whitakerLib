@@ -1,20 +1,18 @@
 #include "execution_steps/steps.hpp"
 
-#include "error/error.hpp"
 #include "storage/image.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <limits>
 
 void execution_steps::finish_image_data::groupDictionaryStems() {
   using storage::image;
-  if (image.stems.size() > std::numeric_limits<std::uint16_t>::max())
-    error::fatal("image: stem rows do not fit a u16");
+  assert(image.stems.size() <= std::numeric_limits<std::uint16_t>::max());
   auto& runs = image.dictionaryStemRuns;
   runs.assign(image.dictionaries.size() + 1, 0);
   for (const auto& stem : image.stems) {
-    if (stem.dictionary >= image.dictionaries.size())
-      error::fatal("image: a stem row names no dictionary word");
+    assert(stem.dictionary < image.dictionaries.size());
     ++runs[std::size_t{stem.dictionary} + 1];
   }
   for (std::size_t i = 1; i < runs.size(); ++i)

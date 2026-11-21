@@ -6,6 +6,7 @@
 #include "bindings/reflect.hpp"
 #include "bindings/schemes/c.hpp"
 #include "bindings/schemes/python.hpp"
+#include "util/reflect_util.hpp"
 
 #include <string>
 #include <string_view>
@@ -34,8 +35,8 @@ consteval std::string rowsOf(info type, const std::string& expression, const std
   if (isHandle(t))
     return "  rows.number(" + at + ", std::to_underlying(" + expression + "));\n";
   if (is_enum_type(t))
-    return "  rows.enumerated(" + at + ", " + quoted(identifier_of(t)) + ", cName(" + expression + "), latin::name(" +
-           expression + "));\n";
+    return "  rows.enumerated(" + at + ", " + quoted(identifier_of(t)) + ", cName(" + expression + "), cppName(" +
+           expression + ")" + (util::isReaderFacing(t) ? ", latin::label(" + expression + ")" : "") + ");\n";
   if (isTypedNumber(t))
     return "  rows.number(" + at + ", " + expression + ".value);\n";
   if (!is_class_type(t))
@@ -57,18 +58,22 @@ consteval std::string rowsOf(info type, const std::string& expression, const std
   return out;
 }
 
-// INFO: cName(value) for each enum the C binding writes: the value as whitaker.h spells it.
+// INFO: cName(value) and cppName(value) for each enum the C binding writes: the value as whitaker.h spells it, and
+//  as C++ and Python do.
 consteval std::string cNames() {
   using namespace std::meta;
   std::string out{};
-  for (const info type : c::cEnums()) {
-    const std::string qualified = std::string{identifier_of(parent_of(type))} + "::" + std::string{identifier_of(type)};
-    out += "[[nodiscard]] constexpr const char* cName(const " + qualified + " value) {\n  switch (value) {\n";
-    for (const info e : enumerators_of(type))
-      out += "  case " + qualified + "::" + std::string{identifier_of(e)} + ": return " +
-             quoted(c::enumeratorName(type, e)) + ";\n";
-    out += "  }\n  return \"?\";\n}\n\n";
-  }
+  for (const info type : c::cEnums())
+    for (const bool inC : {true, false}) {
+      const std::string qualified =
+          std::string{identifier_of(parent_of(type))} + "::" + std::string{identifier_of(type)};
+      out += "[[nodiscard]] constexpr const char* " + std::string{inC ? "cName" : "cppName"} + "(const " + qualified +
+             " value) {\n  switch (value) {\n";
+      for (const info e : enumerators_of(type))
+        out += "  case " + qualified + "::" + std::string{identifier_of(e)} + ": return " +
+               quoted(inC ? c::enumeratorName(type, e) : std::string{identifier_of(e)}) + ";\n";
+      out += "  }\n  return \"?\";\n}\n\n";
+    }
   return out;
 }
 
@@ -93,6 +98,12 @@ consteval std::string text() {
   out += "inline constexpr const char* kCalls[][3] = {\n";
   for (const info f : functions)
     out += "  {" + quoted(cppCall(f)) + ", " + quoted(c::call(f)) + ", " + quoted(python::call(f)) + "},\n";
+  for (const info e : c::cEnums())
+    if (util::isReaderFacing(e)) {
+      const std::string type{std::meta::identifier_of(e)};
+      out += "  {" + quoted("latin::label(" + type + " value)") + ", " +
+             quoted("whitaker_" + c::snake(type, false) + "_label(value)") + ", " + quoted(type + ".label") + "},\n";
+    }
   return out + "};\n";
 }
 

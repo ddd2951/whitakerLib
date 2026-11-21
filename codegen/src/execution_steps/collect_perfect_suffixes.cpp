@@ -4,7 +4,6 @@
 #include "storage/by_stem.hpp"
 #include "storage/perfect_suffixes.hpp"
 #include "storage/rows.hpp"
-#include <tuple>
 
 namespace rel = whitaker::relationship;
 
@@ -15,6 +14,6 @@ void execution_steps::lookup_tables::collectPerfectSuffixes() {
   for (const auto& [address, ids] : byStem)
     if (address.second == 3)
       for (const auto id : ids)
-        if (rel::unpackGrammar(std::get<3>(rows[id])).analysis.part == latin::Part::V)
-          perfectSuffixes.insert(std::get<1>(rows[id]));
+        if (rel::unpackGrammar(rows[id].grammar).analysis.part == latin::Part::verb)
+          perfectSuffixes.insert(rows[id].suffix);
 }

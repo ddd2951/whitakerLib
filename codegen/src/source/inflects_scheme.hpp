@@ -18,8 +18,9 @@ inline constexpr std::string_view kCommentMarker{"--"};
 
 inline constexpr std::size_t kMaxFields{14};
 
-inline constexpr std::array kParts{latin::Part::N,    latin::Part::PRON, latin::Part::ADJ,    latin::Part::NUM,
-                                   latin::Part::V,    latin::Part::VPAR, latin::Part::SUPINE, latin::Part::ADV,
-                                   latin::Part::PREP, latin::Part::CONJ, latin::Part::INTERJ};
+inline constexpr std::array kParts{latin::Part::noun,        latin::Part::pronoun,     latin::Part::adjective,
+                                   latin::Part::numeral,     latin::Part::verb,        latin::Part::participle,
+                                   latin::Part::supine,      latin::Part::adverb,      latin::Part::preposition,
+                                   latin::Part::conjunction, latin::Part::interjection};
 
 } // namespace source::scheme::inflects

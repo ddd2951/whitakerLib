@@ -15,11 +15,15 @@ using relationship::Node;
 using relationship::Rule;
 using relationship::Stem;
 
+// INFO: A back-head run in 16 bits: its first in the low kHeadRunFirstBits, its count above.
+inline constexpr unsigned kHeadRunFirstBits = 9, kHeadRunCountBits = 7;
+static_assert(kHeadRunFirstBits + kHeadRunCountBits == 16);
+
 // INFO: List_Sweep's last loop: the grammar as WORDS prints it.
 [[nodiscard]] constexpr latin::Analysis printed(latin::Analysis g) {
-  if (g.part == latin::Part::PRON && g.which.value == 1)
+  if (g.part == latin::Part::pronoun && g.which.value == 1)
     g.variant = {};
-  if (g.part == latin::Part::V && g.which.value == 3 && g.variant.value == 4) {
+  if (g.part == latin::Part::verb && g.which.value == 3 && g.variant.value == 4) {
     g.which = {4};
     g.variant.value = 1;
   }

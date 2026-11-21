@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <format>
 #include <limits>
-#include <print>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -48,7 +47,6 @@ void validateEntries() {
     validateEntry(index, word::entry(word::DictlineRow{index}));
   for (std::uint32_t index = 0; index < uniques; ++index)
     validateEntry(word::kDictlineWords + index, word::entry(word::UniquesRow{index}));
-  std::println("  entries: {} parsed words round-trip exactly", count);
 }
 
 } // namespace

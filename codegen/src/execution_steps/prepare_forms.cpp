@@ -37,8 +37,6 @@ bool originLess(const Origin& a, const Origin& b) {
   const bool ub = std::holds_alternative<Unique>(b);
   if (ua != ub)
     return ua;
-  if (a.index() != b.index())
-    return a.index() < b.index();
   if (ua)
     return std::get<Unique>(a).entry.value < std::get<Unique>(b).entry.value;
   const Joined& ja = std::get<Joined>(a);

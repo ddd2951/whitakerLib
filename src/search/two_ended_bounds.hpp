@@ -23,9 +23,8 @@ static_assert(5452 <= 65536);
 static_assert(8557 <= 65536);
 static_assert(4921 <= 32768);
 static_assert(404 < 65536);
-static_assert(39415 <= 65536);
+static_assert(39415 <= 65535);
 static_assert(0 == 0, "mixed ending lengths require Array_Stems ordering");
-// 39 duplicate rows dropped inside cells
 static_assert(0 == 0, "compression requires unique exceptional qualities");
 namespace whitaker::syncope {
 // 38 folded suffixes of verb readings on the perfect stem, read from the last letter.

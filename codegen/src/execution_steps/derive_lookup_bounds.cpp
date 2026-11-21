@@ -1,6 +1,5 @@
 #include "execution_steps/steps.hpp"
 
-#include "error/error.hpp"
 #include "facts.hpp"
 #include "source/schemes.hpp"
 #include "storage/back.hpp"
@@ -12,7 +11,6 @@
 #include "storage/rows.hpp"
 #include "storage/classes.hpp"
 #include "storage/mixed.hpp"
-#include "storage/dropped_duplicates.hpp"
 #include "storage/compression_duplicates.hpp"
 #include "word/word.hpp"
 #include <algorithm>
@@ -25,7 +23,6 @@ void execution_steps::lookup_tables::deriveLookupBounds() {
   using storage::cells;
   using storage::classes;
   using storage::compressionDuplicates;
-  using storage::droppedDuplicates;
   using storage::front;
   using storage::maxRows;
   using storage::mixed;
@@ -44,8 +41,6 @@ void execution_steps::lookup_tables::deriveLookupBounds() {
     frontLetters |= n.mask;
   for (const auto& n : back)
     backLetters |= n.mask;
-  if ((frontLetters | backLetters) & facts::kFoldedAwayMask)
-    error::fatal("two-ended: source trie uses a folded-away letter");
   const auto firstBits = static_cast<unsigned>(std::bit_width(maximumFirst)),
              runBits = static_cast<unsigned>(std::bit_width(maximumRun)),
              countWidth = static_cast<unsigned>(std::bit_width(maximumCount)),
@@ -73,9 +68,8 @@ void execution_steps::lookup_tables::deriveLookupBounds() {
   out << "static_assert(" << maxRows << " <= 64);\nstatic_assert(" << cells.size() << " <= 65536);\nstatic_assert("
       << rowIds.size() << " <= 65536);\nstatic_assert(" << rows.size() << " <= 32768);\nstatic_assert("
       << classes.size() << " < 65536);\nstatic_assert(" << word::kUniqueBase + source::scheme::uniques::kEntriesPerFile
-      << " <= 65536);\n";
+      << " <= 65535);\n";
   out << "static_assert(" << mixed << " == 0, \"mixed ending lengths require Array_Stems ordering\");\n";
-  out << "// " << droppedDuplicates << " duplicate rows dropped inside cells\n";
   out << "static_assert(" << compressionDuplicates
       << " == 0, \"compression requires unique exceptional qualities\");\n";
 }

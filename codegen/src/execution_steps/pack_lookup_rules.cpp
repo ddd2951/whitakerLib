@@ -8,6 +8,7 @@
 #include "storage/array_order.hpp"
 #include "storage/lookup_metadata.hpp"
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -37,8 +38,7 @@ void execution_steps::lookup_tables::packLookupRules() {
     r.part = g.part;
     if (!latin::packed::packGrammar(g, r.g) || latin::packed::grammarOf(r) != g)
       error::fatal("two-ended: grammar does not fit");
-    if (key > 4)
-      error::fatal("two-ended: a stem key past 4 does not fit the reading's three bits");
+    assert(key <= 4);
     result.rules.push_back({{latin::packed::head(r), {r.g[0], r.g[1], r.g[2]}},
                             order[id],
                             arrayOrder[id],

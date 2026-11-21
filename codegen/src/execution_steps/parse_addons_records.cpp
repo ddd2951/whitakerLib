@@ -121,7 +121,7 @@ Addon grammar(const Fix& fix, const std::string_view line, const std::string_vie
 
 AddonKind kindOf(const Addon& addon, const std::string_view meaning) {
   if (const auto* const prefix = std::get_if<addon::Prefix>(&addon))
-    return prefix->to == Part::PACK ? AddonKind::tickon : AddonKind::prefix;
+    return prefix->to == Part::packon ? AddonKind::tickon : AddonKind::prefix;
   if (std::holds_alternative<addon::Suffix>(addon))
     return AddonKind::suffix;
   const auto* const packon = std::get_if<Packon>(&std::get<addon::Tackon>(addon).grammar);

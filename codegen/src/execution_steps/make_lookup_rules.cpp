@@ -5,10 +5,12 @@
 #include "expand/common/join.hpp"
 #include "storage/by_stem.hpp"
 #include "storage/candidate_counts.hpp"
-#include "storage/lengths.hpp"
 #include "storage/mixed.hpp"
 #include "storage/compression_duplicates.hpp"
+#include <cstdint>
+#include <map>
 #include <set>
+#include <string>
 #include <tuple>
 
 namespace rel = whitaker::relationship;
@@ -18,8 +20,8 @@ void execution_steps::lookup_tables::makeLookupRules() {
   using storage::byStem;
   using storage::candidateCounts;
   using storage::compressionDuplicates;
-  using storage::lengths;
   using storage::mixed;
+  std::map<std::tuple<std::string, unsigned, std::uint64_t>, unsigned> lengths{};
   std::set<std::tuple<std::string, unsigned, std::uint64_t>> specialQualities{};
   expand::internal::forEachLicensed([&](const expand::internal::Licensed& j) {
     const std::string spelling = emitter::normalize(std::string(j.stem) + std::string(j.suffix));
@@ -29,7 +31,7 @@ void execution_steps::lookup_tables::makeLookupRules() {
     const auto r = expand::readingOf(origin);
     const auto g = emitter::analysisOf(r.entry, r.inflection, r.key);
     if (!spelling.empty() && spelling.size() <= facts::kMaxWordCharacters &&
-        !(g.part == latin::Part::PRON && g.which.value == 1)) {
+        !(g.part == latin::Part::pronoun && g.which.value == 1)) {
       const auto [it, fresh] = lengths.emplace(std::tuple{spelling, j.entry.value, rel::packGrammar(g)},
                                                static_cast<unsigned>(j.ending.ending.size()));
       if (!fresh && it->second != j.ending.ending.size())
@@ -37,7 +39,7 @@ void execution_steps::lookup_tables::makeLookupRules() {
     }
     // INFO: Ordinary rows are deduplicated by entry/quality in order(). Qu rows bypass that step;
     //  uniques have one row per entry. Prove those exceptions also have unique source qualities.
-    if (!spelling.empty() && spelling.size() <= facts::kMaxWordCharacters && g.part == latin::Part::PRON &&
+    if (!spelling.empty() && spelling.size() <= facts::kMaxWordCharacters && g.part == latin::Part::pronoun &&
         g.which.value == 1 && !specialQualities.emplace(spelling, j.entry.value, rel::packGrammar(g)).second)
       ++compressionDuplicates;
     int correction = -1;

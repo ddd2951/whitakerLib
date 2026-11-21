@@ -4,14 +4,11 @@
 #include "storage/encoded_image.hpp"
 #include "storage/image.hpp"
 
-#include <print>
-
 #include "emitter/image_file.hpp"
-#include "error/error.hpp"
-#include "util/reflect_util.hpp"
 #include "src/search/relationship_schema.hpp"
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -47,8 +44,6 @@ void appendWord(std::vector<unsigned char>& out, const std::uint64_t word, const
 [[nodiscard]] ImageFile encodeImage(const ImageData& imageData) {
   ImageFile image{};
   image.bytes.resize(rel::kHeaderBytes + rel::kSectionCount * rel::kDirectoryBytes);
-  image.parts = {{"header", 0, rel::kHeaderBytes, 1, rel::kHeaderBytes},
-                 {"directory", rel::kHeaderBytes, image.bytes.size(), rel::kSectionCount, rel::kDirectoryBytes}};
   std::array<rel::DirectoryEntry, rel::kSectionCount> entries{};
 
   // NOTE: `count` is the section's items; the instructions and the strings give their directory another count.
@@ -57,10 +52,8 @@ void appendWord(std::vector<unsigned char>& out, const std::uint64_t word, const
     const std::size_t start = image.bytes.size();
     write(image.bytes);
     const std::size_t width = rel::widthOf(id);
-    if (image.bytes.size() - start != count * width)
-      error::fatal("image: a section's bytes are not its records");
+    assert(image.bytes.size() - start == count * width);
     entries[static_cast<std::size_t>(id)] = {start, image.bytes.size() - start, directoryCount.value_or(count)};
-    image.parts.push_back({util::enumToSv(id), start, image.bytes.size(), count, width});
   };
   const auto all = [](const auto& items) {
     return [&items](std::vector<unsigned char>& out) {
@@ -98,8 +91,7 @@ void appendWord(std::vector<unsigned char>& out, const std::uint64_t word, const
   const auto nodes = [](const auto& items) {
     return [&items](std::vector<unsigned char>& out) {
       for (const auto& n : items) {
-        if (n.mask & facts::kFoldedAwayMask)
-          error::fatal("image: source node uses a folded-away letter");
+        assert(!(n.mask & facts::kFoldedAwayMask));
         auto bits = std::uint64_t{n.mask} | (std::uint64_t{n.first} << rel::kNodeMaskBits) |
                     (std::uint64_t{n.run.first} << (rel::kNodeMaskBits + rel::kNodeFirstBits)) |
                     ((std::uint64_t{n.run.count} & ((std::uint64_t{1} << rel::kNodeCountBits) - 1))
@@ -109,8 +101,7 @@ void appendWord(std::vector<unsigned char>& out, const std::uint64_t word, const
           bits |= std::uint64_t{payload & 1u} << std::countr_zero(free);
           payload >>= 1;
         }
-        if (payload)
-          error::fatal("image: source node count exceeds the generated payload");
+        assert(payload == 0);
         appendWord(out, bits, rel::kNodeBytes);
       }
     };
@@ -151,7 +142,5 @@ void appendWord(std::vector<unsigned char>& out, const std::uint64_t word, const
 void execution_steps::encoding::encodeImage() {
   const auto& imageData = storage::image;
   emitter::ImageFile image = emitter::encodeImage(imageData);
-  emitter::printReport(image);
-  std::println("  {} spellings, {} ordered analyses", imageData.words.size(), imageData.analyses.size());
   storage::encodedImage = std::move(image);
 }

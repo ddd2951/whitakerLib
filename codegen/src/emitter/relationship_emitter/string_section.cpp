@@ -1,7 +1,6 @@
 #include "string_section.hpp"
 
-#include "error/error.hpp"
-
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -19,8 +18,7 @@ std::uint32_t StringSection::intern(const std::string_view text) {
   const auto found = offsets.find(std::string{text});
   if (found != offsets.end())
     return found->second;
-  if (contents.size() + text.size() + 1 > std::numeric_limits<std::uint32_t>::max())
-    error::fatal("image: string section past 32 bits");
+  assert(contents.size() + text.size() + 1 <= std::numeric_limits<std::uint32_t>::max());
   const std::uint32_t offset = static_cast<std::uint32_t>(contents.size());
   contents.append(text);
   contents.push_back('\0');

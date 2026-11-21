@@ -83,13 +83,13 @@ template <typename E, typename T> [[nodiscard]] const char* nameOf(T value) {
     return nullptr;
   const auto value = static_cast<std::uint8_t>(kind);
   switch (part) {
-    case latin::Part::N:
+    case latin::Part::noun:
       return latin::name(latin::NounKind{value});
-    case latin::Part::PRON:
+    case latin::Part::pronoun:
       return latin::name(latin::PronounKind{value});
-    case latin::Part::PACK:
+    case latin::Part::packon:
       return latin::name(latin::PackonKind{value});
-    case latin::Part::V:
+    case latin::Part::verb:
       return latin::name(latin::VerbKind{value});
     default:
       return nullptr;
@@ -115,46 +115,46 @@ struct Words {
 };
 
 constexpr Words kWords[] = {
-    {Field::part, std::to_underlying(latin::Part::N), "noun", ""},
-    {Field::part, std::to_underlying(latin::Part::PRON), "pronoun", ""},
-    {Field::part, std::to_underlying(latin::Part::V), "verb", ""},
-    {Field::part, std::to_underlying(latin::Part::ADJ), "adjective", ""},
-    {Field::part, std::to_underlying(latin::Part::ADV), "adverb", ""},
-    {Field::part, std::to_underlying(latin::Part::PREP), "preposition", ""},
-    {Field::part, std::to_underlying(latin::Part::NUM), "numeral", ""},
-    {Field::part, std::to_underlying(latin::Part::CONJ), "conjunction", ""},
-    {Field::part, std::to_underlying(latin::Part::INTERJ), "interjection", ""},
-    {Field::part, std::to_underlying(latin::Part::PACK), "pronoun", ""},
-    {Field::part, std::to_underlying(latin::Part::SUPINE), "supine", ""},
-    {Field::part, std::to_underlying(latin::Part::VPAR), "participle", ""},
-    {Field::caseOf, std::to_underlying(latin::Case::NOM), "nominative", "nom"},
-    {Field::caseOf, std::to_underlying(latin::Case::VOC), "vocative", "voc"},
-    {Field::caseOf, std::to_underlying(latin::Case::GEN), "genitive", "gen"},
-    {Field::caseOf, std::to_underlying(latin::Case::LOC), "locative", "loc"},
-    {Field::caseOf, std::to_underlying(latin::Case::DAT), "dative", "dat"},
-    {Field::caseOf, std::to_underlying(latin::Case::ABL), "ablative", "abl"},
-    {Field::caseOf, std::to_underlying(latin::Case::ACC), "accusative", "acc"},
-    {Field::number, std::to_underlying(latin::Number::S), "singular", "sg"},
-    {Field::number, std::to_underlying(latin::Number::P), "plural", "pl"},
-    {Field::gender, std::to_underlying(latin::Gender::M), "masculine", "m"},
-    {Field::gender, std::to_underlying(latin::Gender::F), "feminine", "f"},
-    {Field::gender, std::to_underlying(latin::Gender::N), "neuter", "n"},
-    {Field::gender, std::to_underlying(latin::Gender::C), "common", "c"},
-    {Field::comparison, std::to_underlying(latin::Comparison::COMP), "comparative", "comp"},
-    {Field::comparison, std::to_underlying(latin::Comparison::SUPER), "superlative", "superl"},
-    {Field::tense, std::to_underlying(latin::Tense::PRES), "present", "pres"},
-    {Field::tense, std::to_underlying(latin::Tense::IMPF), "imperfect", "impf"},
-    {Field::tense, std::to_underlying(latin::Tense::FUT), "future", "fut"},
-    {Field::tense, std::to_underlying(latin::Tense::PERF), "perfect", "perf"},
-    {Field::tense, std::to_underlying(latin::Tense::PLUP), "pluperfect", "plup"},
-    {Field::tense, std::to_underlying(latin::Tense::FUTP), "future perfect", "fut perf"},
-    {Field::voice, std::to_underlying(latin::Voice::ACTIVE), "active", "act"},
-    {Field::voice, std::to_underlying(latin::Voice::PASSIVE), "passive", "pass"},
-    {Field::mood, std::to_underlying(latin::Mood::IND), "indicative", "ind"},
-    {Field::mood, std::to_underlying(latin::Mood::SUB), "subjunctive", "subj"},
-    {Field::mood, std::to_underlying(latin::Mood::IMP), "imperative", "imp"},
-    {Field::mood, std::to_underlying(latin::Mood::INF), "infinitive", "inf"},
-    {Field::mood, std::to_underlying(latin::Mood::PPL), "participle", "ptc"},
+    {Field::part, std::to_underlying(latin::Part::noun), "noun", ""},
+    {Field::part, std::to_underlying(latin::Part::pronoun), "pronoun", ""},
+    {Field::part, std::to_underlying(latin::Part::verb), "verb", ""},
+    {Field::part, std::to_underlying(latin::Part::adjective), "adjective", ""},
+    {Field::part, std::to_underlying(latin::Part::adverb), "adverb", ""},
+    {Field::part, std::to_underlying(latin::Part::preposition), "preposition", ""},
+    {Field::part, std::to_underlying(latin::Part::numeral), "numeral", ""},
+    {Field::part, std::to_underlying(latin::Part::conjunction), "conjunction", ""},
+    {Field::part, std::to_underlying(latin::Part::interjection), "interjection", ""},
+    {Field::part, std::to_underlying(latin::Part::packon), "pronoun", ""},
+    {Field::part, std::to_underlying(latin::Part::supine), "supine", ""},
+    {Field::part, std::to_underlying(latin::Part::participle), "participle", ""},
+    {Field::caseOf, std::to_underlying(latin::Case::nominative), "nominative", "nom"},
+    {Field::caseOf, std::to_underlying(latin::Case::vocative), "vocative", "voc"},
+    {Field::caseOf, std::to_underlying(latin::Case::genitive), "genitive", "gen"},
+    {Field::caseOf, std::to_underlying(latin::Case::locative), "locative", "loc"},
+    {Field::caseOf, std::to_underlying(latin::Case::dative), "dative", "dat"},
+    {Field::caseOf, std::to_underlying(latin::Case::ablative), "ablative", "abl"},
+    {Field::caseOf, std::to_underlying(latin::Case::accusative), "accusative", "acc"},
+    {Field::number, std::to_underlying(latin::Number::singular), "singular", "sg"},
+    {Field::number, std::to_underlying(latin::Number::plural), "plural", "pl"},
+    {Field::gender, std::to_underlying(latin::Gender::masculine), "masculine", "m"},
+    {Field::gender, std::to_underlying(latin::Gender::feminine), "feminine", "f"},
+    {Field::gender, std::to_underlying(latin::Gender::neuter), "neuter", "n"},
+    {Field::gender, std::to_underlying(latin::Gender::common), "common", "c"},
+    {Field::comparison, std::to_underlying(latin::Comparison::comparative), "comparative", "comp"},
+    {Field::comparison, std::to_underlying(latin::Comparison::superlative), "superlative", "superl"},
+    {Field::tense, std::to_underlying(latin::Tense::present), "present", "pres"},
+    {Field::tense, std::to_underlying(latin::Tense::imperfect), "imperfect", "impf"},
+    {Field::tense, std::to_underlying(latin::Tense::future), "future", "fut"},
+    {Field::tense, std::to_underlying(latin::Tense::perfect), "perfect", "perf"},
+    {Field::tense, std::to_underlying(latin::Tense::pluperfect), "pluperfect", "plup"},
+    {Field::tense, std::to_underlying(latin::Tense::futurePerfect), "future perfect", "fut perf"},
+    {Field::voice, std::to_underlying(latin::Voice::active), "active", "act"},
+    {Field::voice, std::to_underlying(latin::Voice::passive), "passive", "pass"},
+    {Field::mood, std::to_underlying(latin::Mood::indicative), "indicative", "ind"},
+    {Field::mood, std::to_underlying(latin::Mood::subjunctive), "subjunctive", "subj"},
+    {Field::mood, std::to_underlying(latin::Mood::imperative), "imperative", "imp"},
+    {Field::mood, std::to_underlying(latin::Mood::infinitive), "infinitive", "inf"},
+    {Field::mood, std::to_underlying(latin::Mood::participle), "participle", "ptc"},
 };
 
 template <typename T> [[nodiscard]] std::string_view inWords(Field field, T value, bool brief = false) {
@@ -190,7 +190,7 @@ void append(std::string& out, std::string_view word) {
   append(out, inWords(Field::tense, g.tense, brief));
   append(out, inWords(Field::voice, g.voice, brief));
   append(out, inWords(Field::mood, g.mood, brief));
-  if (g.part == latin::Part::SUPINE)
+  if (g.part == latin::Part::supine)
     append(out, "supine");
   return out;
 }
@@ -200,11 +200,11 @@ void append(std::string& out, std::string_view word) {
   const std::string nth = ordinal(word.which.value);
   if (nth.empty() || out.empty())
     return out;
-  if (word.part == latin::Part::V)
+  if (word.part == latin::Part::verb)
     out += ", " + nth + " conjugation";
-  else if (word.part == latin::Part::ADJ && word.which.value == 1)
+  else if (word.part == latin::Part::adjective && word.which.value == 1)
     out += ", 1st/2nd declension";
-  else if (word.part == latin::Part::N || word.part == latin::Part::ADJ || word.part == latin::Part::PRON)
+  else if (word.part == latin::Part::noun || word.part == latin::Part::adjective || word.part == latin::Part::pronoun)
     out += ", " + nth + " declension";
   return out;
 }
@@ -219,15 +219,15 @@ void append(std::string& out, std::string_view word) {
   if (key < 1 || key > 4)
     return "";
   switch (latin::Part{part}) {
-    case latin::Part::N:
-    case latin::Part::PRON:
-    case latin::Part::PACK:
+    case latin::Part::noun:
+    case latin::Part::pronoun:
+    case latin::Part::packon:
       return kNoun[key - 1];
-    case latin::Part::ADJ:
+    case latin::Part::adjective:
       return kAdjective[key - 1];
-    case latin::Part::V:
+    case latin::Part::verb:
       return kVerb[key - 1];
-    case latin::Part::NUM:
+    case latin::Part::numeral:
       return kNumeral[key - 1];
     default:
       return "";
@@ -708,15 +708,19 @@ struct ApiRows {
     const std::string quote = apiBinding == Binding::python ? "'" : "\"";
     apiRow(path, quote + value + quote);
   }
-  void enumerated(std::string_view path, std::string_view type, const char* cName, const char* value) {
+  void enumerated(std::string_view path, std::string_view type, const char* cName, const char* value,
+                  const char* label = nullptr) {
     const std::string name = value ? value : "?";
+    const std::string comment = label == nullptr                ? ""
+                                : apiBinding == Binding::python ? std::string{"  # "} + label
+                                                                : std::string{"  // "} + label;
     switch (apiBinding) {
       case Binding::cpp:
-        return apiRow(path, "latin::" + std::string{type} + "::" + name);
+        return apiRow(path, "latin::" + std::string{type} + "::" + name + comment);
       case Binding::c:
-        return apiRow(path, cName);
+        return apiRow(path, cName + comment);
       case Binding::python:
-        return apiRow(path, std::string{type} + "." + name);
+        return apiRow(path, std::string{type} + "." + name + comment);
     }
   }
 };

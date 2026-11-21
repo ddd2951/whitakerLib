@@ -17,7 +17,7 @@ void addPackonReadings(Work& out, const std::string_view word) { whitaker::packo
 }
 
 [[nodiscard]] bool isDictionaryQuPronoun(const Reading& reading) {
-  return part(reading) == latin::Part::PRON && (reading.g[0] >> 4) == 1 &&
+  return part(reading) == latin::Part::pronoun && (reading.g[0] >> 4) == 1 &&
          reading.entry < std::to_underlying(kFirstUnique);
 }
 
@@ -57,23 +57,23 @@ void addQuPronounAfterTickon(Work& out, const std::string_view word) {
 [[nodiscard]] bool tackonAccepts(const Match& match, const rel::Addon& tackon) {
   const bool samePart = part(match) == tackon.targetPart;
   switch (tackon.targetPart) {
-    case latin::Part::X:
+    case latin::Part::any:
       return true;
-    case latin::Part::ADJ:
+    case latin::Part::adjective:
       return samePart;
-    case latin::Part::N:
-    case latin::Part::PRON:
+    case latin::Part::noun:
+    case latin::Part::pronoun:
       return samePart && declensionWithin(grammar(match), tackon);
-    case latin::Part::V:
-    case latin::Part::ADV:
-    case latin::Part::PREP:
-    case latin::Part::NUM:
-    case latin::Part::CONJ:
-    case latin::Part::INTERJ:
-    case latin::Part::PACK:
-    case latin::Part::SUPINE:
-    case latin::Part::VPAR:
-    case latin::Part::NONE:
+    case latin::Part::verb:
+    case latin::Part::adverb:
+    case latin::Part::preposition:
+    case latin::Part::numeral:
+    case latin::Part::conjunction:
+    case latin::Part::interjection:
+    case latin::Part::packon:
+    case latin::Part::supine:
+    case latin::Part::participle:
+    case latin::Part::none:
       break;
   }
   return false;
@@ -155,8 +155,8 @@ void addTackonReadings(Work& out, const std::string_view word, const Stage stage
     addWordReadings(out, base, stage);
     keepOnly(out, before, [&](const int i) { return tackonAccepts(out.matches[i], tackon); });
     // NOTE: The image keeps trimmed readings for PRON and ADJ only.
-    const bool sweeps =
-        stage == Stage::dictionary && (tackon.targetPart == latin::Part::PRON || tackon.targetPart == latin::Part::ADJ);
+    const bool sweeps = stage == Stage::dictionary &&
+                        (tackon.targetPart == latin::Part::pronoun || tackon.targetPart == latin::Part::adjective);
     const bool swept = sweeps && sweepOnlyWhatTackonTakes(out, base, before, tackon);
     // NOTE: Readings the tackon rejects are not trimmed: no "*" from them.
     if (out.count == before) {

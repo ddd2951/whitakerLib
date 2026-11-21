@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <format>
 #include <limits>
-#include <print>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -59,10 +58,10 @@ void validateAddonSearchRecords() {
             rel::Section::Classes,
             [&](const rel::ClassRecord& r) { return rel::end(rel::rows(r)) <= count(rel::Section::ClassRows); }),
         "every class's rows are class rows");
-  check(
-      every<rel::InflectionRecord>(rel::Section::Inflections,
-                                   [&](const rel::InflectionRecord& r) { return inPool(r.ending) && r.stemKey <= 9; }),
-      "every inflection's ending and stem key are valid");
+  check(every<rel::InflectionRecord>(
+            rel::Section::Inflections,
+            [&](const rel::InflectionRecord& r) { return inPool(r.ending) && r.stemKey <= latin::kStemKeyMaximum; }),
+        "every inflection's ending and stem key are valid");
   std::string_view previous{};
   check(every<rel::EndingRecord>(rel::Section::Endings,
                                  [&](const rel::EndingRecord& r) {
@@ -76,29 +75,31 @@ void validateAddonSearchRecords() {
         "the endings are sorted and name inflections");
   std::pair<std::uint16_t, std::string_view> before{};
   bool first = true;
-  check(every<rel::InflectionLabelRecord>(
-            rel::Section::InflectionLabels,
-            [&](const rel::InflectionLabelRecord& r) {
-              const std::pair<std::uint16_t, std::string_view> key{r.description, text(r.ending)};
-              if (!inPool(r.ending) || r.description >= count(rel::Section::Grammars) || (!first && !(before < key)))
-                return false;
-              before = key, first = false;
-              return true;
-            }),
+  check(every<rel::InflectionLabelRecord>(rel::Section::InflectionLabels,
+                                          [&](const rel::InflectionLabelRecord& r) {
+                                            if (!inPool(r.ending) || r.description >= count(rel::Section::Grammars))
+                                              return false;
+                                            const auto key = std::pair{r.description, text(r.ending)};
+                                            if (!first && !(before < key))
+                                              return false;
+                                            before = key, first = false;
+                                            return true;
+                                          }),
         "the inflection labels are sorted and name grammars");
   previous = {};
   check(every<rel::StemRecord>(rel::Section::Stems,
                                [&](const rel::StemRecord& r) {
                                  return r.dictionary < count(rel::Section::Dictionaries) &&
-                                        (r.stemKey <= 9 || r.stemKey == 255) && part(rel::part(r)) &&
-                                        rel::part(r) != latin::Part::X;
+                                        (r.stemKey <= latin::kStemKeyMaximum || r.stemKey == 255) &&
+                                        part(rel::part(r)) && rel::part(r) != latin::Part::any;
                                }),
         "the stems name dictionary entries");
   check(every<rel::AddonRecord>(rel::Section::Addons,
                                 [&](const rel::AddonRecord& r) {
                                   return inPool(r.fix) && inPool(r.meaning) &&
                                          latin::isAddonKind(std::to_underlying(r.kind)) && part(r.root) &&
-                                         part(r.targetPart) && r.rootStemKey <= 9 && r.targetStemKey <= 9 &&
+                                         part(r.targetPart) && r.rootStemKey <= latin::kStemKeyMaximum &&
+                                         r.targetStemKey <= latin::kStemKeyMaximum &&
                                          rel::end(rel::rows(r)) <= count(rel::Section::ClassRows);
                                 }),
         "every addon's strings, parts, keys and rows are valid");
@@ -106,7 +107,4 @@ void validateAddonSearchRecords() {
 
 } // namespace
 
-void execution_steps::image_file::checkAddonTables() {
-  validateAddonSearchRecords();
-  std::println("  exhaustive spelling / ordered-row / field check: exact");
-}
+void execution_steps::image_file::checkAddonTables() { validateAddonSearchRecords(); }

@@ -30,17 +30,17 @@ inline constexpr latin::StemKey kNoColumn{0};
                                               const latin::StemKey key) {
   if (firstTwoEqual(e))
     return (key.value == 1 || key.value == 2) ? latin::StemKey{1} : key;
-  if (d.comparison == latin::Comparison::COMP)
+  if (d.comparison == latin::Comparison::comparative)
     return key.value == 3 ? latin::StemKey{1} : kNoColumn;
-  if (d.comparison == latin::Comparison::SUPER)
+  if (d.comparison == latin::Comparison::superlative)
     return key.value == 4 ? latin::StemKey{1} : kNoColumn;
   return key;
 }
 [[nodiscard]] constexpr latin::StemKey column(const latin::Adverb& d, const word::DictlineEntry&,
                                               const latin::StemKey key) {
-  if (d.comparison == latin::Comparison::COMP)
+  if (d.comparison == latin::Comparison::comparative)
     return key.value == 2 ? latin::StemKey{1} : kNoColumn;
-  if (d.comparison == latin::Comparison::SUPER)
+  if (d.comparison == latin::Comparison::superlative)
     return key.value == 3 ? latin::StemKey{1} : kNoColumn;
   return key;
 }
@@ -51,15 +51,15 @@ inline constexpr latin::StemKey kNoColumn{0};
 [[nodiscard]] constexpr latin::StemKey column(const latin::Numeral& d, const word::DictlineEntry&,
                                               const latin::StemKey key) {
   switch (d.numeralSort) {
-    case latin::NumeralSort::CARD:
+    case latin::NumeralSort::cardinal:
       return key.value == 1 ? latin::StemKey{1} : kNoColumn;
-    case latin::NumeralSort::ORD:
+    case latin::NumeralSort::ordinal:
       return key.value == 2 ? latin::StemKey{1} : kNoColumn;
-    case latin::NumeralSort::DIST:
+    case latin::NumeralSort::distributive:
       return key.value == 3 ? latin::StemKey{1} : kNoColumn;
-    case latin::NumeralSort::ADVERB:
+    case latin::NumeralSort::adverbial:
       return key.value == 4 ? latin::StemKey{1} : kNoColumn;
-    case latin::NumeralSort::X:
+    case latin::NumeralSort::any:
       break;
   }
   return key;
@@ -74,20 +74,20 @@ inline constexpr latin::StemKey kNoColumn{0};
 }
 
 [[nodiscard]] constexpr latin::Comparison adjectiveDegree(const latin::Adjective& d, const latin::StemKey key) {
-  if (d.comparison == latin::Comparison::POS || d.comparison == latin::Comparison::COMP ||
-      d.comparison == latin::Comparison::SUPER)
+  if (d.comparison == latin::Comparison::positive || d.comparison == latin::Comparison::comparative ||
+      d.comparison == latin::Comparison::superlative)
     return d.comparison;
   switch (key.value) {
     case 0:
     case 1:
     case 2:
-      return latin::Comparison::POS;
+      return latin::Comparison::positive;
     case 3:
-      return latin::Comparison::COMP;
+      return latin::Comparison::comparative;
     case 4:
-      return latin::Comparison::SUPER;
+      return latin::Comparison::superlative;
     default:
-      return latin::Comparison::X;
+      return latin::Comparison::any;
   }
 }
 

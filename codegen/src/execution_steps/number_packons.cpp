@@ -1,12 +1,12 @@
 #include "execution_steps/steps.hpp"
 
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
-#include "error/error.hpp"
 #include "helpers/addon_at.hpp"
 #include "storage/addon_rows.hpp"
 #include "storage/packons.hpp"
 #include "src/search/relationship_schema.hpp"
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -29,10 +29,10 @@ using storage::AddonRows;
   std::map<std::string, std::uint16_t> result{};
   for (std::size_t index = 0; index < packons.size(); ++index) {
     const std::uint16_t ordinal = static_cast<std::uint16_t>(index + 1);
-    if (ordinal > rel::kRulePackonMask)
-      error::fatal("image: more packons than the class rules can name");
+    assert(ordinal <= rel::kRulePackonMask);
     const auto packon = std::get<latin::addon::Tackon>(addonAt(packons[index]).addon);
-    result.emplace(normalize(packon.fix), ordinal);
+    const bool fresh = result.emplace(normalize(packon.fix), ordinal).second;
+    assert(fresh);
   }
   return result;
 }

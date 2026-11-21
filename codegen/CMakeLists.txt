@@ -12,7 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(${WHITAKER_SUBTREE}/warnings.cmake)
 
 # -Wno-shadow: every `template for` expansion trips -Wshadow (GCC 16.2.1).
-set(GEN_OPTIONS -fno-exceptions -fno-rtti -Werror
+set(GEN_OPTIONS -fno-exceptions -fno-rtti -UNDEBUG -Werror
     ${WHITAKER_WARNINGS} ${WHITAKER_WARNINGS_CXX}
     ${WHITAKER_WARNINGS_GNU} ${WHITAKER_WARNINGS_GNU_CXX} -Wno-shadow)
 
@@ -104,7 +104,6 @@ add_executable(gen_binary
     src/word/word.cpp
     src/expand/expand.cpp
     src/expand/common/reading.cpp
-    src/emitter/image_file.cpp
     src/emitter/relationship_emitter/string_section.cpp)
 set_target_properties(gen_binary PROPERTIES OUTPUT_NAME gen_image)
 target_include_directories(gen_binary PRIVATE src)

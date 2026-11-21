@@ -1,5 +1,7 @@
 #pragma once
 
+#include <latin_types.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -26,13 +28,37 @@ consteval std::string decimal(unsigned value) {
 
 template <typename E> inline constexpr auto kEnumerators = std::define_static_array(std::meta::enumerators_of(^^E));
 
+// INFO: An enumerator as WORDS writes it: its LATIN_WORDS token, or its own name when it has none.
+consteval std::string_view wordsName(const std::meta::info enumerator) {
+  const auto tags = std::meta::annotations_of_with_type(enumerator, ^^latin::tag::Words);
+  if (tags.empty())
+    return std::meta::identifier_of(enumerator);
+  return std::define_static_string(std::meta::extract<latin::tag::Words>(tags[0]).token);
+}
+
+// INFO: Whether a reader sees this enum's values: its enumerators carry WORDS' tokens as tags.
+consteval bool isReaderFacing(const std::meta::info type) {
+  for (const auto e : std::meta::enumerators_of(type))
+    if (!std::meta::annotations_of_with_type(e, ^^latin::tag::Words).empty())
+      return true;
+  return false;
+}
+
+// INFO: An enumerator in the reader's words: its name split at capitals, futurePerfect as "future perfect".
+consteval std::string label(const std::meta::info enumerator) {
+  std::string out{};
+  for (const char c : std::meta::identifier_of(enumerator))
+    out += c >= 'A' && c <= 'Z' ? std::string{' ', static_cast<char>(c - 'A' + 'a')} : std::string{c};
+  return out;
+}
+
 template <typename E> [[nodiscard]] constexpr std::string_view enumToSv(const E value) {
-  template for (constexpr auto e : kEnumerators<E>) if ([:e:] == value) return std::meta::identifier_of(e);
+  template for (constexpr auto e : kEnumerators<E>) if ([:e:] == value) return wordsName(e);
   return {};
 }
 
 template <typename E> [[nodiscard]] constexpr std::optional<E> trySvToEnum(const std::string_view name) {
-  template for (constexpr auto e : kEnumerators<E>) if (std::meta::identifier_of(e) == name) return [:e:];
+  template for (constexpr auto e : kEnumerators<E>) if (wordsName(e) == name) return [:e:];
   return std::nullopt;
 }
 

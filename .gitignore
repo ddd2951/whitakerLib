@@ -25,3 +25,6 @@ data/source/DICTLINE.GEN
 data/source/INFLECTS.LAT
 data/source/UNIQUES.LAT
 data/source/ADDONS.LAT
+
+# A failed image isn't cleaned up automatically, so it can be inspected for why, but this keeps git from picking it up.
+data/.whitaker.dat.tmp.*

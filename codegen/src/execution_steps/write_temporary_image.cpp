@@ -7,6 +7,7 @@
 
 #include <cerrno>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <span>
 #include <string>
@@ -24,6 +25,8 @@ bool fail(std::string& failure, std::string message) {
   failure = std::move(message);
   return false;
 }
+
+std::string reason(const fs::path& path) { return path.string() + ": " + std::strerror(errno); }
 
 class Temporary {
 public:
@@ -48,12 +51,13 @@ public:
       if (stream != nullptr)
         return true;
       if (errno != EEXIST) {
+        fail(failure, "cannot create " + reason(temporaryPath));
         temporaryPath.clear();
-        return fail(failure, "cannot create the temporary file");
+        return false;
       }
     }
     temporaryPath.clear();
-    return fail(failure, "no free temporary file name");
+    return fail(failure, "no free temporary file name beside " + destination.string());
   }
 
   [[nodiscard]] std::FILE* file() const { return stream; }
@@ -63,11 +67,12 @@ public:
     std::FILE* const file = stream;
     stream = nullptr;
     if (std::fflush(file) != 0 || ::fsync(::fileno(file)) != 0) {
+      fail(failure, "cannot flush " + reason(temporaryPath));
       std::fclose(file);
-      return fail(failure, "cannot flush the temporary file to storage");
+      return false;
     }
     if (std::fclose(file) != 0)
-      return fail(failure, "cannot close the temporary file");
+      return fail(failure, "cannot close " + reason(temporaryPath));
     return true;
   }
 
@@ -80,13 +85,14 @@ private:
 };
 
 // INFO: The image written beside the destination, flushed to storage and kept; an empty path when that fails.
+//  publishImage renames it over the destination; a later step that stops gen leaves it there to look at.
 [[nodiscard]] fs::path writeBeside(const fs::path& destination, const std::span<const unsigned char> bytes,
                                    std::string& failure) {
   Temporary temporary{};
   if (!temporary.openBeside(destination, failure))
     return {};
   if (std::fwrite(bytes.data(), 1, bytes.size(), temporary.file()) != bytes.size()) {
-    fail(failure, "cannot write the temporary file");
+    fail(failure, "cannot write " + reason(temporary.path()));
     return {};
   }
   if (!temporary.close(failure))

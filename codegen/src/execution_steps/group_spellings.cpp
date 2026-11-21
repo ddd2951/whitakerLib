@@ -1,15 +1,14 @@
 #include "execution_steps/steps.hpp"
 
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
-#include "error/error.hpp"
 #include "expand/expand.hpp"
 #include "storage/image.hpp"
 #include "storage/source.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <format>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -38,8 +37,7 @@ void groupSpellings(std::vector<SourceRow> source, ImageData& image) {
     while (i < source.size() && source[i].word == source[begin].word)
       ++i;
     const std::size_t count = i - begin;
-    if (count > rel::kMaximumResultsPerSpelling)
-      error::fatal(std::format("image: a spelling with more than {} results", rel::kMaximumResultsPerSpelling));
+    assert(count <= rel::kMaximumResultsPerSpelling);
     image.words.push_back(Word{source[begin].word, static_cast<std::uint32_t>(image.analyses.size()),
                                static_cast<std::uint16_t>(count), trimmed.contains(source[begin].word)});
     trimmed.erase(source[begin].word);

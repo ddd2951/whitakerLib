@@ -22,20 +22,20 @@ namespace latin {
 
 [[nodiscard]] constexpr bool isPart(unsigned char value) noexcept {
   switch (Part{value}) {
-    case Part::X:
-    case Part::N:
-    case Part::PRON:
-    case Part::V:
-    case Part::ADJ:
-    case Part::ADV:
-    case Part::PREP:
-    case Part::NUM:
-    case Part::CONJ:
-    case Part::INTERJ:
-    case Part::PACK:
-    case Part::SUPINE:
-    case Part::VPAR:
-    case Part::NONE:
+    case Part::any:
+    case Part::noun:
+    case Part::pronoun:
+    case Part::verb:
+    case Part::adjective:
+    case Part::adverb:
+    case Part::preposition:
+    case Part::numeral:
+    case Part::conjunction:
+    case Part::interjection:
+    case Part::packon:
+    case Part::supine:
+    case Part::participle:
+    case Part::none:
       return true;
   }
   return false;
@@ -54,43 +54,43 @@ namespace latin {
 }
 
 // INFO: Reduce_Stem_List: a prefix's root of X accepts any part.
-[[nodiscard]] constexpr bool rootAdmits(Part root, Part part) noexcept { return root == Part::X || root == part; }
+[[nodiscard]] constexpr bool rootAdmits(Part root, Part part) noexcept { return root == Part::any || root == part; }
 
 // INFO: Reduce_Stem_List's "<=" on parts.
 [[nodiscard]] constexpr bool suffixRootAdmits(Part root, Part part) noexcept {
-  return rootAdmits(root, part) || (part == Part::PACK && root == Part::PRON);
+  return rootAdmits(root, part) || (part == Part::packon && root == Part::pronoun);
 }
 
 // INFO: Part_Of_Speech_Type's order.
 [[nodiscard]] constexpr unsigned pofsPos(Part part) noexcept {
   switch (part) {
-    case Part::X:
+    case Part::any:
       return 0;
-    case Part::N:
+    case Part::noun:
       return 1;
-    case Part::PRON:
+    case Part::pronoun:
       return 2;
-    case Part::PACK:
+    case Part::packon:
       return 3;
-    case Part::ADJ:
+    case Part::adjective:
       return 4;
-    case Part::NUM:
+    case Part::numeral:
       return 5;
-    case Part::ADV:
+    case Part::adverb:
       return 6;
-    case Part::V:
+    case Part::verb:
       return 7;
-    case Part::VPAR:
+    case Part::participle:
       return 8;
-    case Part::SUPINE:
+    case Part::supine:
       return 9;
-    case Part::PREP:
+    case Part::preposition:
       return 10;
-    case Part::CONJ:
+    case Part::conjunction:
       return 11;
-    case Part::INTERJ:
+    case Part::interjection:
       return 12;
-    case Part::NONE:
+    case Part::none:
       return 13;
   }
   return 13;
@@ -104,14 +104,13 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
 }
 
 [[nodiscard]] inline auto sortFields(const Analysis& q) {
-  using enum Part;
   const unsigned none = 0;
   switch (q.part) {
-    case N:
-    case PRON:
-    case PACK:
-    case VPAR:
-    case SUPINE:
+    case Part::noun:
+    case Part::pronoun:
+    case Part::packon:
+    case Part::participle:
+    case Part::supine:
       return std::tuple{unsigned{q.which.value},
                         sortValue(q.variant),
                         sortValue(q.number),
@@ -119,7 +118,7 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
                         sortValue(q.gender),
                         none,
                         none};
-    case ADJ:
+    case Part::adjective:
       return std::tuple{unsigned{q.which.value},
                         sortValue(q.variant),
                         sortValue(q.number),
@@ -127,7 +126,7 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
                         sortValue(q.gender),
                         sortValue(q.comparison),
                         none};
-    case NUM:
+    case Part::numeral:
       return std::tuple{unsigned{q.which.value},
                         sortValue(q.variant),
                         sortValue(q.number),
@@ -135,12 +134,12 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
                         sortValue(q.gender),
                         sortValue(q.numeralSort),
                         none};
-    case V:
+    case Part::verb:
       return std::tuple{unsigned{q.which.value}, sortValue(q.variant), sortValue(q.number), sortValue(q.tense),
                         sortValue(q.voice),      sortValue(q.mood),    sortValue(q.person)};
-    case ADV:
+    case Part::adverb:
       return std::tuple{sortValue(q.comparison), none, none, none, none, none, none};
-    case PREP:
+    case Part::preposition:
       return std::tuple{sortValue(q.caseOf), none, none, none, none, none, none};
     default:
       return std::tuple{none, none, none, none, none, none, none};
@@ -156,7 +155,7 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
 //  declension decides.
 [[nodiscard]] inline bool listedBefore(const Analysis& left, std::size_t leftEnding, const Analysis& right,
                                        std::size_t rightEnding) {
-  const bool quPronouns = left.part == Part::PRON && left.which.value == 1 && right.part == Part::PRON;
+  const bool quPronouns = left.part == Part::pronoun && left.which.value == 1 && right.part == Part::pronoun;
   if (quPronouns ? left.variant != right.variant : !(left == right))
     return quPronouns ? left.variant.value < right.variant.value : inflectionsLess(left, right);
   if (leftEnding != rightEnding)
@@ -167,7 +166,8 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
 // INFO: Reduce_Stem_List's "<=" on stem keys and its key-0 exception; the asymmetry is Whitaker's.
 [[nodiscard]] constexpr bool stemKeyAdmits(unsigned char dictKey, unsigned char wanted, Part part) noexcept {
   return dictKey == wanted || wanted == 0 ||
-         (dictKey == 0 && wanted >= 1 && wanted <= 2 && (part == Part::N || part == Part::ADJ || part == Part::V));
+         (dictKey == 0 && wanted >= 1 && wanted <= 2 &&
+          (part == Part::noun || part == Part::adjective || part == Part::verb));
 }
 
 // INFO: Whitaker's matching predicates, dictionary on the left, inflection on
@@ -191,12 +191,12 @@ template <typename T> [[nodiscard]] constexpr unsigned sortValue(T value) noexce
 
 // INFO: Reduce_Stem_List's own "<=" on genders.
 [[nodiscard]] constexpr bool genderMatches(Gender left, Gender right) noexcept {
-  return right == left || right == Gender::X || (right == Gender::C && left != Gender::N);
+  return right == left || right == Gender::any || (right == Gender::common && left != Gender::neuter);
 }
 
 // INFO: Reduce_Stem_List's ADJ comparison check.
 [[nodiscard]] constexpr bool comparisonMatches(Comparison left, Comparison right) noexcept {
-  return right == left || right == Comparison::X || left == Comparison::X;
+  return right == left || right == Comparison::any || left == Comparison::any;
 }
 
 // INFO: Load_Addons: a TACKON whose entry is a PACK of declension 1 or 2
@@ -249,19 +249,19 @@ template <typename Gloss> [[nodiscard]] constexpr bool isPackon(Declension decle
 
 // INFO: Allowed_Stem's mood and tense ranges.
 [[nodiscard]] constexpr bool moodIndToInf(Mood mood) noexcept {
-  return mood == Mood::IND || mood == Mood::SUB || mood == Mood::IMP || mood == Mood::INF;
+  return mood == Mood::indicative || mood == Mood::subjunctive || mood == Mood::imperative || mood == Mood::infinitive;
 }
 
 [[nodiscard]] constexpr bool moodIndToImp(Mood mood) noexcept {
-  return mood == Mood::IND || mood == Mood::SUB || mood == Mood::IMP;
+  return mood == Mood::indicative || mood == Mood::subjunctive || mood == Mood::imperative;
 }
 
 [[nodiscard]] constexpr bool tensePresToFut(Tense tense) noexcept {
-  return tense == Tense::PRES || tense == Tense::IMPF || tense == Tense::FUT;
+  return tense == Tense::present || tense == Tense::imperfect || tense == Tense::future;
 }
 
 [[nodiscard]] constexpr bool tensePerfToFutp(Tense tense) noexcept {
-  return tense == Tense::PERF || tense == Tense::PLUP || tense == Tense::FUTP;
+  return tense == Tense::perfect || tense == Tense::pluperfect || tense == Tense::futurePerfect;
 }
 
 // INFO: An inflection row's share of Allowed_Stem; the entry's share is its verb kind and the stem the reading prints.
@@ -284,20 +284,20 @@ struct AllowSet {
                                          bool noEnding) noexcept {
   AllowSet allow{};
   allow.add(AllowSet::IsVerb);
-  if (tense == Tense::PRES && voice == Voice::ACTIVE && mood == Mood::IMP && person.value == 2 && number == Number::S &&
-      noEnding)
+  if (tense == Tense::present && voice == Voice::active && mood == Mood::imperative && person.value == 2 &&
+      number == Number::singular && noEnding)
     allow.add(AllowSet::ShortImp);
-  if (mood == Mood::IMP && !((tense == Tense::PRES && person.value == 2) ||
-                             (tense == Tense::FUT && (person.value == 2 || person.value == 3))))
+  if (mood == Mood::imperative && !((tense == Tense::present && person.value == 2) ||
+                                    (tense == Tense::future && (person.value == 2 || person.value == 3))))
     allow.add(AllowSet::ImpNoPerson);
   if (person.value != 3)
     allow.add(AllowSet::NotThird);
-  if (voice == Voice::ACTIVE && mood == Mood::INF && tense == Tense::FUT)
+  if (voice == Voice::active && mood == Mood::infinitive && tense == Tense::future)
     allow.add(AllowSet::DepKeep);
-  else if (voice == Voice::ACTIVE && moodIndToInf(mood))
+  else if (voice == Voice::active && moodIndToInf(mood))
     allow.add(AllowSet::DepDrop);
   if (moodIndToImp(mood) &&
-      ((voice == Voice::PASSIVE && tensePresToFut(tense)) || (voice == Voice::ACTIVE && tensePerfToFutp(tense))))
+      ((voice == Voice::passive && tensePresToFut(tense)) || (voice == Voice::active && tensePerfToFutp(tense))))
     allow.add(AllowSet::SemidepDrop);
   return allow;
 }
@@ -313,17 +313,17 @@ template <typename Stem>
     allowed = stem.ends_with("dic") || stem.ends_with("duc") || stem.ends_with("fac") || stem.ends_with("fer");
   if (allow.has(AllowSet::ImpNoPerson))
     allowed = false;
-  if (kind == VerbKind::IMPERS && allow.has(AllowSet::NotThird))
+  if (kind == VerbKind::impersonal && allow.has(AllowSet::NotThird))
     allowed = false;
   // INFO: Whitaker's order: the future active infinitive restores a reading.
-  if (kind == VerbKind::DEP) {
+  if (kind == VerbKind::deponent) {
     if (allow.has(AllowSet::DepKeep))
       allowed = true;
     else if (allow.has(AllowSet::DepDrop))
       allowed = false;
   }
   // INFO: Semi-deponents are deponent only in the perfect system.
-  if (kind == VerbKind::SEMIDEP && allow.has(AllowSet::SemidepDrop))
+  if (kind == VerbKind::semideponent && allow.has(AllowSet::SemidepDrop))
     allowed = false;
   return allowed;
 }

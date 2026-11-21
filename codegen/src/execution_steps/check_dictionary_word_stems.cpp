@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <format>
-#include <print>
 #include <span>
 #include <string>
 #include <utility>
@@ -59,5 +58,4 @@ void execution_steps::image_file::checkDictionaryWordStems() {
     validateStems(index, dictlineStems(index));
   for (std::uint32_t index = 0; index < uniques; ++index)
     validateStems(word::kDictlineWords + index, {{0, std::string{word::entry(word::UniquesRow{index}).form}}});
-  std::println("  stems: every dictionary word's stems, {} words, are its source's", word::kDictlineWords + uniques);
 }

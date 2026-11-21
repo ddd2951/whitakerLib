@@ -22,7 +22,7 @@ enum class Line : std::size_t {
 inline constexpr char kTrailingPadding{' '};
 inline constexpr std::string_view kWhitespace{" "};
 
-inline constexpr std::array kParts{latin::Part::N, latin::Part::PRON, latin::Part::ADJ, latin::Part::V};
+inline constexpr std::array kParts{latin::Part::noun, latin::Part::pronoun, latin::Part::adjective, latin::Part::verb};
 
 inline constexpr std::size_t kLabelCount{5};
 

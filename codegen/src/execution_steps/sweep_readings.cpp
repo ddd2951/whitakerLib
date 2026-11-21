@@ -128,7 +128,7 @@ void orderParseArray(std::vector<ParseRecord>& sl, const std::vector<Form>& form
   }
 }
 
-// INFO: A reading Fix_Adverb made: an adverb inflection the corrections add (adverb_corrections.cpp).
+// INFO: A reading Fix_Adverb made: an adverb inflection the corrections add (expand::adverbCorrections).
 [[nodiscard]] bool fixAdverb(const Form& form) {
   const auto* const joined = std::get_if<Joined>(&form.origin);
   return joined != nullptr &&

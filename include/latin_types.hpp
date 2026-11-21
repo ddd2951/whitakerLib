@@ -12,9 +12,10 @@
 //  - stem key: which of an entry's four stems an inflection joins; each INFLECTS row names the key it needs.
 //  - allowed stem (AllowSet): WORDS' further checks on whether an inflection may join a stem (dic, duc, fac, fer).
 
-// NOTE: Values that are WORDS' own words, its tokens (NOM, PERF) and its rule names (Syncope's IS, SpellingKind's
-//  SLURY_SWAP), keep WORDS' spelling: gen matches the tokens against WORDS' text by name, and a reader of WORDS
-//  knows them so. The library's own enums (AddonKind here, Status in whitaker.hpp) are camelCase.
+// NOTE: Values a reader sees are named in the reader's words and tagged with WORDS' token (nominative is NOM):
+//  gen matches the token against WORDS' text, and latin::name gives it back. Values that are only WORDS' own, its
+//  rule names (Syncope's IS, SpellingKind's SLURY_SWAP) and one-letter codes (Age, NounKind), keep WORDS' spelling
+//  and need no tag. The library's own enums (AddonKind here, Status in whitaker.hpp) are camelCase.
 
 // INFO: Read only by codegen; the declarations remain C++23 for library callers.
 #ifdef __cpp_impl_reflection
@@ -25,12 +26,18 @@ struct Limit {
 struct Slot {
   unsigned byte{}, shift{};
 };
+// NOTE: An array, not a pointer: a pointer to a literal cannot be an annotation's value.
+struct Words {
+  char token[9]{};
+};
 } // namespace latin::tag
 #define LATIN_LIMIT(n) [[= ::latin::tag::Limit{n}]]
 #define LATIN_SLOT(b, s) [[= ::latin::tag::Slot{b, s}]]
+#define LATIN_WORDS(t) [[= ::latin::tag::Words{t}]]
 #else
 #define LATIN_LIMIT(n)
 #define LATIN_SLOT(b, s)
+#define LATIN_WORDS(t)
 #endif
 
 namespace latin {
@@ -39,20 +46,20 @@ namespace latin {
 //  compares like with like.
 enum class Part : unsigned char {
   // INFO: ADDONS.LAT's X: the record accepts any part.
-  X = 0,
-  N = 1,
-  PRON = 2,
-  V = 3,
-  ADJ = 4,
-  ADV = 5,
-  PREP = 6,
-  NUM = 7,
-  CONJ = 8,
-  INTERJ = 9,
-  PACK = 10,
-  SUPINE = 11,
-  VPAR = 12,
-  NONE = 13,
+  any LATIN_WORDS("X") = 0,
+  noun LATIN_WORDS("N") = 1,
+  pronoun LATIN_WORDS("PRON") = 2,
+  verb LATIN_WORDS("V") = 3,
+  adjective LATIN_WORDS("ADJ") = 4,
+  adverb LATIN_WORDS("ADV") = 5,
+  preposition LATIN_WORDS("PREP") = 6,
+  numeral LATIN_WORDS("NUM") = 7,
+  conjunction LATIN_WORDS("CONJ") = 8,
+  interjection LATIN_WORDS("INTERJ") = 9,
+  packon LATIN_WORDS("PACK") = 10,
+  supine LATIN_WORDS("SUPINE") = 11,
+  participle LATIN_WORDS("VPAR") = 12,
+  none LATIN_WORDS("NONE") = 13,
 };
 
 // INFO: ADDONS.LAT's record kinds, in the order the addon table stores them.
@@ -96,60 +103,60 @@ enum class SpellingKind : unsigned char {
 };
 
 enum class Case : unsigned char {
-  X = 0,
-  NOM = 1,
-  VOC = 2,
-  GEN = 3,
-  LOC = 4,
-  DAT = 5,
-  ABL = 6,
-  ACC = 7,
+  any LATIN_WORDS("X") = 0,
+  nominative LATIN_WORDS("NOM") = 1,
+  vocative LATIN_WORDS("VOC") = 2,
+  genitive LATIN_WORDS("GEN") = 3,
+  locative LATIN_WORDS("LOC") = 4,
+  dative LATIN_WORDS("DAT") = 5,
+  ablative LATIN_WORDS("ABL") = 6,
+  accusative LATIN_WORDS("ACC") = 7,
 };
 
 enum class Number : unsigned char {
-  X = 0,
-  S = 1,
-  P = 2,
+  any LATIN_WORDS("X") = 0,
+  singular LATIN_WORDS("S") = 1,
+  plural LATIN_WORDS("P") = 2,
 };
 
 enum class Gender : unsigned char {
-  X = 0,
-  M = 1,
-  F = 2,
-  N = 3,
-  C = 4,
+  any LATIN_WORDS("X") = 0,
+  masculine LATIN_WORDS("M") = 1,
+  feminine LATIN_WORDS("F") = 2,
+  neuter LATIN_WORDS("N") = 3,
+  common LATIN_WORDS("C") = 4,
 };
 
 enum class Tense : unsigned char {
-  X = 0,
-  PRES = 1,
-  IMPF = 2,
-  FUT = 3,
-  PERF = 4,
-  PLUP = 5,
-  FUTP = 6,
+  any LATIN_WORDS("X") = 0,
+  present LATIN_WORDS("PRES") = 1,
+  imperfect LATIN_WORDS("IMPF") = 2,
+  future LATIN_WORDS("FUT") = 3,
+  perfect LATIN_WORDS("PERF") = 4,
+  pluperfect LATIN_WORDS("PLUP") = 5,
+  futurePerfect LATIN_WORDS("FUTP") = 6,
 };
 
 enum class Voice : unsigned char {
-  X = 0,
-  ACTIVE = 1,
-  PASSIVE = 2,
+  any LATIN_WORDS("X") = 0,
+  active LATIN_WORDS("ACTIVE") = 1,
+  passive LATIN_WORDS("PASSIVE") = 2,
 };
 
 enum class Mood : unsigned char {
-  X = 0,
-  IND = 1,
-  SUB = 2,
-  IMP = 3,
-  INF = 4,
-  PPL = 5,
+  any LATIN_WORDS("X") = 0,
+  indicative LATIN_WORDS("IND") = 1,
+  subjunctive LATIN_WORDS("SUB") = 2,
+  imperative LATIN_WORDS("IMP") = 3,
+  infinitive LATIN_WORDS("INF") = 4,
+  participle LATIN_WORDS("PPL") = 5,
 };
 
 enum class Comparison : unsigned char {
-  X = 0,
-  POS = 1,
-  COMP = 2,
-  SUPER = 3,
+  any LATIN_WORDS("X") = 0,
+  positive LATIN_WORDS("POS") = 1,
+  comparative LATIN_WORDS("COMP") = 2,
+  superlative LATIN_WORDS("SUPER") = 3,
 };
 
 // NOTE: WORDS' noun kinds are case-sensitive: P and p are different kinds, so nothing may fold their case.
@@ -171,46 +178,46 @@ enum class NounKind : unsigned char {
 };
 
 enum class PronounKind : unsigned char {
-  X = 0,
-  PERS = 1,
-  REL = 2,
-  REFLEX = 3,
-  DEMONS = 4,
-  INTERR = 5,
-  INDEF = 6,
-  ADJECT = 7,
+  any LATIN_WORDS("X") = 0,
+  personal LATIN_WORDS("PERS") = 1,
+  relative LATIN_WORDS("REL") = 2,
+  reflexive LATIN_WORDS("REFLEX") = 3,
+  demonstrative LATIN_WORDS("DEMONS") = 4,
+  interrogative LATIN_WORDS("INTERR") = 5,
+  indefinite LATIN_WORDS("INDEF") = 6,
+  adjectival LATIN_WORDS("ADJECT") = 7,
 };
 
 enum class PackonKind : unsigned char {
-  X = 0,
-  INTERR = 1,
-  REL = 2,
-  INDEF = 3,
-  ADJECT = 4,
+  any LATIN_WORDS("X") = 0,
+  interrogative LATIN_WORDS("INTERR") = 1,
+  relative LATIN_WORDS("REL") = 2,
+  indefinite LATIN_WORDS("INDEF") = 3,
+  adjectival LATIN_WORDS("ADJECT") = 4,
 };
 
 // INFO: TO_BE is used only by the synthesized esse entry.
 enum class VerbKind : unsigned char {
-  X = 0,
-  TO_BE = 1,
-  TO_BEING = 2,
-  GEN = 3,
-  DAT = 4,
-  ABL = 5,
-  TRANS = 6,
-  INTRANS = 7,
-  IMPERS = 8,
-  DEP = 9,
-  SEMIDEP = 10,
-  PERFDEF = 11,
+  any LATIN_WORDS("X") = 0,
+  toBe LATIN_WORDS("TO_BE") = 1,
+  toBeing LATIN_WORDS("TO_BEING") = 2,
+  genitive LATIN_WORDS("GEN") = 3,
+  dative LATIN_WORDS("DAT") = 4,
+  ablative LATIN_WORDS("ABL") = 5,
+  transitive LATIN_WORDS("TRANS") = 6,
+  intransitive LATIN_WORDS("INTRANS") = 7,
+  impersonal LATIN_WORDS("IMPERS") = 8,
+  deponent LATIN_WORDS("DEP") = 9,
+  semideponent LATIN_WORDS("SEMIDEP") = 10,
+  perfectDefinite LATIN_WORDS("PERFDEF") = 11,
 };
 
 enum class NumeralSort : unsigned char {
-  X = 0,
-  CARD = 1,
-  ORD = 2,
-  DIST = 3,
-  ADVERB = 4,
+  any LATIN_WORDS("X") = 0,
+  cardinal LATIN_WORDS("CARD") = 1,
+  ordinal LATIN_WORDS("ORD") = 2,
+  distributive LATIN_WORDS("DIST") = 3,
+  adverbial LATIN_WORDS("ADVERB") = 4,
 };
 
 // INFO: WORDS' one-letter codes, as DICTLINE writes them; WORDS' own documentation says what each letter means.
@@ -378,7 +385,8 @@ struct LATIN_LIMIT(kKindMaximum) Kind {
   friend constexpr bool operator==(Kind, Kind) = default;
 };
 static_assert(std::is_trivially_copyable_v<Kind>);
-static_assert(std::to_underlying(NounKind::x) <= kKindMaximum && std::to_underlying(VerbKind::PERFDEF) <= kKindMaximum);
+static_assert(std::to_underlying(NounKind::x) <= kKindMaximum &&
+              std::to_underlying(VerbKind::perfectDefinite) <= kKindMaximum);
 
 struct Analysis {
   Part part{};

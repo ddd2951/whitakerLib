@@ -6,20 +6,39 @@
 namespace latin {
 [[nodiscard]] constexpr const char* name(Part value) noexcept {
   switch (value) {
-  case Part::X: return "X";
-  case Part::N: return "N";
-  case Part::PRON: return "PRON";
-  case Part::V: return "V";
-  case Part::ADJ: return "ADJ";
-  case Part::ADV: return "ADV";
-  case Part::PREP: return "PREP";
-  case Part::NUM: return "NUM";
-  case Part::CONJ: return "CONJ";
-  case Part::INTERJ: return "INTERJ";
-  case Part::PACK: return "PACK";
-  case Part::SUPINE: return "SUPINE";
-  case Part::VPAR: return "VPAR";
-  case Part::NONE: return "NONE";
+  case Part::any: return "X";
+  case Part::noun: return "N";
+  case Part::pronoun: return "PRON";
+  case Part::verb: return "V";
+  case Part::adjective: return "ADJ";
+  case Part::adverb: return "ADV";
+  case Part::preposition: return "PREP";
+  case Part::numeral: return "NUM";
+  case Part::conjunction: return "CONJ";
+  case Part::interjection: return "INTERJ";
+  case Part::packon: return "PACK";
+  case Part::supine: return "SUPINE";
+  case Part::participle: return "VPAR";
+  case Part::none: return "NONE";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Part value) noexcept {
+  switch (value) {
+  case Part::any: return "any";
+  case Part::noun: return "noun";
+  case Part::pronoun: return "pronoun";
+  case Part::verb: return "verb";
+  case Part::adjective: return "adjective";
+  case Part::adverb: return "adverb";
+  case Part::preposition: return "preposition";
+  case Part::numeral: return "numeral";
+  case Part::conjunction: return "conjunction";
+  case Part::interjection: return "interjection";
+  case Part::packon: return "packon";
+  case Part::supine: return "supine";
+  case Part::participle: return "participle";
+  case Part::none: return "none";
   }
   return nullptr;
 }
@@ -69,72 +88,143 @@ namespace latin {
 }
 [[nodiscard]] constexpr const char* name(Case value) noexcept {
   switch (value) {
-  case Case::X: return "X";
-  case Case::NOM: return "NOM";
-  case Case::VOC: return "VOC";
-  case Case::GEN: return "GEN";
-  case Case::LOC: return "LOC";
-  case Case::DAT: return "DAT";
-  case Case::ABL: return "ABL";
-  case Case::ACC: return "ACC";
+  case Case::any: return "X";
+  case Case::nominative: return "NOM";
+  case Case::vocative: return "VOC";
+  case Case::genitive: return "GEN";
+  case Case::locative: return "LOC";
+  case Case::dative: return "DAT";
+  case Case::ablative: return "ABL";
+  case Case::accusative: return "ACC";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Case value) noexcept {
+  switch (value) {
+  case Case::any: return "any";
+  case Case::nominative: return "nominative";
+  case Case::vocative: return "vocative";
+  case Case::genitive: return "genitive";
+  case Case::locative: return "locative";
+  case Case::dative: return "dative";
+  case Case::ablative: return "ablative";
+  case Case::accusative: return "accusative";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(Number value) noexcept {
   switch (value) {
-  case Number::X: return "X";
-  case Number::S: return "S";
-  case Number::P: return "P";
+  case Number::any: return "X";
+  case Number::singular: return "S";
+  case Number::plural: return "P";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Number value) noexcept {
+  switch (value) {
+  case Number::any: return "any";
+  case Number::singular: return "singular";
+  case Number::plural: return "plural";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(Gender value) noexcept {
   switch (value) {
-  case Gender::X: return "X";
-  case Gender::M: return "M";
-  case Gender::F: return "F";
-  case Gender::N: return "N";
-  case Gender::C: return "C";
+  case Gender::any: return "X";
+  case Gender::masculine: return "M";
+  case Gender::feminine: return "F";
+  case Gender::neuter: return "N";
+  case Gender::common: return "C";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Gender value) noexcept {
+  switch (value) {
+  case Gender::any: return "any";
+  case Gender::masculine: return "masculine";
+  case Gender::feminine: return "feminine";
+  case Gender::neuter: return "neuter";
+  case Gender::common: return "common";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(Tense value) noexcept {
   switch (value) {
-  case Tense::X: return "X";
-  case Tense::PRES: return "PRES";
-  case Tense::IMPF: return "IMPF";
-  case Tense::FUT: return "FUT";
-  case Tense::PERF: return "PERF";
-  case Tense::PLUP: return "PLUP";
-  case Tense::FUTP: return "FUTP";
+  case Tense::any: return "X";
+  case Tense::present: return "PRES";
+  case Tense::imperfect: return "IMPF";
+  case Tense::future: return "FUT";
+  case Tense::perfect: return "PERF";
+  case Tense::pluperfect: return "PLUP";
+  case Tense::futurePerfect: return "FUTP";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Tense value) noexcept {
+  switch (value) {
+  case Tense::any: return "any";
+  case Tense::present: return "present";
+  case Tense::imperfect: return "imperfect";
+  case Tense::future: return "future";
+  case Tense::perfect: return "perfect";
+  case Tense::pluperfect: return "pluperfect";
+  case Tense::futurePerfect: return "future perfect";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(Voice value) noexcept {
   switch (value) {
-  case Voice::X: return "X";
-  case Voice::ACTIVE: return "ACTIVE";
-  case Voice::PASSIVE: return "PASSIVE";
+  case Voice::any: return "X";
+  case Voice::active: return "ACTIVE";
+  case Voice::passive: return "PASSIVE";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Voice value) noexcept {
+  switch (value) {
+  case Voice::any: return "any";
+  case Voice::active: return "active";
+  case Voice::passive: return "passive";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(Mood value) noexcept {
   switch (value) {
-  case Mood::X: return "X";
-  case Mood::IND: return "IND";
-  case Mood::SUB: return "SUB";
-  case Mood::IMP: return "IMP";
-  case Mood::INF: return "INF";
-  case Mood::PPL: return "PPL";
+  case Mood::any: return "X";
+  case Mood::indicative: return "IND";
+  case Mood::subjunctive: return "SUB";
+  case Mood::imperative: return "IMP";
+  case Mood::infinitive: return "INF";
+  case Mood::participle: return "PPL";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Mood value) noexcept {
+  switch (value) {
+  case Mood::any: return "any";
+  case Mood::indicative: return "indicative";
+  case Mood::subjunctive: return "subjunctive";
+  case Mood::imperative: return "imperative";
+  case Mood::infinitive: return "infinitive";
+  case Mood::participle: return "participle";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(Comparison value) noexcept {
   switch (value) {
-  case Comparison::X: return "X";
-  case Comparison::POS: return "POS";
-  case Comparison::COMP: return "COMP";
-  case Comparison::SUPER: return "SUPER";
+  case Comparison::any: return "X";
+  case Comparison::positive: return "POS";
+  case Comparison::comparative: return "COMP";
+  case Comparison::superlative: return "SUPER";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(Comparison value) noexcept {
+  switch (value) {
+  case Comparison::any: return "any";
+  case Comparison::positive: return "positive";
+  case Comparison::comparative: return "comparative";
+  case Comparison::superlative: return "superlative";
   }
   return nullptr;
 }
@@ -159,51 +249,101 @@ namespace latin {
 }
 [[nodiscard]] constexpr const char* name(PronounKind value) noexcept {
   switch (value) {
-  case PronounKind::X: return "X";
-  case PronounKind::PERS: return "PERS";
-  case PronounKind::REL: return "REL";
-  case PronounKind::REFLEX: return "REFLEX";
-  case PronounKind::DEMONS: return "DEMONS";
-  case PronounKind::INTERR: return "INTERR";
-  case PronounKind::INDEF: return "INDEF";
-  case PronounKind::ADJECT: return "ADJECT";
+  case PronounKind::any: return "X";
+  case PronounKind::personal: return "PERS";
+  case PronounKind::relative: return "REL";
+  case PronounKind::reflexive: return "REFLEX";
+  case PronounKind::demonstrative: return "DEMONS";
+  case PronounKind::interrogative: return "INTERR";
+  case PronounKind::indefinite: return "INDEF";
+  case PronounKind::adjectival: return "ADJECT";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(PronounKind value) noexcept {
+  switch (value) {
+  case PronounKind::any: return "any";
+  case PronounKind::personal: return "personal";
+  case PronounKind::relative: return "relative";
+  case PronounKind::reflexive: return "reflexive";
+  case PronounKind::demonstrative: return "demonstrative";
+  case PronounKind::interrogative: return "interrogative";
+  case PronounKind::indefinite: return "indefinite";
+  case PronounKind::adjectival: return "adjectival";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(PackonKind value) noexcept {
   switch (value) {
-  case PackonKind::X: return "X";
-  case PackonKind::INTERR: return "INTERR";
-  case PackonKind::REL: return "REL";
-  case PackonKind::INDEF: return "INDEF";
-  case PackonKind::ADJECT: return "ADJECT";
+  case PackonKind::any: return "X";
+  case PackonKind::interrogative: return "INTERR";
+  case PackonKind::relative: return "REL";
+  case PackonKind::indefinite: return "INDEF";
+  case PackonKind::adjectival: return "ADJECT";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(PackonKind value) noexcept {
+  switch (value) {
+  case PackonKind::any: return "any";
+  case PackonKind::interrogative: return "interrogative";
+  case PackonKind::relative: return "relative";
+  case PackonKind::indefinite: return "indefinite";
+  case PackonKind::adjectival: return "adjectival";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(VerbKind value) noexcept {
   switch (value) {
-  case VerbKind::X: return "X";
-  case VerbKind::TO_BE: return "TO_BE";
-  case VerbKind::TO_BEING: return "TO_BEING";
-  case VerbKind::GEN: return "GEN";
-  case VerbKind::DAT: return "DAT";
-  case VerbKind::ABL: return "ABL";
-  case VerbKind::TRANS: return "TRANS";
-  case VerbKind::INTRANS: return "INTRANS";
-  case VerbKind::IMPERS: return "IMPERS";
-  case VerbKind::DEP: return "DEP";
-  case VerbKind::SEMIDEP: return "SEMIDEP";
-  case VerbKind::PERFDEF: return "PERFDEF";
+  case VerbKind::any: return "X";
+  case VerbKind::toBe: return "TO_BE";
+  case VerbKind::toBeing: return "TO_BEING";
+  case VerbKind::genitive: return "GEN";
+  case VerbKind::dative: return "DAT";
+  case VerbKind::ablative: return "ABL";
+  case VerbKind::transitive: return "TRANS";
+  case VerbKind::intransitive: return "INTRANS";
+  case VerbKind::impersonal: return "IMPERS";
+  case VerbKind::deponent: return "DEP";
+  case VerbKind::semideponent: return "SEMIDEP";
+  case VerbKind::perfectDefinite: return "PERFDEF";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(VerbKind value) noexcept {
+  switch (value) {
+  case VerbKind::any: return "any";
+  case VerbKind::toBe: return "to be";
+  case VerbKind::toBeing: return "to being";
+  case VerbKind::genitive: return "genitive";
+  case VerbKind::dative: return "dative";
+  case VerbKind::ablative: return "ablative";
+  case VerbKind::transitive: return "transitive";
+  case VerbKind::intransitive: return "intransitive";
+  case VerbKind::impersonal: return "impersonal";
+  case VerbKind::deponent: return "deponent";
+  case VerbKind::semideponent: return "semideponent";
+  case VerbKind::perfectDefinite: return "perfect definite";
   }
   return nullptr;
 }
 [[nodiscard]] constexpr const char* name(NumeralSort value) noexcept {
   switch (value) {
-  case NumeralSort::X: return "X";
-  case NumeralSort::CARD: return "CARD";
-  case NumeralSort::ORD: return "ORD";
-  case NumeralSort::DIST: return "DIST";
-  case NumeralSort::ADVERB: return "ADVERB";
+  case NumeralSort::any: return "X";
+  case NumeralSort::cardinal: return "CARD";
+  case NumeralSort::ordinal: return "ORD";
+  case NumeralSort::distributive: return "DIST";
+  case NumeralSort::adverbial: return "ADVERB";
+  }
+  return nullptr;
+}
+[[nodiscard]] constexpr const char* label(NumeralSort value) noexcept {
+  switch (value) {
+  case NumeralSort::any: return "any";
+  case NumeralSort::cardinal: return "cardinal";
+  case NumeralSort::ordinal: return "ordinal";
+  case NumeralSort::distributive: return "distributive";
+  case NumeralSort::adverbial: return "adverbial";
   }
   return nullptr;
 }
@@ -327,7 +467,7 @@ static_assert(sizeof(Reading) == 8);
 [[nodiscard]] constexpr bool packGrammar(const Analysis& a, std::uint8_t out[3]) noexcept {
   out[0] = out[1] = out[2] = 0;
   switch (a.part) {
-  case Part::X:
+  case Part::any:
     if (a.which.value != 0) return false;
     if (a.variant.value != 0) return false;
     if (std::to_underlying(a.caseOf) != 0) return false;
@@ -340,7 +480,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::N:
+  case Part::noun:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -358,7 +498,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::PRON:
+  case Part::pronoun:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -376,7 +516,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::V:
+  case Part::verb:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -396,7 +536,7 @@ static_assert(sizeof(Reading) == 8);
     if (unsigned(a.person.value) > 3) return false;
     out[1] |= static_cast<std::uint8_t>(a.person.value << 0);
     return true;
-  case Part::ADJ:
+  case Part::adjective:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -415,7 +555,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::ADV:
+  case Part::adverb:
     if (a.which.value != 0) return false;
     if (a.variant.value != 0) return false;
     if (std::to_underlying(a.caseOf) != 0) return false;
@@ -429,7 +569,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::PREP:
+  case Part::preposition:
     if (a.which.value != 0) return false;
     if (a.variant.value != 0) return false;
     if (unsigned(std::to_underlying(a.caseOf)) > 7) return false;
@@ -443,7 +583,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::NUM:
+  case Part::numeral:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -462,7 +602,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::CONJ:
+  case Part::conjunction:
     if (a.which.value != 0) return false;
     if (a.variant.value != 0) return false;
     if (std::to_underlying(a.caseOf) != 0) return false;
@@ -475,7 +615,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::INTERJ:
+  case Part::interjection:
     if (a.which.value != 0) return false;
     if (a.variant.value != 0) return false;
     if (std::to_underlying(a.caseOf) != 0) return false;
@@ -488,7 +628,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::PACK:
+  case Part::packon:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -506,7 +646,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::SUPINE:
+  case Part::supine:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -524,7 +664,7 @@ static_assert(sizeof(Reading) == 8);
     if (std::to_underlying(a.mood) != 0) return false;
     if (a.person.value != 0) return false;
     return true;
-  case Part::VPAR:
+  case Part::participle:
     if (unsigned(a.which.value) > 9) return false;
     out[0] |= static_cast<std::uint8_t>(a.which.value << 4);
     if (unsigned(a.variant.value) > 9) return false;
@@ -545,7 +685,7 @@ static_assert(sizeof(Reading) == 8);
     out[2] |= static_cast<std::uint8_t>(std::to_underlying(a.mood) << 0);
     if (a.person.value != 0) return false;
     return true;
-  case Part::NONE:
+  case Part::none:
     if (a.which.value != 0) return false;
     if (a.variant.value != 0) return false;
     if (std::to_underlying(a.caseOf) != 0) return false;
@@ -565,23 +705,23 @@ static_assert(sizeof(Reading) == 8);
   Analysis a{};
   a.part = r.part;
   switch (a.part) {
-  case Part::X:
+  case Part::any:
     break;
-  case Part::N:
+  case Part::noun:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
     a.number = latin::Number{static_cast<unsigned char>((r.g[1] >> 3) & 3)};
     a.gender = latin::Gender{static_cast<unsigned char>((r.g[1] >> 0) & 7)};
     break;
-  case Part::PRON:
+  case Part::pronoun:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
     a.number = latin::Number{static_cast<unsigned char>((r.g[1] >> 3) & 3)};
     a.gender = latin::Gender{static_cast<unsigned char>((r.g[1] >> 0) & 7)};
     break;
-  case Part::V:
+  case Part::verb:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.number = latin::Number{static_cast<unsigned char>((r.g[1] >> 3) & 3)};
@@ -590,7 +730,7 @@ static_assert(sizeof(Reading) == 8);
     a.mood = latin::Mood{static_cast<unsigned char>((r.g[2] >> 0) & 7)};
     a.person = latin::Person{static_cast<unsigned char>((r.g[1] >> 0) & 3)};
     break;
-  case Part::ADJ:
+  case Part::adjective:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
@@ -598,13 +738,13 @@ static_assert(sizeof(Reading) == 8);
     a.gender = latin::Gender{static_cast<unsigned char>((r.g[1] >> 0) & 7)};
     a.comparison = latin::Comparison{static_cast<unsigned char>((r.g[2] >> 0) & 3)};
     break;
-  case Part::ADV:
+  case Part::adverb:
     a.comparison = latin::Comparison{static_cast<unsigned char>((r.g[2] >> 0) & 3)};
     break;
-  case Part::PREP:
+  case Part::preposition:
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
     break;
-  case Part::NUM:
+  case Part::numeral:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
@@ -612,25 +752,25 @@ static_assert(sizeof(Reading) == 8);
     a.gender = latin::Gender{static_cast<unsigned char>((r.g[1] >> 0) & 7)};
     a.numeralSort = latin::NumeralSort{static_cast<unsigned char>((r.g[2] >> 0) & 7)};
     break;
-  case Part::CONJ:
+  case Part::conjunction:
     break;
-  case Part::INTERJ:
+  case Part::interjection:
     break;
-  case Part::PACK:
+  case Part::packon:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
     a.number = latin::Number{static_cast<unsigned char>((r.g[1] >> 3) & 3)};
     a.gender = latin::Gender{static_cast<unsigned char>((r.g[1] >> 0) & 7)};
     break;
-  case Part::SUPINE:
+  case Part::supine:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
     a.number = latin::Number{static_cast<unsigned char>((r.g[1] >> 3) & 3)};
     a.gender = latin::Gender{static_cast<unsigned char>((r.g[1] >> 0) & 7)};
     break;
-  case Part::VPAR:
+  case Part::participle:
     a.which = latin::Which{static_cast<unsigned char>((r.g[0] >> 4) & 15)};
     a.variant = latin::Variant{static_cast<unsigned char>((r.g[0] >> 0) & 15)};
     a.caseOf = latin::Case{static_cast<unsigned char>((r.g[1] >> 5) & 7)};
@@ -640,7 +780,7 @@ static_assert(sizeof(Reading) == 8);
     a.voice = latin::Voice{static_cast<unsigned char>((r.g[2] >> 3) & 3)};
     a.mood = latin::Mood{static_cast<unsigned char>((r.g[2] >> 0) & 7)};
     break;
-  case Part::NONE:
+  case Part::none:
     break;
   }
   return a;

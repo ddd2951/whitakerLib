@@ -1,10 +1,10 @@
 #include "execution_steps/steps.hpp"
 
-#include "error/error.hpp"
 #include "storage/result.hpp"
 #include "storage/back.hpp"
 #include "storage/lookup_metadata.hpp"
 #include <bit>
+#include <cassert>
 #include <cstdint>
 
 namespace rel = whitaker::relationship;
@@ -49,8 +49,7 @@ void execution_steps::lookup_tables::buildLookupHeads() {
           at[depth] = index;
           marks |= stemOf(slot) << depth;
         }
-        if (at[1] > 65535 || at[2] > 65535)
-          error::fatal("two-ended: front head index overflows");
+        assert(at[1] <= 65535 && at[2] <= 65535);
         out << "{" << (depth == 2 ? slot : 0) << "ull, " << at[1] << ", " << at[2] << ", " << marks << ", " << depth
             << "}, ";
       }
@@ -58,9 +57,8 @@ void execution_steps::lookup_tables::buildLookupHeads() {
     out << "struct BackHead { std::uint32_t mask; std::uint16_t first; std::uint16_t run[3]; std::uint8_t depth; };\n"
         << "inline constexpr BackHead kBackHead[676] = {";
     const auto packRun = [](const te::Node n) {
-      if (n.run.first >= 512 || n.run.count >= 128)
-        error::fatal("two-ended: back head run overflows");
-      return n.run.first | (n.run.count << 9);
+      assert(n.run.first < (1u << te::kHeadRunFirstBits) && n.run.count < (1u << te::kHeadRunCountBits));
+      return n.run.first | (n.run.count << te::kHeadRunFirstBits);
     };
     for (unsigned last = 0; last < 26; ++last)
       for (unsigned before = 0; before < 26; ++before) {

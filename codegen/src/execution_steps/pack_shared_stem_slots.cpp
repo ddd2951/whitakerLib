@@ -1,10 +1,10 @@
 #include "execution_steps/steps.hpp"
 
-#include "error/error.hpp"
 #include "storage/states.hpp"
 #include "storage/below.hpp"
 #include "storage/root.hpp"
 #include "storage/result.hpp"
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -36,8 +36,7 @@ void execution_steps::lookup_tables::packSharedStemSlots() {
   for (std::size_t i = 0; i < slotState.size(); ++i) {
     const auto& s = states[slotState[i]];
     const unsigned first = s.kids.empty() ? 0 : groups.at({s.mask, s.kids});
-    if (first >> rel::kFrontFirstBits || slotOffset[i] >> rel::kFrontOffsetBits)
-      error::fatal("a front slot field overflows");
+    assert(!(first >> rel::kFrontFirstBits) && !(slotOffset[i] >> rel::kFrontOffsetBits));
     result.sharedFront.push_back(rel::frontSlot(s.mask, first, slotOffset[i], s.stem));
   }
 }

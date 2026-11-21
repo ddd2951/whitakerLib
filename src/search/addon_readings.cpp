@@ -116,7 +116,7 @@ using rel::StemEntry;
 }
 
 [[nodiscard]] bool isPackonOrQuPronoun(const StemEntry& entry) {
-  return entry.part == Part::PACK || (entry.part == Part::PRON && rel::entry(entry.dictionary).which == 1);
+  return entry.part == Part::packon || (entry.part == Part::pronoun && rel::entry(entry.dictionary).which == 1);
 }
 
 [[nodiscard]] bool isConjugationThreeOne(const std::uint16_t rules) { return (rules & rel::kRuleConjThreeOne) != 0; }
@@ -388,7 +388,7 @@ void addPackonReadings(const Query& query) {
     for (const Split& split : splitAtEveryEnding(base)) {
       const std::string_view stem = base.substr(0, split.stemLength);
       for (const StemEntry& entry : entriesWithStem(stem)) {
-        if (entry.part != Part::PACK || packonNumber(entry.rules) != number)
+        if (entry.part != Part::packon || packonNumber(entry.rules) != number)
           continue;
         // NOTE: No stem-key check, as WORDS: cui.que is both DAT S X and NOM P M.
         for (const rel::ClassRowRecord& row : rowsWithEnding(entry.rows, split))

@@ -210,6 +210,12 @@ consteval std::string enumeration(info type) {
   return out + "} Whitaker" + std::string{identifier_of(type)} + ";\n\n";
 }
 
+// INFO: The label call of an enum a reader sees: whitaker_case_label, NULL for a value not in the enum.
+consteval std::string labelSignature(info type) {
+  return "const char* whitaker_" + snake(std::meta::identifier_of(type), false) + "_label(" + structName(type) +
+         " value)";
+}
+
 consteval std::string header() {
   using namespace std::meta;
   std::string out =
@@ -240,6 +246,9 @@ consteval std::string header() {
   out += "WhitakerResult* whitaker_result_new(void);\nvoid whitaker_result_free(WhitakerResult* result);\n";
   for (const info f : cFunctions())
     out += signature(f) + ";\n";
+  for (const info e : cEnums())
+    if (util::isReaderFacing(e))
+      out += labelSignature(e) + ";\n";
   return out + "\n#ifdef __cplusplus\n}\n#endif\n\n#endif\n";
 }
 
@@ -263,6 +272,10 @@ consteval std::string wrappers() {
     out += "extern \"C\" " + signature(f) + " {\n  " +
            returned(f, "whitaker::" + std::string{identifier_of(f)} + "(" + arguments + ")") + "\n}\n\n";
   }
+  for (const info e : cEnums())
+    if (util::isReaderFacing(e))
+      out += "extern \"C\" " + labelSignature(e) + " {\n  return latin::label(static_cast<" + spelled(e) +
+             ">(value));\n}\n\n";
   return out;
 }
 

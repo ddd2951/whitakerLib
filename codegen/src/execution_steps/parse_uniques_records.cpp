@@ -17,6 +17,7 @@
 #include "storage/uniques.hpp"
 #include "util/reflect_util.hpp"
 
+#include <array>
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
@@ -56,7 +57,7 @@ static_assert(std::is_trivially_copyable_v<Grammar>);
 
 Grammar noun(const Line& f, const std::size_t at, const std::string_view where) {
   constexpr std::size_t form = util::kMembers<Noun>.size();
-  expect(f, at, form + 1, latin::Part::N, where);
+  expect(f, at, form + 1, latin::Part::noun, where);
   const auto read = fill<Noun>(f, at, where);
   return {latin::Noun{read.declension, read.declensionVariant, read.gender, name<latin::NounKind>(f, at + form, where)},
           read, form + 1};
@@ -64,7 +65,7 @@ Grammar noun(const Line& f, const std::size_t at, const std::string_view where) 
 
 Grammar pronoun(const Line& f, const std::size_t at, const std::string_view where) {
   constexpr std::size_t form = util::kMembers<Pronoun>.size();
-  expect(f, at, form + 1, latin::Part::PRON, where);
+  expect(f, at, form + 1, latin::Part::pronoun, where);
   const auto read = fill<Pronoun>(f, at, where);
   return {latin::Pronoun{read.declension, read.declensionVariant, name<latin::PronounKind>(f, at + form, where)}, read,
           form + 1};
@@ -72,39 +73,41 @@ Grammar pronoun(const Line& f, const std::size_t at, const std::string_view wher
 
 Grammar adjective(const Line& f, const std::size_t at, const std::string_view where) {
   constexpr std::size_t form = util::kMembers<Adjective>.size();
-  expect(f, at, form, latin::Part::ADJ, where);
+  expect(f, at, form, latin::Part::adjective, where);
   const auto read = fill<Adjective>(f, at, where);
   return {latin::Adjective{read.declension, read.declensionVariant, read.comparison}, read, form};
 }
 
 Grammar verb(const Line& f, const std::size_t at, const std::string_view where) {
   constexpr std::size_t form = util::kMembers<Verb>.size();
-  expect(f, at, form + 1, latin::Part::V, where);
+  expect(f, at, form + 1, latin::Part::verb, where);
   const auto read = fill<Verb>(f, at, where);
   return {latin::Verb{read.conjugation, read.conjugationVariant, name<latin::VerbKind>(f, at + form, where)}, read,
           form + 1};
 }
 
 Grammar grammar(const latin::Part part, const Line& f, const std::size_t at, const std::string_view where) {
+  static_assert(scheme::kParts ==
+                std::array{latin::Part::noun, latin::Part::pronoun, latin::Part::adjective, latin::Part::verb});
   switch (part) {
-    case latin::Part::N:
+    case latin::Part::noun:
       return noun(f, at, where);
-    case latin::Part::PRON:
+    case latin::Part::pronoun:
       return pronoun(f, at, where);
-    case latin::Part::ADJ:
+    case latin::Part::adjective:
       return adjective(f, at, where);
-    case latin::Part::V:
+    case latin::Part::verb:
       return verb(f, at, where);
-    case latin::Part::X:
-    case latin::Part::ADV:
-    case latin::Part::PREP:
-    case latin::Part::NUM:
-    case latin::Part::CONJ:
-    case latin::Part::INTERJ:
-    case latin::Part::PACK:
-    case latin::Part::SUPINE:
-    case latin::Part::VPAR:
-    case latin::Part::NONE:
+    case latin::Part::any:
+    case latin::Part::adverb:
+    case latin::Part::preposition:
+    case latin::Part::numeral:
+    case latin::Part::conjunction:
+    case latin::Part::interjection:
+    case latin::Part::packon:
+    case latin::Part::supine:
+    case latin::Part::participle:
+    case latin::Part::none:
       break;
   }
   std::unreachable();

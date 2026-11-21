@@ -68,13 +68,13 @@ bool tryRespelling(Work& out, const std::string_view rewritten, const std::uint8
 
 [[nodiscard]] bool endsInEo(const Work& r) {
   const auto g = grammar(r.matches[r.count - 1]);
-  return g.part == latin::Part::V && g.which.value == 6 && g.variant.value == 1;
+  return g.part == latin::Part::verb && g.which.value == 6 && g.variant.value == 1;
 }
 
 [[nodiscard]] bool adjectiveDatAblPlural(const Match& m) {
   const auto g = grammar(m);
-  return g.part == latin::Part::ADJ && g.which.value == 1 && g.variant.value == 1 &&
-         (g.caseOf == latin::Case::DAT || g.caseOf == latin::Case::ABL) && g.number == latin::Number::P;
+  return g.part == latin::Part::adjective && g.which.value == 1 && g.variant.value == 1 &&
+         (g.caseOf == latin::Case::dative || g.caseOf == latin::Case::ablative) && g.number == latin::Number::plural;
 }
 
 struct Respeller {

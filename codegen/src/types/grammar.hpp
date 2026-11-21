@@ -9,55 +9,55 @@
 
 namespace latin {
 
-struct[[= Part::N]] Noun {
+struct[[= Part::noun]] Noun {
   Declension declension{};
   Variant declensionVariant{};
   Gender gender{};
   NounKind nounKind{};
 };
 static_assert(std::is_trivially_copyable_v<Noun>);
-struct[[= Part::PRON]] Pronoun {
+struct[[= Part::pronoun]] Pronoun {
   Declension declension{};
   Variant declensionVariant{};
   PronounKind pronounKind{};
 };
 static_assert(std::is_trivially_copyable_v<Pronoun>);
-struct[[= Part::V]] Verb {
+struct[[= Part::verb]] Verb {
   Conjugation conjugation{};
   Variant conjugationVariant{};
   VerbKind verbKind{};
 };
 static_assert(std::is_trivially_copyable_v<Verb>);
-struct[[= Part::ADJ]] Adjective {
+struct[[= Part::adjective]] Adjective {
   Declension declension{};
   Variant declensionVariant{};
   Comparison comparison{};
 };
 static_assert(std::is_trivially_copyable_v<Adjective>);
-struct[[= Part::NUM]] Numeral {
+struct[[= Part::numeral]] Numeral {
   Declension declension{};
   Variant declensionVariant{};
   NumeralSort numeralSort{};
   EntryNumeralValue numeralValue{};
 };
 static_assert(std::is_trivially_copyable_v<Numeral>);
-struct[[= Part::PACK]] Packon {
+struct[[= Part::packon]] Packon {
   Declension declension{};
   Variant declensionVariant{};
   PackonKind packonKind{};
 };
 static_assert(std::is_trivially_copyable_v<Packon>);
-struct[[= Part::ADV]] Adverb {
+struct[[= Part::adverb]] Adverb {
   Comparison comparison{};
 };
 static_assert(std::is_trivially_copyable_v<Adverb>);
-struct[[= Part::PREP]] Preposition {
+struct[[= Part::preposition]] Preposition {
   Case caseOf{};
 };
 static_assert(std::is_trivially_copyable_v<Preposition>);
-struct[[= Part::CONJ]] Conjunction {};
+struct[[= Part::conjunction]] Conjunction {};
 static_assert(std::is_trivially_copyable_v<Conjunction>);
-struct[[= Part::INTERJ]] Interjection {};
+struct[[= Part::interjection]] Interjection {};
 static_assert(std::is_trivially_copyable_v<Interjection>);
 
 using Entry =
@@ -65,7 +65,7 @@ using Entry =
 static_assert(std::is_trivially_copyable_v<Entry>);
 
 namespace inflected {
-struct[[= Part::N]] Noun {
+struct[[= Part::noun]] Noun {
   Declension declension{};
   Variant declensionVariant{};
   Case caseOf{};
@@ -73,7 +73,7 @@ struct[[= Part::N]] Noun {
   Gender gender{};
 };
 static_assert(std::is_trivially_copyable_v<Noun>);
-struct[[= Part::PRON]] Pronoun {
+struct[[= Part::pronoun]] Pronoun {
   Declension declension{};
   Variant declensionVariant{};
   Case caseOf{};
@@ -81,7 +81,7 @@ struct[[= Part::PRON]] Pronoun {
   Gender gender{};
 };
 static_assert(std::is_trivially_copyable_v<Pronoun>);
-struct[[= Part::ADJ]] Adjective {
+struct[[= Part::adjective]] Adjective {
   Declension declension{};
   Variant declensionVariant{};
   Case caseOf{};
@@ -90,7 +90,7 @@ struct[[= Part::ADJ]] Adjective {
   Comparison comparison{};
 };
 static_assert(std::is_trivially_copyable_v<Adjective>);
-struct[[= Part::NUM]] Numeral {
+struct[[= Part::numeral]] Numeral {
   Declension declension{};
   Variant declensionVariant{};
   Case caseOf{};
@@ -99,7 +99,7 @@ struct[[= Part::NUM]] Numeral {
   NumeralSort numeralSort{};
 };
 static_assert(std::is_trivially_copyable_v<Numeral>);
-struct[[= Part::V]] Verb {
+struct[[= Part::verb]] Verb {
   Conjugation conjugation{};
   Variant conjugationVariant{};
   Tense tense{};
@@ -109,7 +109,7 @@ struct[[= Part::V]] Verb {
   Number number{};
 };
 static_assert(std::is_trivially_copyable_v<Verb>);
-struct[[= Part::VPAR]] Participle {
+struct[[= Part::participle]] Participle {
   Conjugation conjugation{};
   Variant conjugationVariant{};
   Case caseOf{};
@@ -120,7 +120,7 @@ struct[[= Part::VPAR]] Participle {
   Mood mood{};
 };
 static_assert(std::is_trivially_copyable_v<Participle>);
-struct[[= Part::SUPINE]] Supine {
+struct[[= Part::supine]] Supine {
   Conjugation conjugation{};
   Variant conjugationVariant{};
   Case caseOf{};
@@ -128,17 +128,17 @@ struct[[= Part::SUPINE]] Supine {
   Gender gender{};
 };
 static_assert(std::is_trivially_copyable_v<Supine>);
-struct[[= Part::ADV]] Adverb {
+struct[[= Part::adverb]] Adverb {
   Comparison comparison{};
 };
 static_assert(std::is_trivially_copyable_v<Adverb>);
-struct[[= Part::PREP]] Preposition {
+struct[[= Part::preposition]] Preposition {
   Case caseOf{};
 };
 static_assert(std::is_trivially_copyable_v<Preposition>);
-struct[[= Part::CONJ]] Conjunction {};
+struct[[= Part::conjunction]] Conjunction {};
 static_assert(std::is_trivially_copyable_v<Conjunction>);
-struct[[= Part::INTERJ]] Interjection {};
+struct[[= Part::interjection]] Interjection {};
 static_assert(std::is_trivially_copyable_v<Interjection>);
 } // namespace inflected
 
@@ -148,7 +148,7 @@ using Inflection = std::variant<inflected::Noun, inflected::Pronoun, inflected::
 static_assert(std::is_trivially_copyable_v<Inflection>);
 
 namespace addon {
-struct[[= Part::X]] Any {};
+struct[[= Part::any]] Any {};
 static_assert(std::is_trivially_copyable_v<Any>);
 
 using Target = std::variant<Any, Noun, Pronoun, Adjective, Numeral, Verb, Adverb, Packon>;

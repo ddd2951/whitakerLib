@@ -34,9 +34,9 @@ void addEncliticReadings(Work& out, const std::string_view word, const Stage sta
 [[nodiscard]] bool anyFormOfEsse(const Work& out) {
   for (int i = 0; i < out.count; ++i) {
     const Match& match = out.matches[i];
-    if (part(match) == latin::Part::V) {
+    if (part(match) == latin::Part::verb) {
       const auto e = rel::entry(match.entry);
-      if (e.part == latin::Part::V && e.which == 5 && e.variant == 1)
+      if (e.part == latin::Part::verb && e.which == 5 && e.variant == 1)
         return true;
     }
   }
@@ -53,10 +53,10 @@ void addRomanNumeral(Work& out, const std::string_view word) {
 
   Match& match = *added;
   match = {};
-  match.part = latin::Part::NUM;
+  match.part = latin::Part::numeral;
   match.entry = std::to_underlying(kNoDictionaryWord);
   match.g[0] = 2u << 4;
-  match.g[2] = std::to_underlying(latin::NumeralSort::CARD);
+  match.g[2] = std::to_underlying(latin::NumeralSort::cardinal);
   Change c{};
   c.frequency = latin::Frequency::X;
   setChange(out, match, c);

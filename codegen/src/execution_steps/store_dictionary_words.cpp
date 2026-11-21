@@ -4,16 +4,17 @@
 #include "storage/image.hpp"
 #include "word/word.hpp"
 
-#include <cstddef>
+#include <whitaker.hpp>
+
 #include <cstdint>
-#include <limits>
+#include <utility>
 
 namespace {
 
 using namespace emitter;
 
 static_assert(word::kDictlineWords + source::scheme::uniques::kEntriesPerFile <=
-              std::size_t{std::numeric_limits<std::uint16_t>::max()} + 1);
+              std::to_underlying(whitaker::kNoDictionaryWord));
 
 void internEntries(ImageData& image) {
   image.dictionaries.resize(word::kDictlineWords + source::scheme::uniques::kEntriesPerFile);

@@ -1,7 +1,6 @@
 #include "execution_steps/steps.hpp"
 
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
-#include "error/error.hpp"
 #include "helpers/addon_value.hpp"
 #include "helpers/grammar_rules.hpp"
 #include "storage/class_grammars.hpp"
@@ -10,6 +9,7 @@
 #include "word/word.hpp"
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -59,7 +59,7 @@ using GrammarKey = std::array<std::uint16_t, 4>;
 
 [[nodiscard]] latin::VerbKind entryVerbKind(const latin::Entry& grammar) {
   const auto* const verb = std::get_if<latin::Verb>(&grammar);
-  return verb != nullptr ? verb->verbKind : latin::VerbKind::X;
+  return verb != nullptr ? verb->verbKind : latin::VerbKind::any;
 }
 
 [[nodiscard]] std::vector<latin::Entry> internClasses(const std::map<std::string, std::uint16_t>& packons,
@@ -69,16 +69,15 @@ using GrammarKey = std::array<std::uint16_t, 4>;
   for (std::uint32_t index = 0; index < word::kDictlineWords; ++index) {
     const word::DictlineEntry& dictionary = word::entry(word::DictlineRow{index});
     std::uint16_t packon = 0;
-    if (partOf(dictionary.grammar) == latin::Part::PACK) {
+    if (partOf(dictionary.grammar) == latin::Part::packon) {
       const auto named = packons.find(normalize(dictionary.packon));
-      if (named != packons.end())
-        packon = named->second;
+      assert(named != packons.end());
+      packon = named->second;
     }
     const auto [entry, inserted] =
         classIds.emplace(grammarKey(dictionary.grammar, packon), static_cast<std::uint16_t>(classGrammars.size()));
     if (inserted) {
-      if (entry->second > rel::kClassIdMask)
-        error::fatal("image: more classes than a dictionary's class id can name");
+      assert(entry->second <= rel::kClassIdMask);
       classGrammars.push_back(dictionary.grammar);
       image.classes.push_back(rel::ClassRecord{.rules = grammarRules(dictionary.grammar, packon)});
     }

@@ -5,20 +5,40 @@
 
 [[nodiscard]] constexpr const char* cName(const latin::Part value) {
   switch (value) {
-  case latin::Part::X: return "WHITAKER_PART_X";
-  case latin::Part::N: return "WHITAKER_PART_N";
-  case latin::Part::PRON: return "WHITAKER_PART_PRON";
-  case latin::Part::V: return "WHITAKER_PART_V";
-  case latin::Part::ADJ: return "WHITAKER_PART_ADJ";
-  case latin::Part::ADV: return "WHITAKER_PART_ADV";
-  case latin::Part::PREP: return "WHITAKER_PART_PREP";
-  case latin::Part::NUM: return "WHITAKER_PART_NUM";
-  case latin::Part::CONJ: return "WHITAKER_PART_CONJ";
-  case latin::Part::INTERJ: return "WHITAKER_PART_INTERJ";
-  case latin::Part::PACK: return "WHITAKER_PART_PACK";
-  case latin::Part::SUPINE: return "WHITAKER_PART_SUPINE";
-  case latin::Part::VPAR: return "WHITAKER_PART_VPAR";
-  case latin::Part::NONE: return "WHITAKER_PART_NONE";
+  case latin::Part::any: return "WHITAKER_PART_ANY";
+  case latin::Part::noun: return "WHITAKER_PART_NOUN";
+  case latin::Part::pronoun: return "WHITAKER_PART_PRONOUN";
+  case latin::Part::verb: return "WHITAKER_PART_VERB";
+  case latin::Part::adjective: return "WHITAKER_PART_ADJECTIVE";
+  case latin::Part::adverb: return "WHITAKER_PART_ADVERB";
+  case latin::Part::preposition: return "WHITAKER_PART_PREPOSITION";
+  case latin::Part::numeral: return "WHITAKER_PART_NUMERAL";
+  case latin::Part::conjunction: return "WHITAKER_PART_CONJUNCTION";
+  case latin::Part::interjection: return "WHITAKER_PART_INTERJECTION";
+  case latin::Part::packon: return "WHITAKER_PART_PACKON";
+  case latin::Part::supine: return "WHITAKER_PART_SUPINE";
+  case latin::Part::participle: return "WHITAKER_PART_PARTICIPLE";
+  case latin::Part::none: return "WHITAKER_PART_NONE";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Part value) {
+  switch (value) {
+  case latin::Part::any: return "any";
+  case latin::Part::noun: return "noun";
+  case latin::Part::pronoun: return "pronoun";
+  case latin::Part::verb: return "verb";
+  case latin::Part::adjective: return "adjective";
+  case latin::Part::adverb: return "adverb";
+  case latin::Part::preposition: return "preposition";
+  case latin::Part::numeral: return "numeral";
+  case latin::Part::conjunction: return "conjunction";
+  case latin::Part::interjection: return "interjection";
+  case latin::Part::packon: return "packon";
+  case latin::Part::supine: return "supine";
+  case latin::Part::participle: return "participle";
+  case latin::Part::none: return "none";
   }
   return "?";
 }
@@ -34,6 +54,17 @@
   return "?";
 }
 
+[[nodiscard]] constexpr const char* cppName(const latin::AddonKind value) {
+  switch (value) {
+  case latin::AddonKind::tickon: return "tickon";
+  case latin::AddonKind::prefix: return "prefix";
+  case latin::AddonKind::suffix: return "suffix";
+  case latin::AddonKind::tackon: return "tackon";
+  case latin::AddonKind::packon: return "packon";
+  }
+  return "?";
+}
+
 [[nodiscard]] constexpr const char* cName(const latin::Route value) {
   switch (value) {
   case latin::Route::direct: return "WHITAKER_ROUTE_DIRECT";
@@ -41,6 +72,17 @@
   case latin::Route::adverb: return "WHITAKER_ROUTE_ADVERB";
   case latin::Route::slur: return "WHITAKER_ROUTE_SLUR";
   case latin::Route::wordMod: return "WHITAKER_ROUTE_WORD_MOD";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Route value) {
+  switch (value) {
+  case latin::Route::direct: return "direct";
+  case latin::Route::syncope: return "syncope";
+  case latin::Route::adverb: return "adverb";
+  case latin::Route::slur: return "slur";
+  case latin::Route::wordMod: return "wordMod";
   }
   return "?";
 }
@@ -53,6 +95,18 @@
   case latin::Syncope::R: return "WHITAKER_SYNCOPE_R";
   case latin::Syncope::IER: return "WHITAKER_SYNCOPE_IER";
   case latin::Syncope::IS: return "WHITAKER_SYNCOPE_IS";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Syncope value) {
+  switch (value) {
+  case latin::Syncope::NONE: return "NONE";
+  case latin::Syncope::II: return "II";
+  case latin::Syncope::S: return "S";
+  case latin::Syncope::R: return "R";
+  case latin::Syncope::IER: return "IER";
+  case latin::Syncope::IS: return "IS";
   }
   return "?";
 }
@@ -71,80 +125,172 @@
   return "?";
 }
 
+[[nodiscard]] constexpr const char* cppName(const latin::SpellingKind value) {
+  switch (value) {
+  case latin::SpellingKind::SLURY_SWAP: return "SLURY_SWAP";
+  case latin::SpellingKind::SLUR: return "SLUR";
+  case latin::SpellingKind::REPLACED: return "REPLACED";
+  case latin::SpellingKind::SWAP: return "SWAP";
+  case latin::SpellingKind::INTERNAL: return "INTERNAL";
+  case latin::SpellingKind::EO_IIS: return "EO_IIS";
+  case latin::SpellingKind::TERMINAL_IIS: return "TERMINAL_IIS";
+  case latin::SpellingKind::DOUBLED: return "DOUBLED";
+  }
+  return "?";
+}
+
 [[nodiscard]] constexpr const char* cName(const latin::Case value) {
   switch (value) {
-  case latin::Case::X: return "WHITAKER_CASE_X";
-  case latin::Case::NOM: return "WHITAKER_CASE_NOM";
-  case latin::Case::VOC: return "WHITAKER_CASE_VOC";
-  case latin::Case::GEN: return "WHITAKER_CASE_GEN";
-  case latin::Case::LOC: return "WHITAKER_CASE_LOC";
-  case latin::Case::DAT: return "WHITAKER_CASE_DAT";
-  case latin::Case::ABL: return "WHITAKER_CASE_ABL";
-  case latin::Case::ACC: return "WHITAKER_CASE_ACC";
+  case latin::Case::any: return "WHITAKER_CASE_ANY";
+  case latin::Case::nominative: return "WHITAKER_CASE_NOMINATIVE";
+  case latin::Case::vocative: return "WHITAKER_CASE_VOCATIVE";
+  case latin::Case::genitive: return "WHITAKER_CASE_GENITIVE";
+  case latin::Case::locative: return "WHITAKER_CASE_LOCATIVE";
+  case latin::Case::dative: return "WHITAKER_CASE_DATIVE";
+  case latin::Case::ablative: return "WHITAKER_CASE_ABLATIVE";
+  case latin::Case::accusative: return "WHITAKER_CASE_ACCUSATIVE";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Case value) {
+  switch (value) {
+  case latin::Case::any: return "any";
+  case latin::Case::nominative: return "nominative";
+  case latin::Case::vocative: return "vocative";
+  case latin::Case::genitive: return "genitive";
+  case latin::Case::locative: return "locative";
+  case latin::Case::dative: return "dative";
+  case latin::Case::ablative: return "ablative";
+  case latin::Case::accusative: return "accusative";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::Number value) {
   switch (value) {
-  case latin::Number::X: return "WHITAKER_NUMBER_X";
-  case latin::Number::S: return "WHITAKER_NUMBER_S";
-  case latin::Number::P: return "WHITAKER_NUMBER_P";
+  case latin::Number::any: return "WHITAKER_NUMBER_ANY";
+  case latin::Number::singular: return "WHITAKER_NUMBER_SINGULAR";
+  case latin::Number::plural: return "WHITAKER_NUMBER_PLURAL";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Number value) {
+  switch (value) {
+  case latin::Number::any: return "any";
+  case latin::Number::singular: return "singular";
+  case latin::Number::plural: return "plural";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::Gender value) {
   switch (value) {
-  case latin::Gender::X: return "WHITAKER_GENDER_X";
-  case latin::Gender::M: return "WHITAKER_GENDER_M";
-  case latin::Gender::F: return "WHITAKER_GENDER_F";
-  case latin::Gender::N: return "WHITAKER_GENDER_N";
-  case latin::Gender::C: return "WHITAKER_GENDER_C";
+  case latin::Gender::any: return "WHITAKER_GENDER_ANY";
+  case latin::Gender::masculine: return "WHITAKER_GENDER_MASCULINE";
+  case latin::Gender::feminine: return "WHITAKER_GENDER_FEMININE";
+  case latin::Gender::neuter: return "WHITAKER_GENDER_NEUTER";
+  case latin::Gender::common: return "WHITAKER_GENDER_COMMON";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Gender value) {
+  switch (value) {
+  case latin::Gender::any: return "any";
+  case latin::Gender::masculine: return "masculine";
+  case latin::Gender::feminine: return "feminine";
+  case latin::Gender::neuter: return "neuter";
+  case latin::Gender::common: return "common";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::Tense value) {
   switch (value) {
-  case latin::Tense::X: return "WHITAKER_TENSE_X";
-  case latin::Tense::PRES: return "WHITAKER_TENSE_PRES";
-  case latin::Tense::IMPF: return "WHITAKER_TENSE_IMPF";
-  case latin::Tense::FUT: return "WHITAKER_TENSE_FUT";
-  case latin::Tense::PERF: return "WHITAKER_TENSE_PERF";
-  case latin::Tense::PLUP: return "WHITAKER_TENSE_PLUP";
-  case latin::Tense::FUTP: return "WHITAKER_TENSE_FUTP";
+  case latin::Tense::any: return "WHITAKER_TENSE_ANY";
+  case latin::Tense::present: return "WHITAKER_TENSE_PRESENT";
+  case latin::Tense::imperfect: return "WHITAKER_TENSE_IMPERFECT";
+  case latin::Tense::future: return "WHITAKER_TENSE_FUTURE";
+  case latin::Tense::perfect: return "WHITAKER_TENSE_PERFECT";
+  case latin::Tense::pluperfect: return "WHITAKER_TENSE_PLUPERFECT";
+  case latin::Tense::futurePerfect: return "WHITAKER_TENSE_FUTURE_PERFECT";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Tense value) {
+  switch (value) {
+  case latin::Tense::any: return "any";
+  case latin::Tense::present: return "present";
+  case latin::Tense::imperfect: return "imperfect";
+  case latin::Tense::future: return "future";
+  case latin::Tense::perfect: return "perfect";
+  case latin::Tense::pluperfect: return "pluperfect";
+  case latin::Tense::futurePerfect: return "futurePerfect";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::Voice value) {
   switch (value) {
-  case latin::Voice::X: return "WHITAKER_VOICE_X";
-  case latin::Voice::ACTIVE: return "WHITAKER_VOICE_ACTIVE";
-  case latin::Voice::PASSIVE: return "WHITAKER_VOICE_PASSIVE";
+  case latin::Voice::any: return "WHITAKER_VOICE_ANY";
+  case latin::Voice::active: return "WHITAKER_VOICE_ACTIVE";
+  case latin::Voice::passive: return "WHITAKER_VOICE_PASSIVE";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Voice value) {
+  switch (value) {
+  case latin::Voice::any: return "any";
+  case latin::Voice::active: return "active";
+  case latin::Voice::passive: return "passive";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::Mood value) {
   switch (value) {
-  case latin::Mood::X: return "WHITAKER_MOOD_X";
-  case latin::Mood::IND: return "WHITAKER_MOOD_IND";
-  case latin::Mood::SUB: return "WHITAKER_MOOD_SUB";
-  case latin::Mood::IMP: return "WHITAKER_MOOD_IMP";
-  case latin::Mood::INF: return "WHITAKER_MOOD_INF";
-  case latin::Mood::PPL: return "WHITAKER_MOOD_PPL";
+  case latin::Mood::any: return "WHITAKER_MOOD_ANY";
+  case latin::Mood::indicative: return "WHITAKER_MOOD_INDICATIVE";
+  case latin::Mood::subjunctive: return "WHITAKER_MOOD_SUBJUNCTIVE";
+  case latin::Mood::imperative: return "WHITAKER_MOOD_IMPERATIVE";
+  case latin::Mood::infinitive: return "WHITAKER_MOOD_INFINITIVE";
+  case latin::Mood::participle: return "WHITAKER_MOOD_PARTICIPLE";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Mood value) {
+  switch (value) {
+  case latin::Mood::any: return "any";
+  case latin::Mood::indicative: return "indicative";
+  case latin::Mood::subjunctive: return "subjunctive";
+  case latin::Mood::imperative: return "imperative";
+  case latin::Mood::infinitive: return "infinitive";
+  case latin::Mood::participle: return "participle";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::Comparison value) {
   switch (value) {
-  case latin::Comparison::X: return "WHITAKER_COMPARISON_X";
-  case latin::Comparison::POS: return "WHITAKER_COMPARISON_POS";
-  case latin::Comparison::COMP: return "WHITAKER_COMPARISON_COMP";
-  case latin::Comparison::SUPER: return "WHITAKER_COMPARISON_SUPER";
+  case latin::Comparison::any: return "WHITAKER_COMPARISON_ANY";
+  case latin::Comparison::positive: return "WHITAKER_COMPARISON_POSITIVE";
+  case latin::Comparison::comparative: return "WHITAKER_COMPARISON_COMPARATIVE";
+  case latin::Comparison::superlative: return "WHITAKER_COMPARISON_SUPERLATIVE";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Comparison value) {
+  switch (value) {
+  case latin::Comparison::any: return "any";
+  case latin::Comparison::positive: return "positive";
+  case latin::Comparison::comparative: return "comparative";
+  case latin::Comparison::superlative: return "superlative";
   }
   return "?";
 }
@@ -169,56 +315,130 @@
   return "?";
 }
 
+[[nodiscard]] constexpr const char* cppName(const latin::NounKind value) {
+  switch (value) {
+  case latin::NounKind::X: return "X";
+  case latin::NounKind::S: return "S";
+  case latin::NounKind::M: return "M";
+  case latin::NounKind::A: return "A";
+  case latin::NounKind::G: return "G";
+  case latin::NounKind::N: return "N";
+  case latin::NounKind::P: return "P";
+  case latin::NounKind::T: return "T";
+  case latin::NounKind::L: return "L";
+  case latin::NounKind::W: return "W";
+  case latin::NounKind::p: return "p";
+  case latin::NounKind::t: return "t";
+  case latin::NounKind::w: return "w";
+  case latin::NounKind::x: return "x";
+  }
+  return "?";
+}
+
 [[nodiscard]] constexpr const char* cName(const latin::PronounKind value) {
   switch (value) {
-  case latin::PronounKind::X: return "WHITAKER_PRONOUN_KIND_X";
-  case latin::PronounKind::PERS: return "WHITAKER_PRONOUN_KIND_PERS";
-  case latin::PronounKind::REL: return "WHITAKER_PRONOUN_KIND_REL";
-  case latin::PronounKind::REFLEX: return "WHITAKER_PRONOUN_KIND_REFLEX";
-  case latin::PronounKind::DEMONS: return "WHITAKER_PRONOUN_KIND_DEMONS";
-  case latin::PronounKind::INTERR: return "WHITAKER_PRONOUN_KIND_INTERR";
-  case latin::PronounKind::INDEF: return "WHITAKER_PRONOUN_KIND_INDEF";
-  case latin::PronounKind::ADJECT: return "WHITAKER_PRONOUN_KIND_ADJECT";
+  case latin::PronounKind::any: return "WHITAKER_PRONOUN_KIND_ANY";
+  case latin::PronounKind::personal: return "WHITAKER_PRONOUN_KIND_PERSONAL";
+  case latin::PronounKind::relative: return "WHITAKER_PRONOUN_KIND_RELATIVE";
+  case latin::PronounKind::reflexive: return "WHITAKER_PRONOUN_KIND_REFLEXIVE";
+  case latin::PronounKind::demonstrative: return "WHITAKER_PRONOUN_KIND_DEMONSTRATIVE";
+  case latin::PronounKind::interrogative: return "WHITAKER_PRONOUN_KIND_INTERROGATIVE";
+  case latin::PronounKind::indefinite: return "WHITAKER_PRONOUN_KIND_INDEFINITE";
+  case latin::PronounKind::adjectival: return "WHITAKER_PRONOUN_KIND_ADJECTIVAL";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::PronounKind value) {
+  switch (value) {
+  case latin::PronounKind::any: return "any";
+  case latin::PronounKind::personal: return "personal";
+  case latin::PronounKind::relative: return "relative";
+  case latin::PronounKind::reflexive: return "reflexive";
+  case latin::PronounKind::demonstrative: return "demonstrative";
+  case latin::PronounKind::interrogative: return "interrogative";
+  case latin::PronounKind::indefinite: return "indefinite";
+  case latin::PronounKind::adjectival: return "adjectival";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::PackonKind value) {
   switch (value) {
-  case latin::PackonKind::X: return "WHITAKER_PACKON_KIND_X";
-  case latin::PackonKind::INTERR: return "WHITAKER_PACKON_KIND_INTERR";
-  case latin::PackonKind::REL: return "WHITAKER_PACKON_KIND_REL";
-  case latin::PackonKind::INDEF: return "WHITAKER_PACKON_KIND_INDEF";
-  case latin::PackonKind::ADJECT: return "WHITAKER_PACKON_KIND_ADJECT";
+  case latin::PackonKind::any: return "WHITAKER_PACKON_KIND_ANY";
+  case latin::PackonKind::interrogative: return "WHITAKER_PACKON_KIND_INTERROGATIVE";
+  case latin::PackonKind::relative: return "WHITAKER_PACKON_KIND_RELATIVE";
+  case latin::PackonKind::indefinite: return "WHITAKER_PACKON_KIND_INDEFINITE";
+  case latin::PackonKind::adjectival: return "WHITAKER_PACKON_KIND_ADJECTIVAL";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::PackonKind value) {
+  switch (value) {
+  case latin::PackonKind::any: return "any";
+  case latin::PackonKind::interrogative: return "interrogative";
+  case latin::PackonKind::relative: return "relative";
+  case latin::PackonKind::indefinite: return "indefinite";
+  case latin::PackonKind::adjectival: return "adjectival";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::VerbKind value) {
   switch (value) {
-  case latin::VerbKind::X: return "WHITAKER_VERB_KIND_X";
-  case latin::VerbKind::TO_BE: return "WHITAKER_VERB_KIND_TO_BE";
-  case latin::VerbKind::TO_BEING: return "WHITAKER_VERB_KIND_TO_BEING";
-  case latin::VerbKind::GEN: return "WHITAKER_VERB_KIND_GEN";
-  case latin::VerbKind::DAT: return "WHITAKER_VERB_KIND_DAT";
-  case latin::VerbKind::ABL: return "WHITAKER_VERB_KIND_ABL";
-  case latin::VerbKind::TRANS: return "WHITAKER_VERB_KIND_TRANS";
-  case latin::VerbKind::INTRANS: return "WHITAKER_VERB_KIND_INTRANS";
-  case latin::VerbKind::IMPERS: return "WHITAKER_VERB_KIND_IMPERS";
-  case latin::VerbKind::DEP: return "WHITAKER_VERB_KIND_DEP";
-  case latin::VerbKind::SEMIDEP: return "WHITAKER_VERB_KIND_SEMIDEP";
-  case latin::VerbKind::PERFDEF: return "WHITAKER_VERB_KIND_PERFDEF";
+  case latin::VerbKind::any: return "WHITAKER_VERB_KIND_ANY";
+  case latin::VerbKind::toBe: return "WHITAKER_VERB_KIND_TO_BE";
+  case latin::VerbKind::toBeing: return "WHITAKER_VERB_KIND_TO_BEING";
+  case latin::VerbKind::genitive: return "WHITAKER_VERB_KIND_GENITIVE";
+  case latin::VerbKind::dative: return "WHITAKER_VERB_KIND_DATIVE";
+  case latin::VerbKind::ablative: return "WHITAKER_VERB_KIND_ABLATIVE";
+  case latin::VerbKind::transitive: return "WHITAKER_VERB_KIND_TRANSITIVE";
+  case latin::VerbKind::intransitive: return "WHITAKER_VERB_KIND_INTRANSITIVE";
+  case latin::VerbKind::impersonal: return "WHITAKER_VERB_KIND_IMPERSONAL";
+  case latin::VerbKind::deponent: return "WHITAKER_VERB_KIND_DEPONENT";
+  case latin::VerbKind::semideponent: return "WHITAKER_VERB_KIND_SEMIDEPONENT";
+  case latin::VerbKind::perfectDefinite: return "WHITAKER_VERB_KIND_PERFECT_DEFINITE";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::VerbKind value) {
+  switch (value) {
+  case latin::VerbKind::any: return "any";
+  case latin::VerbKind::toBe: return "toBe";
+  case latin::VerbKind::toBeing: return "toBeing";
+  case latin::VerbKind::genitive: return "genitive";
+  case latin::VerbKind::dative: return "dative";
+  case latin::VerbKind::ablative: return "ablative";
+  case latin::VerbKind::transitive: return "transitive";
+  case latin::VerbKind::intransitive: return "intransitive";
+  case latin::VerbKind::impersonal: return "impersonal";
+  case latin::VerbKind::deponent: return "deponent";
+  case latin::VerbKind::semideponent: return "semideponent";
+  case latin::VerbKind::perfectDefinite: return "perfectDefinite";
   }
   return "?";
 }
 
 [[nodiscard]] constexpr const char* cName(const latin::NumeralSort value) {
   switch (value) {
-  case latin::NumeralSort::X: return "WHITAKER_NUMERAL_SORT_X";
-  case latin::NumeralSort::CARD: return "WHITAKER_NUMERAL_SORT_CARD";
-  case latin::NumeralSort::ORD: return "WHITAKER_NUMERAL_SORT_ORD";
-  case latin::NumeralSort::DIST: return "WHITAKER_NUMERAL_SORT_DIST";
-  case latin::NumeralSort::ADVERB: return "WHITAKER_NUMERAL_SORT_ADVERB";
+  case latin::NumeralSort::any: return "WHITAKER_NUMERAL_SORT_ANY";
+  case latin::NumeralSort::cardinal: return "WHITAKER_NUMERAL_SORT_CARDINAL";
+  case latin::NumeralSort::ordinal: return "WHITAKER_NUMERAL_SORT_ORDINAL";
+  case latin::NumeralSort::distributive: return "WHITAKER_NUMERAL_SORT_DISTRIBUTIVE";
+  case latin::NumeralSort::adverbial: return "WHITAKER_NUMERAL_SORT_ADVERBIAL";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::NumeralSort value) {
+  switch (value) {
+  case latin::NumeralSort::any: return "any";
+  case latin::NumeralSort::cardinal: return "cardinal";
+  case latin::NumeralSort::ordinal: return "ordinal";
+  case latin::NumeralSort::distributive: return "distributive";
+  case latin::NumeralSort::adverbial: return "adverbial";
   }
   return "?";
 }
@@ -234,6 +454,21 @@
   case latin::Age::F: return "WHITAKER_AGE_F";
   case latin::Age::G: return "WHITAKER_AGE_G";
   case latin::Age::H: return "WHITAKER_AGE_H";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Age value) {
+  switch (value) {
+  case latin::Age::X: return "X";
+  case latin::Age::A: return "A";
+  case latin::Age::B: return "B";
+  case latin::Age::C: return "C";
+  case latin::Age::D: return "D";
+  case latin::Age::E: return "E";
+  case latin::Age::F: return "F";
+  case latin::Age::G: return "G";
+  case latin::Age::H: return "H";
   }
   return "?";
 }
@@ -254,6 +489,22 @@
   return "?";
 }
 
+[[nodiscard]] constexpr const char* cppName(const latin::Frequency value) {
+  switch (value) {
+  case latin::Frequency::X: return "X";
+  case latin::Frequency::A: return "A";
+  case latin::Frequency::B: return "B";
+  case latin::Frequency::C: return "C";
+  case latin::Frequency::D: return "D";
+  case latin::Frequency::E: return "E";
+  case latin::Frequency::F: return "F";
+  case latin::Frequency::I: return "I";
+  case latin::Frequency::M: return "M";
+  case latin::Frequency::N: return "N";
+  }
+  return "?";
+}
+
 [[nodiscard]] constexpr const char* cName(const latin::Area value) {
   switch (value) {
   case latin::Area::X: return "WHITAKER_AREA_X";
@@ -268,6 +519,24 @@
   case latin::Area::T: return "WHITAKER_AREA_T";
   case latin::Area::W: return "WHITAKER_AREA_W";
   case latin::Area::Y: return "WHITAKER_AREA_Y";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Area value) {
+  switch (value) {
+  case latin::Area::X: return "X";
+  case latin::Area::A: return "A";
+  case latin::Area::B: return "B";
+  case latin::Area::D: return "D";
+  case latin::Area::E: return "E";
+  case latin::Area::G: return "G";
+  case latin::Area::L: return "L";
+  case latin::Area::P: return "P";
+  case latin::Area::S: return "S";
+  case latin::Area::T: return "T";
+  case latin::Area::W: return "W";
+  case latin::Area::Y: return "Y";
   }
   return "?";
 }
@@ -292,6 +561,30 @@
   case latin::Geography::R: return "WHITAKER_GEOGRAPHY_R";
   case latin::Geography::S: return "WHITAKER_GEOGRAPHY_S";
   case latin::Geography::U: return "WHITAKER_GEOGRAPHY_U";
+  }
+  return "?";
+}
+
+[[nodiscard]] constexpr const char* cppName(const latin::Geography value) {
+  switch (value) {
+  case latin::Geography::X: return "X";
+  case latin::Geography::A: return "A";
+  case latin::Geography::B: return "B";
+  case latin::Geography::C: return "C";
+  case latin::Geography::D: return "D";
+  case latin::Geography::E: return "E";
+  case latin::Geography::F: return "F";
+  case latin::Geography::G: return "G";
+  case latin::Geography::H: return "H";
+  case latin::Geography::I: return "I";
+  case latin::Geography::J: return "J";
+  case latin::Geography::K: return "K";
+  case latin::Geography::N: return "N";
+  case latin::Geography::P: return "P";
+  case latin::Geography::Q: return "Q";
+  case latin::Geography::R: return "R";
+  case latin::Geography::S: return "S";
+  case latin::Geography::U: return "U";
   }
   return "?";
 }
@@ -328,6 +621,38 @@
   return "?";
 }
 
+[[nodiscard]] constexpr const char* cppName(const latin::Source value) {
+  switch (value) {
+  case latin::Source::X: return "X";
+  case latin::Source::A: return "A";
+  case latin::Source::B: return "B";
+  case latin::Source::C: return "C";
+  case latin::Source::D: return "D";
+  case latin::Source::E: return "E";
+  case latin::Source::F: return "F";
+  case latin::Source::G: return "G";
+  case latin::Source::H: return "H";
+  case latin::Source::I: return "I";
+  case latin::Source::J: return "J";
+  case latin::Source::K: return "K";
+  case latin::Source::L: return "L";
+  case latin::Source::M: return "M";
+  case latin::Source::N: return "N";
+  case latin::Source::O: return "O";
+  case latin::Source::P: return "P";
+  case latin::Source::Q: return "Q";
+  case latin::Source::R: return "R";
+  case latin::Source::S: return "S";
+  case latin::Source::T: return "T";
+  case latin::Source::U: return "U";
+  case latin::Source::V: return "V";
+  case latin::Source::W: return "W";
+  case latin::Source::Y: return "Y";
+  case latin::Source::Z: return "Z";
+  }
+  return "?";
+}
+
 [[nodiscard]] constexpr const char* cName(const whitaker::Status value) {
   switch (value) {
   case whitaker::Status::ok: return "WHITAKER_STATUS_OK";
@@ -338,48 +663,58 @@
   return "?";
 }
 
+[[nodiscard]] constexpr const char* cppName(const whitaker::Status value) {
+  switch (value) {
+  case whitaker::Status::ok: return "ok";
+  case whitaker::Status::invalidArgument: return "invalidArgument";
+  case whitaker::Status::inputTooLong: return "inputTooLong";
+  case whitaker::Status::outOfMemory: return "outOfMemory";
+  }
+  return "?";
+}
+
 template <typename Rows> void detailRows(Rows& rows, const whitaker::ReadingDetail& detail) {
-  rows.enumerated("detail.dictionaryWord.part", "Part", cName(detail.dictionaryWord.part), latin::name(detail.dictionaryWord.part));
+  rows.enumerated("detail.dictionaryWord.part", "Part", cName(detail.dictionaryWord.part), cppName(detail.dictionaryWord.part), latin::label(detail.dictionaryWord.part));
   rows.number("detail.dictionaryWord.which", detail.dictionaryWord.which.value);
   rows.number("detail.dictionaryWord.variant", detail.dictionaryWord.variant.value);
-  rows.enumerated("detail.dictionaryWord.gender", "Gender", cName(detail.dictionaryWord.gender), latin::name(detail.dictionaryWord.gender));
+  rows.enumerated("detail.dictionaryWord.gender", "Gender", cName(detail.dictionaryWord.gender), cppName(detail.dictionaryWord.gender), latin::label(detail.dictionaryWord.gender));
   rows.number("detail.dictionaryWord.kind", detail.dictionaryWord.kind.value);
-  rows.enumerated("detail.dictionaryWord.comparison", "Comparison", cName(detail.dictionaryWord.comparison), latin::name(detail.dictionaryWord.comparison));
-  rows.enumerated("detail.dictionaryWord.numeralSort", "NumeralSort", cName(detail.dictionaryWord.numeralSort), latin::name(detail.dictionaryWord.numeralSort));
+  rows.enumerated("detail.dictionaryWord.comparison", "Comparison", cName(detail.dictionaryWord.comparison), cppName(detail.dictionaryWord.comparison), latin::label(detail.dictionaryWord.comparison));
+  rows.enumerated("detail.dictionaryWord.numeralSort", "NumeralSort", cName(detail.dictionaryWord.numeralSort), cppName(detail.dictionaryWord.numeralSort), latin::label(detail.dictionaryWord.numeralSort));
   rows.number("detail.dictionaryWord.numeralValue", detail.dictionaryWord.numeralValue.value);
-  rows.enumerated("detail.dictionaryWord.age", "Age", cName(detail.dictionaryWord.age), latin::name(detail.dictionaryWord.age));
-  rows.enumerated("detail.dictionaryWord.area", "Area", cName(detail.dictionaryWord.area), latin::name(detail.dictionaryWord.area));
-  rows.enumerated("detail.dictionaryWord.geography", "Geography", cName(detail.dictionaryWord.geography), latin::name(detail.dictionaryWord.geography));
-  rows.enumerated("detail.dictionaryWord.frequency", "Frequency", cName(detail.dictionaryWord.frequency), latin::name(detail.dictionaryWord.frequency));
-  rows.enumerated("detail.dictionaryWord.source", "Source", cName(detail.dictionaryWord.source), latin::name(detail.dictionaryWord.source));
+  rows.enumerated("detail.dictionaryWord.age", "Age", cName(detail.dictionaryWord.age), cppName(detail.dictionaryWord.age));
+  rows.enumerated("detail.dictionaryWord.area", "Area", cName(detail.dictionaryWord.area), cppName(detail.dictionaryWord.area));
+  rows.enumerated("detail.dictionaryWord.geography", "Geography", cName(detail.dictionaryWord.geography), cppName(detail.dictionaryWord.geography));
+  rows.enumerated("detail.dictionaryWord.frequency", "Frequency", cName(detail.dictionaryWord.frequency), cppName(detail.dictionaryWord.frequency));
+  rows.enumerated("detail.dictionaryWord.source", "Source", cName(detail.dictionaryWord.source), cppName(detail.dictionaryWord.source));
   rows.number("detail.dictionaryWordId", std::to_underlying(detail.dictionaryWordId));
   rows.text("detail.form.stemSpelling", detail.form.stemSpelling);
   rows.text("detail.form.ending", detail.form.ending);
-  rows.enumerated("detail.form.grammar.part", "Part", cName(detail.form.grammar.part), latin::name(detail.form.grammar.part));
+  rows.enumerated("detail.form.grammar.part", "Part", cName(detail.form.grammar.part), cppName(detail.form.grammar.part), latin::label(detail.form.grammar.part));
   rows.number("detail.form.grammar.which", detail.form.grammar.which.value);
   rows.number("detail.form.grammar.variant", detail.form.grammar.variant.value);
-  rows.enumerated("detail.form.grammar.caseOf", "Case", cName(detail.form.grammar.caseOf), latin::name(detail.form.grammar.caseOf));
-  rows.enumerated("detail.form.grammar.number", "Number", cName(detail.form.grammar.number), latin::name(detail.form.grammar.number));
-  rows.enumerated("detail.form.grammar.gender", "Gender", cName(detail.form.grammar.gender), latin::name(detail.form.grammar.gender));
-  rows.enumerated("detail.form.grammar.comparison", "Comparison", cName(detail.form.grammar.comparison), latin::name(detail.form.grammar.comparison));
-  rows.enumerated("detail.form.grammar.numeralSort", "NumeralSort", cName(detail.form.grammar.numeralSort), latin::name(detail.form.grammar.numeralSort));
-  rows.enumerated("detail.form.grammar.tense", "Tense", cName(detail.form.grammar.tense), latin::name(detail.form.grammar.tense));
-  rows.enumerated("detail.form.grammar.voice", "Voice", cName(detail.form.grammar.voice), latin::name(detail.form.grammar.voice));
-  rows.enumerated("detail.form.grammar.mood", "Mood", cName(detail.form.grammar.mood), latin::name(detail.form.grammar.mood));
+  rows.enumerated("detail.form.grammar.caseOf", "Case", cName(detail.form.grammar.caseOf), cppName(detail.form.grammar.caseOf), latin::label(detail.form.grammar.caseOf));
+  rows.enumerated("detail.form.grammar.number", "Number", cName(detail.form.grammar.number), cppName(detail.form.grammar.number), latin::label(detail.form.grammar.number));
+  rows.enumerated("detail.form.grammar.gender", "Gender", cName(detail.form.grammar.gender), cppName(detail.form.grammar.gender), latin::label(detail.form.grammar.gender));
+  rows.enumerated("detail.form.grammar.comparison", "Comparison", cName(detail.form.grammar.comparison), cppName(detail.form.grammar.comparison), latin::label(detail.form.grammar.comparison));
+  rows.enumerated("detail.form.grammar.numeralSort", "NumeralSort", cName(detail.form.grammar.numeralSort), cppName(detail.form.grammar.numeralSort), latin::label(detail.form.grammar.numeralSort));
+  rows.enumerated("detail.form.grammar.tense", "Tense", cName(detail.form.grammar.tense), cppName(detail.form.grammar.tense), latin::label(detail.form.grammar.tense));
+  rows.enumerated("detail.form.grammar.voice", "Voice", cName(detail.form.grammar.voice), cppName(detail.form.grammar.voice), latin::label(detail.form.grammar.voice));
+  rows.enumerated("detail.form.grammar.mood", "Mood", cName(detail.form.grammar.mood), cppName(detail.form.grammar.mood), latin::label(detail.form.grammar.mood));
   rows.number("detail.form.grammar.person", detail.form.grammar.person.value);
-  rows.enumerated("detail.form.inflectionAge", "Age", cName(detail.form.inflectionAge), latin::name(detail.form.inflectionAge));
-  rows.enumerated("detail.form.inflectionFrequency", "Frequency", cName(detail.form.inflectionFrequency), latin::name(detail.form.inflectionFrequency));
-  rows.enumerated("detail.form.derivation.syncope", "Syncope", cName(detail.form.derivation.syncope), latin::name(detail.form.derivation.syncope));
+  rows.enumerated("detail.form.inflectionAge", "Age", cName(detail.form.inflectionAge), cppName(detail.form.inflectionAge));
+  rows.enumerated("detail.form.inflectionFrequency", "Frequency", cName(detail.form.inflectionFrequency), cppName(detail.form.inflectionFrequency));
+  rows.enumerated("detail.form.derivation.syncope", "Syncope", cName(detail.form.derivation.syncope), cppName(detail.form.derivation.syncope));
   rows.flag("detail.form.derivation.adverb", detail.form.derivation.adverb);
   rows.number("detail.form.spellingRuleId", detail.form.spellingRuleId);
   rows.text("detail.meaning", detail.meaning);
   rows.text("detail.partName", detail.partName);
   for (std::size_t i = 0; i < detail.addonCount; ++i) {
   rows.number("detail.addons[" + std::to_string(i) + "]" + ".id", detail.addons[i].id);
-  rows.enumerated("detail.addons[" + std::to_string(i) + "]" + ".kind", "AddonKind", cName(detail.addons[i].kind), latin::name(detail.addons[i].kind));
+  rows.enumerated("detail.addons[" + std::to_string(i) + "]" + ".kind", "AddonKind", cName(detail.addons[i].kind), cppName(detail.addons[i].kind));
   }
   rows.number("detail.addonCount", detail.addonCount);
-  rows.enumerated("detail.route", "Route", cName(detail.route), latin::name(detail.route));
+  rows.enumerated("detail.route", "Route", cName(detail.route), cppName(detail.route));
   rows.number("detail.stemKey", detail.stemKey);
 }
 
@@ -397,4 +732,16 @@ inline constexpr const char* kCalls[][3] = {
   {"whitaker::addonMeaning(id)", "whitaker_addon_meaning(id)", "whitaker.addonMeaning(id)"},
   {"whitaker::stems(id)", "whitaker_stems(id)", "whitaker.stems(id)"},
   {"whitaker::spellingRule(rule)", "whitaker_spelling_rule(rule)", "whitaker.spellingRule(rule)"},
+  {"latin::label(Part value)", "whitaker_part_label(value)", "Part.label"},
+  {"latin::label(Case value)", "whitaker_case_label(value)", "Case.label"},
+  {"latin::label(Number value)", "whitaker_number_label(value)", "Number.label"},
+  {"latin::label(Gender value)", "whitaker_gender_label(value)", "Gender.label"},
+  {"latin::label(Tense value)", "whitaker_tense_label(value)", "Tense.label"},
+  {"latin::label(Voice value)", "whitaker_voice_label(value)", "Voice.label"},
+  {"latin::label(Mood value)", "whitaker_mood_label(value)", "Mood.label"},
+  {"latin::label(Comparison value)", "whitaker_comparison_label(value)", "Comparison.label"},
+  {"latin::label(PronounKind value)", "whitaker_pronoun_kind_label(value)", "PronounKind.label"},
+  {"latin::label(PackonKind value)", "whitaker_packon_kind_label(value)", "PackonKind.label"},
+  {"latin::label(VerbKind value)", "whitaker_verb_kind_label(value)", "VerbKind.label"},
+  {"latin::label(NumeralSort value)", "whitaker_numeral_sort_label(value)", "NumeralSort.label"},
 };

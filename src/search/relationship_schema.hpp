@@ -239,29 +239,29 @@ using Layout = std::optional<std::span<const Field>>;
 
 [[nodiscard]] constexpr Layout grammarLayout(const latin::Part part) {
   switch (part) {
-    case latin::Part::N:
-    case latin::Part::PRON:
+    case latin::Part::noun:
+    case latin::Part::pronoun:
       return grammar_layout::kNominal;
-    case latin::Part::ADJ:
+    case latin::Part::adjective:
       return grammar_layout::kAdjective;
-    case latin::Part::NUM:
+    case latin::Part::numeral:
       return grammar_layout::kNumeral;
-    case latin::Part::V:
+    case latin::Part::verb:
       return grammar_layout::kVerb;
-    case latin::Part::VPAR:
+    case latin::Part::participle:
       return grammar_layout::kParticiple;
-    case latin::Part::SUPINE:
+    case latin::Part::supine:
       return grammar_layout::kSupine;
-    case latin::Part::ADV:
+    case latin::Part::adverb:
       return grammar_layout::kAdverb;
-    case latin::Part::PREP:
+    case latin::Part::preposition:
       return grammar_layout::kPreposition;
-    case latin::Part::CONJ:
-    case latin::Part::INTERJ:
+    case latin::Part::conjunction:
+    case latin::Part::interjection:
       return std::span<const Field>{};
-    case latin::Part::X:
-    case latin::Part::PACK:
-    case latin::Part::NONE:
+    case latin::Part::any:
+    case latin::Part::packon:
+    case latin::Part::none:
       break;
   }
   return std::nullopt;
@@ -269,28 +269,28 @@ using Layout = std::optional<std::span<const Field>>;
 
 [[nodiscard]] constexpr Layout entryLayout(const latin::Part part) {
   switch (part) {
-    case latin::Part::N:
+    case latin::Part::noun:
       return entry_layout::kNoun;
-    case latin::Part::PRON:
+    case latin::Part::pronoun:
       return entry_layout::kPronoun;
-    case latin::Part::V:
+    case latin::Part::verb:
       return entry_layout::kVerb;
-    case latin::Part::ADJ:
+    case latin::Part::adjective:
       return entry_layout::kAdjective;
-    case latin::Part::NUM:
+    case latin::Part::numeral:
       return entry_layout::kNumeral;
-    case latin::Part::PACK:
+    case latin::Part::packon:
       return entry_layout::kPackon;
-    case latin::Part::ADV:
+    case latin::Part::adverb:
       return entry_layout::kAdverb;
-    case latin::Part::PREP:
-    case latin::Part::CONJ:
-    case latin::Part::INTERJ:
+    case latin::Part::preposition:
+    case latin::Part::conjunction:
+    case latin::Part::interjection:
       return std::span<const Field>{};
-    case latin::Part::X:
-    case latin::Part::SUPINE:
-    case latin::Part::VPAR:
-    case latin::Part::NONE:
+    case latin::Part::any:
+    case latin::Part::supine:
+    case latin::Part::participle:
+    case latin::Part::none:
       break;
   }
   return std::nullopt;
@@ -546,7 +546,7 @@ static_assert(std::endian::native == std::endian::little, "decodeEntry lays Entr
 }
 
 [[nodiscard]] constexpr bool layoutsFit() {
-  for (unsigned p = 0; p <= std::to_underlying(latin::Part::NONE); ++p) {
+  for (unsigned p = 0; p <= std::to_underlying(latin::Part::none); ++p) {
     const latin::Part part{static_cast<std::uint8_t>(p)};
     const Layout grammar = grammarLayout(part);
     const Layout entry = entryLayout(part);

@@ -4,6 +4,7 @@
 //  WHITAKER_TAG(bind). Everything comes from the declarations (reflect.hpp), so tagging a function is all a new one
 //  needs. Python gets copies, field by field: nothing it holds can go stale.
 #include "bindings/reflect.hpp"
+#include "util/reflect_util.hpp"
 
 #include <ranges>
 #include <string>
@@ -107,6 +108,8 @@ consteval std::string enumBinding(const info type) {
     const std::string name{identifier_of(e)};
     out += "\n      .value(\"" + name + "\", " + full + "::" + name + ")";
   }
+  if (util::isReaderFacing(type))
+    out += "\n      .def_property_readonly(\"label\", [](" + full + " value) { return latin::label(value); })";
   return out + ";\n";
 }
 

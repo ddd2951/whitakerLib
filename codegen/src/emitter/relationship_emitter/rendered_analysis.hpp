@@ -26,34 +26,34 @@ namespace emitter {
 [[nodiscard]] inline latin::Comparison advComparisonFromKey(const latin::StemKey key) {
   switch (key.value) {
     case 1:
-      return latin::Comparison::POS;
+      return latin::Comparison::positive;
     case 2:
-      return latin::Comparison::COMP;
+      return latin::Comparison::comparative;
     case 3:
-      return latin::Comparison::SUPER;
+      return latin::Comparison::superlative;
     default:
-      return latin::Comparison::X;
+      return latin::Comparison::any;
   }
 }
 
 [[nodiscard]] inline latin::NumeralSort numeralSortFromKey(const latin::StemKey key) {
   switch (key.value) {
     case 1:
-      return latin::NumeralSort::CARD;
+      return latin::NumeralSort::cardinal;
     case 2:
-      return latin::NumeralSort::ORD;
+      return latin::NumeralSort::ordinal;
     case 3:
-      return latin::NumeralSort::DIST;
+      return latin::NumeralSort::distributive;
     case 4:
-      return latin::NumeralSort::ADVERB;
+      return latin::NumeralSort::adverbial;
     default:
-      return latin::NumeralSort::X;
+      return latin::NumeralSort::any;
   }
 }
 
 [[nodiscard]] inline bool isDegree(const latin::Comparison comparison) {
-  return comparison == latin::Comparison::POS || comparison == latin::Comparison::COMP ||
-         comparison == latin::Comparison::SUPER;
+  return comparison == latin::Comparison::positive || comparison == latin::Comparison::comparative ||
+         comparison == latin::Comparison::superlative;
 }
 
 using latin::partOf;
@@ -62,7 +62,7 @@ using latin::partOf;
 [[nodiscard]] inline latin::Analysis analysisOf(const latin::Entry& dictionary, const latin::Inflection& inflection,
                                                 const latin::StemKey key) {
   latin::Analysis analysis{.part = partOf(inflection)};
-  const bool adverbFix = analysis.part == latin::Part::ADV && partOf(dictionary) != latin::Part::ADV;
+  const bool adverbFix = analysis.part == latin::Part::adverb && partOf(dictionary) != latin::Part::adverb;
   if (!adverbFix)
     std::visit(
         [&](const auto& value) {
@@ -88,33 +88,33 @@ using latin::partOf;
       inflection);
 
   switch (analysis.part) {
-    case latin::Part::N:
+    case latin::Part::noun:
       analysis.gender = std::get<latin::Noun>(dictionary).gender;
       break;
-    case latin::Part::ADJ:
+    case latin::Part::adjective:
       analysis.comparison = expand::internal::adjectiveDegree(std::get<latin::Adjective>(dictionary), key);
       break;
-    case latin::Part::NUM: {
+    case latin::Part::numeral: {
       const latin::NumeralSort declared = std::get<latin::Numeral>(dictionary).numeralSort;
-      analysis.numeralSort = declared == latin::NumeralSort::X ? numeralSortFromKey(key) : declared;
+      analysis.numeralSort = declared == latin::NumeralSort::any ? numeralSortFromKey(key) : declared;
       break;
     }
-    case latin::Part::ADV:
+    case latin::Part::adverb:
       if (!adverbFix) {
         const latin::Comparison declared = std::get<latin::Adverb>(dictionary).comparison;
         analysis.comparison = isDegree(declared) ? declared : advComparisonFromKey(key);
       }
       break;
-    case latin::Part::X:
-    case latin::Part::PRON:
-    case latin::Part::V:
-    case latin::Part::PREP:
-    case latin::Part::CONJ:
-    case latin::Part::INTERJ:
-    case latin::Part::PACK:
-    case latin::Part::SUPINE:
-    case latin::Part::VPAR:
-    case latin::Part::NONE:
+    case latin::Part::any:
+    case latin::Part::pronoun:
+    case latin::Part::verb:
+    case latin::Part::preposition:
+    case latin::Part::conjunction:
+    case latin::Part::interjection:
+    case latin::Part::packon:
+    case latin::Part::supine:
+    case latin::Part::participle:
+    case latin::Part::none:
       break;
   }
   return analysis;

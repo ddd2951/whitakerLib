@@ -79,10 +79,8 @@ static_assert(std::is_trivially_copyable_v<FormAddress>);
       []<typename T>(const T& value) {
         if constexpr (std::is_same_v<T, expand::Joined>)
           return dictlineLine(value.entry) + inflectsLine(value.inflection);
-        else if constexpr (std::is_same_v<T, expand::Unique>)
-          return uniquesLines(value.entry);
         else
-          return uniquesLines(value.entry) + inflectsLine(value.inflection);
+          return uniquesLines(value.entry);
       },
       origin);
 }
@@ -134,6 +132,20 @@ using StemPatternIds = std::map<std::string, std::uint16_t>;
   return static_cast<std::uint16_t>(std::size_t{found->second} << rel::kStemLengthBits | orth.size());
 }
 
+[[nodiscard]] FormAddress checkedAddress(const ImageData& image, const std::size_t index) {
+  const expand::ResultIndex result{index};
+  const std::string_view spelling = expand::spelling(result);
+  const FormAddress address = addressOf(expand::origin(result));
+  if (spelling.size() > facts::kMaxWordCharacters)
+    error::fatal(std::format("image: a generated form of {} letters exceeds the image's {}\n{}", spelling.size(),
+                             facts::kMaxWordCharacters, resultReport(index)));
+  if (address.dictionary >= image.dictionaries.size() || address.column < 1 || address.column > facts::kStemColumnCount)
+    error::fatal(std::format("image: address {} is out of bounds ({} dictionaries, {} stem columns)\n{}",
+                             util::describe(address), image.dictionaries.size(), facts::kStemColumnCount,
+                             resultReport(index)));
+  return address;
+}
+
 [[nodiscard]] std::vector<SourceRow> collectReadings(ImageData& image, DescriptionIds& descriptionIds) {
   using FirstResult = std::optional<std::size_t>;
   std::vector<std::array<FirstResult, facts::kStemColumnCount>> orthFirst(image.dictionaries.size());
@@ -152,15 +164,7 @@ using StemPatternIds = std::map<std::string, std::uint16_t>;
     if (expand::fate(result) != expand::Fate::kept)
       continue;
     const std::string_view spelling = expand::spelling(result);
-    const FormAddress address = addressOf(expand::origin(result));
-    if (spelling.size() > facts::kMaxWordCharacters)
-      error::fatal(std::format("image: a generated form of {} letters exceeds the image's {}\n{}", spelling.size(),
-                               facts::kMaxWordCharacters, resultReport(index)));
-    if (address.dictionary >= image.dictionaries.size() || address.column < 1 ||
-        address.column > facts::kStemColumnCount)
-      error::fatal(std::format("image: address {} is out of bounds ({} dictionaries, {} stem columns)\n{}",
-                               util::describe(address), image.dictionaries.size(), facts::kStemColumnCount,
-                               resultReport(index)));
+    const FormAddress address = checkedAddress(image, index);
     const expand::Reading reading = expand::reading(result);
     const Rendered rendered = render(reading);
     const std::uint16_t stem = printedStem(rendered.orth, image, stemPatternIds, index);
@@ -207,9 +211,9 @@ using StemPatternIds = std::map<std::string, std::uint16_t>;
       continue;
     const expand::Reading reading = expand::reading(result);
     const Rendered rendered = render(reading);
-    if (rendered.analysis.part != latin::Part::PRON && rendered.analysis.part != latin::Part::ADJ)
+    if (rendered.analysis.part != latin::Part::pronoun && rendered.analysis.part != latin::Part::adjective)
       continue;
-    const FormAddress address = addressOf(expand::origin(result));
+    const FormAddress address = checkedAddress(image, index);
     const std::size_t slot = std::size_t{address.column} - 1;
     rel::DictionaryRecord& dictionary = image.dictionaries[address.dictionary];
     const std::uint16_t stem = printedStem(rendered.orth, image, stemPatternIds, index);

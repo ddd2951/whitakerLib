@@ -50,7 +50,7 @@ int main(const int argc, char** const argv) {
       continue;
     dictionary[emitter::normalize(spelling)].emplace(
         std::string(r.stem), std::string(spelling.substr(r.stem.size())), r.inflectionAge, r.inflectionFrequency,
-        g.part == latin::Part::ADV && latin::partOf(r.entry) == latin::Part::ADJ);
+        g.part == latin::Part::adverb && latin::partOf(r.entry) == latin::Part::adjective);
   }
   unsigned plain = 0;
   for (const auto& [word, keys] : dictionary) {
@@ -70,9 +70,10 @@ int main(const int argc, char** const argv) {
       continue;
     const auto& entry = data.entries[stem.dictionary];
     unsigned column = stem.stemKey ? unsigned(stem.stemKey) - 1 : 0;
-    if ((entry.part == latin::Part::ADJ || entry.part == latin::Part::ADV || entry.part == latin::Part::NUM) &&
-        (entry.comparison == latin::Comparison::COMP || entry.comparison == latin::Comparison::SUPER ||
-         (entry.part == latin::Part::NUM && entry.numeralSort != latin::NumeralSort::X)))
+    if ((entry.part == latin::Part::adjective || entry.part == latin::Part::adverb ||
+         entry.part == latin::Part::numeral) &&
+        (entry.comparison == latin::Comparison::comparative || entry.comparison == latin::Comparison::superlative ||
+         (entry.part == latin::Part::numeral && entry.numeralSort != latin::NumeralSort::any)))
       column = 0;
     const auto key = latin::StemKey{static_cast<unsigned char>(stem.stemKey ? stem.stemKey : 1)};
     const auto expected = expand::internal::columnForKey(word::entry(word::DictlineRow{stem.dictionary}), key);

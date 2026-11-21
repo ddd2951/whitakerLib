@@ -58,7 +58,7 @@ template <typename T, relationship::Section S> struct Table {
 };
 inline constexpr Table<Node, relationship::Section::Back> kBack{};
 [[nodiscard, gnu::always_inline]] inline relationship::Run headRun(const std::uint16_t packed) {
-  return {packed & 511u, static_cast<std::uint32_t>(packed >> 9u)};
+  return {packed & ((1u << kHeadRunFirstBits) - 1), static_cast<std::uint32_t>(packed >> kHeadRunFirstBits)};
 }
 struct Stems {
   [[nodiscard, gnu::always_inline]] inline Stem operator[](const std::size_t i) const {
@@ -412,7 +412,7 @@ struct Lookup {
 
   void adverbs() {
     if (std::ranges::any_of(candidates, [](const Candidate a) {
-          return kRules[a.rule].reading.rex == std::to_underlying(latin::Part::ADV) * 2;
+          return kRules[a.rule].reading.rex == std::to_underlying(latin::Part::adverb) * 2;
         }))
       return;
     for (const auto a : candidates) {

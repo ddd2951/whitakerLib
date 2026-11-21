@@ -1,7 +1,6 @@
 #include "execution_steps/steps.hpp"
 
 #include "storage/front.hpp"
-#include "storage/result.hpp"
 #include "storage/states.hpp"
 #include "storage/below.hpp"
 #include "storage/root.hpp"
@@ -13,9 +12,7 @@ namespace rel = whitaker::relationship;
 
 void execution_steps::lookup_tables::canonicalizeStemTrie() {
   using storage::front;
-  using storage::result;
   using storage::State;
-  result.front = front;
   // INFO: Equal subtrees share a state and equal sibling groups share slots. Runs are contiguous in spelling order, so
   //  counting the stems before a state along the path finds its run.
   std::map<State, unsigned> ids{};

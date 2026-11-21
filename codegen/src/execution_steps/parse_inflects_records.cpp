@@ -92,7 +92,7 @@ InflectsEntry parse(const std::string_view text, const std::string_view where) {
   if (f.count == 0)
     error::invalid("record without fields", where);
   const InflectsEntry entry = sequence<InflectsEntry>(f, where);
-  if (entry.characterCount.value > entry.ending.size())
+  if (entry.characterCount.value != entry.ending.size())
     error::invalid("character count " + std::to_string(entry.characterCount.value) + " for the ending '" +
                        std::string{entry.ending} + "'",
                    where);

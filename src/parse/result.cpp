@@ -156,7 +156,7 @@ void fillFromImage(Work& out, Match& m, const std::string_view spelling, const r
   const auto labels = rel::inflectionLabels(r.description, {folded, ending.size()});
   c.age = labels.first;
   c.frequency = labels.second;
-  if (r.grammar.part == latin::Part::ADV && rel::entry(r.dictionary).part == latin::Part::ADJ) {
+  if (r.grammar.part == latin::Part::adverb && rel::entry(r.dictionary).part == latin::Part::adjective) {
     c.route = CRoute::adverb;
     c.adverb = true;
   }
@@ -178,7 +178,7 @@ void addDictionaryReadings(Work& out, const std::string_view spelling, bool (*co
       continue;
     const auto length = stemLength(m, Change{});
     const auto labels = rel::readingLabels(cursor, description, spelling, length);
-    const bool adverb = part(m) == latin::Part::ADV && rel::entry(m.entry).part == latin::Part::ADJ;
+    const bool adverb = part(m) == latin::Part::adverb && rel::entry(m.entry).part == latin::Part::adjective;
     const bool rewritten = spelling.data() != out.word.data() || spelling.size() != out.word.size();
     if (rewritten)
       m.stem |= static_cast<std::uint8_t>(offsetIn(out, spelling) << 2);
@@ -309,9 +309,9 @@ void decode(const std::string_view word, const Reading& r, const Change& c, Read
       d.form.ending[i] = facts::foldLetter(word[start + length + i]);
   if (r.entry == std::to_underlying(kNoDictionaryWord)) {
     const auto value = whitaker::romanValue(word);
-    d.dictionaryWord = {.part = latin::Part::NUM,
+    d.dictionaryWord = {.part = latin::Part::numeral,
                         .which = {2},
-                        .numeralSort = latin::NumeralSort::CARD,
+                        .numeralSort = latin::NumeralSort::cardinal,
                         .numeralValue = {static_cast<std::uint16_t>(value)}};
     d.dictionaryWordId = kNoDictionaryWord;
     d.meaning = "as a ROMAN NUMERAL;";

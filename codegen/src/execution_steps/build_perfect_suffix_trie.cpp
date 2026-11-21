@@ -1,10 +1,10 @@
 #include "execution_steps/steps.hpp"
 
-#include "error/error.hpp"
 #include "storage/lookup_metadata.hpp"
 #include "storage/perfect_suffixes.hpp"
 #include "storage/candidate_capacity.hpp"
 #include "storage/endings.hpp"
+#include <cassert>
 #include <map>
 #include <vector>
 
@@ -38,8 +38,7 @@ void execution_steps::lookup_tables::buildPerfectSuffixTrie() {
         place[kid] = static_cast<unsigned>(todo.size());
         todo.push_back(kid);
       }
-    if (todo.size() > 255)
-      error::fatal("two-ended: perfect suffix trie needs more than 255 nodes");
+    assert(todo.size() <= 255);
     out << "namespace whitaker::syncope {\n// " << perfectSuffixes.size()
         << " folded suffixes of verb readings on the perfect stem, read from the last letter.\n"
         << "struct PerfectSuffixNode { std::uint32_t mask; std::uint8_t first; bool end; };\n"

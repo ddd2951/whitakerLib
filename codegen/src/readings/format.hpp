@@ -32,8 +32,8 @@ consteval unsigned maximum(const info type, const info field) {
 }
 
 consteval std::vector<info> fields(latin::Part part) {
-  if (part == latin::Part::PACK)
-    part = latin::Part::PRON;
+  if (part == latin::Part::packon)
+    part = latin::Part::pronoun;
   std::vector<std::string_view> wanted{};
   for (const auto t : std::meta::members_of(^^latin::inflected, kContext)) {
     if (!std::meta::is_type(t) || !std::meta::is_class_type(t))
@@ -86,10 +86,15 @@ consteval std::string text() {
       continue;
     const std::string name(identifier_of(t));
     out += "[[nodiscard]] constexpr const char* name(" + name + " value) noexcept {\n  switch (value) {\n";
-    for (const auto e : enumerators_of(t)) {
-      const std::string id(identifier_of(e));
-      out += "  case " + name + "::" + id + ": return \"" + id + "\";\n";
-    }
+    for (const auto e : enumerators_of(t))
+      out += "  case " + name + "::" + std::string(identifier_of(e)) + ": return \"" + std::string(util::wordsName(e)) +
+             "\";\n";
+    out += "  }\n  return nullptr;\n}\n";
+    if (!util::isReaderFacing(t))
+      continue;
+    out += "[[nodiscard]] constexpr const char* label(" + name + " value) noexcept {\n  switch (value) {\n";
+    for (const auto e : enumerators_of(t))
+      out += "  case " + name + "::" + std::string(identifier_of(e)) + ": return \"" + util::label(e) + "\";\n";
     out += "  }\n  return nullptr;\n}\n";
   }
   if (maximum(^^latin::Age,
