@@ -3,15 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- NOTE: The page may load only its own files and contact nothing else; the browser enforces it. No report-uri:
-     a report would itself be a request. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self';
                img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <title>whitakerLib inspector</title>
 <link rel="stylesheet" href="style.css">
-<!-- NOTE: An empty icon, or the browser asks the server for /favicon.ico on its own. -->
-<link rel="icon" href="data:,">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
 <body>
 <main id="main">
@@ -21,16 +18,15 @@
                 placeholder="Loading the dictionary …"></textarea>
     </div>
     <div id="passage"></div>
+    <div id="highlights"></div>
     <div id="search-bar">
       <input id="search" type="search" spellcheck="false" autocomplete="off"
-             placeholder="/ search: abl pl · syncope · unknown · que">
+             placeholder="search">
       <span id="search-count"></span>
-      <button id="search-prev" title="previous match (↑)">↑</button>
-      <button id="search-next" title="next match (↓)">↓</button>
-      <button id="select-all" title="select the whole text (a)">Select all</button>
-      <label class="samples" title="time the text this many times, for Statistics (t)"><input type="checkbox"
-             id="sample"> ×</label><input type="number" id="sample-count" min="1" max="1000" value="100">
-      <label class="open" title="open a text file, or several as one text (o)">Open .txt<input type="file"
+      <button id="search-prev">↑</button>
+      <button id="search-next">↓</button>
+      <button id="select-all">Select all</button>
+      <label class="open">Open .txt<input type="file"
              id="open-file" accept=".txt,text/plain" multiple hidden></label>
     </div>
   </section>
@@ -39,10 +35,12 @@
     <h2 id="word"></h2>
     <div id="view"></div>
     <nav id="views">
-      <button data-view="readable" title="Readings (1)">Readings</button>
-      <button data-view="api" title="API: C++, C or Python (2; b switches)">API</button>
-      <button data-view="trace" title="Trace (3)">Trace</button>
-      <button data-view="statistics" title="Statistics (4)">Statistics</button>
+      <button data-view="readable">Readings</button>
+      <button data-view="sentence">Sentence (experimental)</button>
+      <button data-view="api">API</button>
+      <button data-view="trace">Trace</button>
+      <button data-view="statistics">Statistics</button>
+      <button id="ask">Copy word for Google help</button>
     </nav>
   </section>
 </main>

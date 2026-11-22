@@ -53,8 +53,6 @@ button {
   border: 1px solid var(--line);
   border-radius: 6px;
 }
-.samples { white-space: nowrap; color: var(--dim); cursor: pointer; }
-#sample-count { width: 4.5em; padding: 0.25em 0.3em; border: 1px solid var(--line); border-radius: 6px; }
 .open {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -90,9 +88,12 @@ button {
 }
 
 .w { cursor: pointer; border-radius: 3px; padding: 0 1px; }
-.w.unknown { text-decoration: underline dotted var(--unknown); text-underline-offset: 3px; }
 .w.inrange { background: var(--range); }
 #passage.all { background: var(--range); }
+/* NOTE: The Sentence view's sentence in the text: a soft tint, its right edge carried over the space after each word
+   so the sentence reads as one band. Before the rules below, which win where they meet it. */
+#passage .w.in-sentence { background: rgba(143, 180, 255, 0.13); box-shadow: 0.3em 0 0 rgba(143, 180, 255, 0.13); }
+#passage .w.in-sentence.inrange { background: var(--range); box-shadow: 0.3em 0 0 var(--range); }
 #passage .w.match { background: var(--match); }
 /* NOTE: After matches, so the selected word stays readable inside one. An inset shadow, not an outline: in Firefox
    an outline made a long text lay out again, 110 ms for a book. */
@@ -164,3 +165,72 @@ button.value { font: inherit; padding: 0 0.4em; margin: 0 0.2em 0.2em 0; border-
   #main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 2fr) minmax(0, 3fr); }
   #text-pane { border-right: none; border-bottom: 1px solid var(--line); }
 }
+
+/* INFO: Highlights (highlights.js): one row of toggles under the text, wrapping as needed; each kind of word its own
+   mark, so several can be on at once. Underlines and text weight, not backgrounds, where they can: the selection and
+   search matches are backgrounds. */
+#highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  align-items: center;
+  padding: 0.5em 0.8em;
+  border-top: 1px solid var(--line);
+}
+#highlights button { padding: 0.35em 0.7em; }
+#highlights .count { color: var(--dim); font-size: 0.85em; }
+#highlights button.on { border-color: var(--ink); background: var(--line); }
+
+/* NOTE: The underline is spelled out property by property: Safari (every browser on an iPad) drops a text-decoration
+   shorthand that has a thickness in it, and with it the whole mark. */
+#passage .w { text-underline-offset: 4px; }
+#passage.show-verb .w.k-verb, #passage.show-main .w.k-main, #passage.show-inf .w.k-inf,
+#passage.show-part .w.k-part { text-decoration-line: underline; text-decoration-style: solid; }
+#passage.show-verb .w.k-verb { text-decoration-color: var(--call); text-decoration-thickness: 2px; }
+#passage.show-main .w.k-main { font-weight: bold; text-decoration-color: var(--call); text-decoration-thickness: 3px; }
+#passage.show-inf .w.k-inf { text-decoration-style: dotted; text-decoration-color: var(--name);
+  text-decoration-thickness: 2px; }
+#passage.show-part .w.k-part { text-decoration-style: wavy; text-decoration-color: #c9a0ff;
+  text-decoration-thickness: 1px; }
+#passage.show-unknown .w.k-unknown:not(.selected) { background: rgba(224, 106, 106, 0.22); }
+#passage.show-once .w.k-once:not(.selected) { background: rgba(132, 201, 138, 0.2); }
+#passage.show-que .w.k-que { color: #ffb86b; }
+
+#ask { margin-left: auto; }
+#views { flex-wrap: wrap; }
+pre.asked { white-space: pre-wrap; user-select: text; -webkit-user-select: text; font: 0.9em/1.5 var(--mono); }
+
+/* NOTE: For reading: the WORDS codes under each form and the dictionary word's number stay out of sight (the form in
+   words says it). */
+.reading .meta, .meta.entry { display: none; }
+
+/* INFO: The Sentence view (sentence.js): the sentence, then a row a part (main verb, subject, clauses, unknown words).
+   Its words are buttons that look like words. */
+.s-warning { margin: 0 0 0.6em; padding: 0.4em 0.6em; border-left: 3px solid var(--note-edge);
+  background: var(--note-bg); font-size: 0.9em; }
+.s-place { color: var(--dim); font-size: 0.9em; }
+.s-pieces { margin: 0.6em 0 0.4em; }
+.s-piece { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.8em; padding: 0.35em 0; }
+.s-piece + .s-piece { border-top: 1px dotted var(--line); }
+.s-piece-text { font: 1.05em/1.7 Georgia, serif; }
+button.s-word { font: inherit; border: none; background: none; padding: 0 1px; border-radius: 3px; cursor: pointer; }
+.s-main { font-weight: bold; text-decoration: underline solid var(--call) 3px; text-underline-offset: 4px; }
+.s-verb { text-decoration: underline solid var(--call) 2px; text-underline-offset: 4px; }
+.s-opener { color: var(--name); }
+.s-subject { text-decoration: underline double var(--pick) 1px; text-underline-offset: 4px; }
+.s-here { box-shadow: inset 0 0 0 1px var(--pick-edge); }
+.s-row {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+  gap: 0.6em;
+  padding: 0.45em 0;
+  border-top: 1px solid var(--line);
+}
+.s-title { color: var(--dim); }
+.s-line { line-height: 1.8; }
+.s-meaning { color: var(--ink); }
+.s-form, .s-note, .s-none { color: var(--dim); font-size: 0.9em; }
+.s-ask { margin-top: 0.8em; }
+
+/* NOTE: On a narrow screen a piece's notes go under its words. */
+@media (max-width: 700px) { .s-piece { grid-template-columns: 1fr; gap: 0.1em; } }

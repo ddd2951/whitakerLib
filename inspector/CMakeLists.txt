@@ -13,7 +13,7 @@ target_compile_definitions(whitaker_wasm PRIVATE WHITAKER_TRACE)
 # NOTE: One directory with the page and the library, so `python3 -m http.server -d build-wasm/site` serves it all.
 set(WHITAKER_SITE ${CMAKE_BINARY_DIR}/site)
 set_target_properties(whitaker_wasm PROPERTIES OUTPUT_NAME whitaker SUFFIX .mjs RUNTIME_OUTPUT_DIRECTORY ${WHITAKER_SITE})
-foreach(file index.html style.css app.js library.js text.js views.js)
+foreach(file index.html style.css app.js library.js text.js views.js highlights.js ask.js sentence.js icon.svg)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/site/${file} ${WHITAKER_SITE}/${file} COPYONLY)
 endforeach()
 target_link_options(whitaker_wasm PRIVATE
@@ -23,6 +23,6 @@ target_link_options(whitaker_wasm PRIVATE
     -sENVIRONMENT=web,worker,node
     -sALLOW_MEMORY_GROWTH
     -sFILESYSTEM=0
-    -sEXPORTED_FUNCTIONS=_inspector_load,_inspector_select,_inspector_view,_inspector_search,_inspector_sample_start,_inspector_sample,_inspector_time,_inspector_binding,_malloc,_free
+    -sEXPORTED_FUNCTIONS=_inspector_load,_inspector_select,_inspector_view,_inspector_search,_inspector_time,_inspector_binding,_inspector_marks,_malloc,_free
     -sEXPORTED_RUNTIME_METHODS=cwrap,lengthBytesUTF8,stringToUTF8
 )

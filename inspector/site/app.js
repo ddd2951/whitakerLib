@@ -1,14 +1,15 @@
 // INFO: The inspector: paste or open a text, select a word or a run of words, and see the result in each view. The
-//  selection and the view are chosen independently; changing one keeps the other. Nothing is stored or sent.
-// TODO: post 0.4.0 The page's actions as calls (load, select, view, search), for an agent to drive the site.
-// NOTE: The inspector will mostly be reworked after 0.4.0. Build nothing against the page or its calls, and depend
-//  on nothing in them.
+//  selection and the view are chosen independently; changing one keeps the other. Nothing is sent; the last text and
+//  the place in it are kept in this browser.
+import { copy, question, sentenceQuestion, sentenceRange } from './ask.js';
+import * as highlights from './highlights.js';
 import { loadLibrary } from './library.js';
+import * as sentenceView from './sentence.js';
 import { renderPassage, withoutGutenberg, wordsOf } from './text.js';
 import { render, VIEWS } from './views.js';
 
 const $ = id => document.getElementById(id);
-const PROMPT = 'Ctrl+V anywhere to inspect a Latin text, or type it here and press Enter';
+const PROMPT = 'Paste a Latin text';
 
 let library;
 let words = [];
@@ -20,12 +21,12 @@ let view = 'readable';
 let binding = 0;
 let matches = [];
 let dragging = false;
-let sampling = null;
 let drawn = 0;
 let loading = false;
+let book = '';
+let text = '';
 
 const range = () => [Math.min(anchor, focus), Math.max(anchor, focus)];
-const wholeText = () => range()[0] === 0 && range()[1] === words.length - 1;
 
 // NOTE: Marking a whole book word by word took about 200 ms, so the whole text is one class on the passage and other
 //  ranges change only the words that entered or left them.
@@ -48,7 +49,9 @@ function show(started = performance.now()) {
   const [from, to] = range();
   $('word').textContent = from === to ? words[from].text : `${words[from].text} … ${words[to].text}`;
   document.querySelectorAll('#views button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
-  render(view, library.select(from, to), library, $('view'));
+  if (view === 'sentence') sentenceView.render($('view'), { text, words, i: focus, readingsHtmlOf });
+  else render(view, library.select(from, to), library, $('view'));
+  tint();
   const current = ++drawn;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (current !== drawn) return;
@@ -64,10 +67,33 @@ function show(started = performance.now()) {
   }));
 }
 
+// NOTE: The last text and the word last selected in it are kept in this browser (localStorage), so the page opens
+//  where reading stopped. Nothing leaves the browser. A text too big for the storage is just not kept; a browser that
+//  allows none (private mode) starts empty, as before.
+const KEPT_TEXT = 'reader.text';
+const KEPT_PLACE = 'reader.place';
+
+function keep(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // too big, or no storage: not kept
+  }
+}
+
+function kept(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
 function select(i, extend = false, started = performance.now()) {
   if (!words.length) return;
   focus = Math.max(0, Math.min(words.length - 1, i));
   if (!extend) anchor = focus;
+  keep(KEPT_PLACE, { book, words: words.length, i: focus });
   show(started);
   countMatches();
 }
@@ -123,55 +149,79 @@ function stepMatch(direction) {
 //  so no word on screen shows another word's readings, and the text box says what failed.
 // NOTE: A book takes seconds, so the text box says so first, drawn before the work starts; a text that comes in
 //  meanwhile is left alone.
-async function start(source) {
+async function start(source, name = 'pasted text') {
   if (loading) return;
   loading = true;
   try {
-    const text = withoutGutenberg(source);
+    text = withoutGutenberg(source);
+    book = name;
     const next = wordsOf(text);
     $('source').placeholder = `Looking up ${next.length.toLocaleString('en')} words …`;
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
     words = next;
     const known = library.load(words.map(o => o.spelling));
-    spans = renderPassage($('passage'), text, words, known);
+    highlights.load(text, words, library.marks());
+    spans = renderPassage($('passage'), text, words, known, highlights.kinds(words.length));
+    tinted = [0, -1];
     $('source').placeholder = PROMPT;
+    keep(KEPT_TEXT, { book, source });
   } catch (error) {
     words = [];
     spans = [];
     library.load([]);
+    highlights.load('', [], '');
     $('passage').replaceChildren();
     $('word').textContent = '';
     $('view').replaceChildren();
     $('source').placeholder = `Could not take that text: ${error.message}`;
   }
   loading = false;
+  highlights.counts($('highlights'));
   anchor = focus = 0;
   marked = [0, -1];
-  sampling = null;
   runSearch();
-  if (words.length) select(0);
-  if ($('sample').checked && words.length) startSampling();
+  const place = kept(KEPT_PLACE);
+  if (words.length) select(place?.book === book && place?.words === words.length ? place.i : 0);
 }
 
-function startSampling() {
-  const rounds = Math.max(1, Math.min(1000, Number($('sample-count').value) || 1));
-  const mine = sampling = {};
-  library.sampleStart(rounds);
-  let round = 0;
-  let shown = 0;
-  (async () => {
-    while (round < rounds) {
-      await new Promise(resolve => setTimeout(resolve, 0));
-      if (sampling !== mine) return;
-      const done = library.sample();
-      if (done === round) continue;
-      round = done;
-      if (view === 'statistics' && wholeText() && (round === rounds || performance.now() - shown > 500)) {
-        shown = performance.now();
-        show();
-      }
-    }
-  })();
+// NOTE: The readings come from the Readings view of the word alone; the selection and the view on screen are put back
+//  after. If the copy fails, the question is shown in the view to copy by hand.
+// The Readings view of word i alone, as HTML. It moves the library's selection: show() puts it back.
+function readingsHtmlOf(i) {
+  library.select(i, i);
+  return library.view(0, 0, 1);
+}
+
+// NOTE: The button is looked up after show(), which draws the Sentence view, and its button, anew.
+async function ask(sentence) {
+  if (!words.length) return;
+  const asked = sentence
+    ? sentenceQuestion({ text, words, i: focus, book, readingsHtmlOf, isVerbal: i => highlights.isVerbal(i) })
+    : question({ text, words, i: focus, book, readingsHtml: readingsHtmlOf(focus) });
+  show();
+  const button = sentence ? $('view').querySelector('.s-ask') : $('ask');
+  if (await copy(asked)) {
+    if (!button) return;
+    const label = button.textContent;
+    button.textContent = 'Copied ✓';
+    setTimeout(() => { button.textContent = label; }, 1500);
+    return;
+  }
+  const shown = document.createElement('pre');
+  shown.className = 'asked';
+  shown.textContent = asked;
+  $('view').replaceChildren(shown);
+}
+
+// NOTE: In the Sentence view the selected word's sentence is tinted in the text (the word itself stays the strong
+//  highlight); only the words that enter or leave the tint change.
+let tinted = [0, -1];
+function tint() {
+  const [from, to] = view === 'sentence' && words.length ? sentenceRange(text, words, focus) : [0, -1];
+  if (from === tinted[0] && to === tinted[1]) return;
+  for (let i = tinted[0]; i <= tinted[1]; ++i) spans[i]?.classList.remove('in-sentence');
+  for (let i = from; i <= to; ++i) spans[i].classList.add('in-sentence');
+  tinted = [from, to];
 }
 
 const wordAt = target => target.classList?.contains('w') ? Number(target.dataset.i) : null;
@@ -256,21 +306,23 @@ function wire() {
     const files = [...e.target.files];
     if (!files.length) return;
     e.target.value = '';
-    start((await Promise.all(files.map(file => file.text()))).map(withoutGutenberg).join('\n\n'));
-  });
-  $('sample').addEventListener('change', () => {
-    if ($('sample').checked && words.length) startSampling();
-    else if (!$('sample').checked) sampling = null;
+    start((await Promise.all(files.map(file => file.text()))).map(withoutGutenberg).join('\n\n'),
+          files.map(file => file.name).join(', '));
   });
   wirePassage();
+  highlights.setup($('highlights'), $('passage'));
   $('views').addEventListener('click', e => { if (e.target.dataset.view) setView(e.target.dataset.view); });
   $('view').addEventListener('click', e => {
     const b = e.target.closest('[data-find]');
     if (b) find(b.dataset.find);
     const k = e.target.closest('[data-binding]');
     if (k) setBinding(Number(k.dataset.binding));
+    const w = e.target.closest('[data-word]');
+    if (w) select(Number(w.dataset.word));
+    if (e.target.closest('[data-action="ask-sentence"]')) ask(true);
   });
   $('select-all').addEventListener('click', selectAll);
+  $('ask').addEventListener('click', () => ask(false));
   $('search').addEventListener('input', runSearch);
   $('search-prev').addEventListener('click', () => stepMatch(-1));
   $('search-next').addEventListener('click', () => stepMatch(1));
@@ -287,9 +339,8 @@ function wire() {
 
   document.addEventListener('keydown', e => {
     if (e.target.closest('input, textarea') || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === 'o' || e.key === 't') {
-      if (e.key === 'o') $('open-file').click();
-      else $('sample').click();
+    if (e.key === 'o') {
+      $('open-file').click();
       e.preventDefault();
       return;
     }
@@ -306,6 +357,9 @@ function wire() {
       case 'b': setBinding((binding + 1) % 3); break;
       case '/': $('search').focus(); break;
       case 'a': selectAll(); break;
+      case 'w': ask(false); break;
+      case 's': ask(true); break;
+      case '5': setView('sentence'); break;
       case 'Escape': document.activeElement?.blur(); break;
       default: return;
     }
@@ -320,7 +374,9 @@ try {
   wire();
   $('source').disabled = false;
   $('source').placeholder = PROMPT;
-  $('source').focus();
+  const last = kept(KEPT_TEXT);
+  if (last?.source) start(last.source, last.book);
+  else $('source').focus();
 } catch (error) {
   $('source').placeholder = `Could not load the dictionary: ${error.message}`;
 }

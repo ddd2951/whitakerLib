@@ -1,6 +1,6 @@
 // INFO: whitaker.wasm, loaded once, and the inspector's calls into it (inspector/glue.cpp): load(words) looks up
 //  the text, select(from, to) picks a run of it, view(v, first, count) draws it as HTML, search(query) marks the words
-//  that match, and sampleStart, sample and time time the library alone.
+//  that match, marks() gives each word's flags for the highlights, and time times the library alone.
 import loadWhitaker from './whitaker.mjs';
 
 async function fetchWithProgress(url, onProgress) {
@@ -46,8 +46,7 @@ export async function loadLibrary(onProgress) {
     select: whitaker.cwrap('inspector_select', 'number', ['number', 'number']),
     view: whitaker.cwrap('inspector_view', 'string', ['number', 'number', 'number']),
     search: whitaker.cwrap('inspector_search', 'string', ['string']),
-    sampleStart: whitaker.cwrap('inspector_sample_start', null, ['number']),
-    sample: whitaker.cwrap('inspector_sample', 'number', []),
+    marks: whitaker.cwrap('inspector_marks', 'string', []),
     time: whitaker.cwrap('inspector_time', 'number', []),
     binding: whitaker.cwrap('inspector_binding', null, ['number']),
   };

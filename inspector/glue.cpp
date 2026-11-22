@@ -1,7 +1,3 @@
-// INFO: The WebAssembly entry points, the inspector's (site/). inspector_load looks up a text, keeping the
-//  trace; every other call reads that result. A returned string stays valid until the next call.
-// NOTE: The inspector will mostly be reworked after 0.4.0. Build nothing against these entry points or the page,
-//  and depend on nothing in them.
 #include <latin_generated.hpp>
 #include <whitaker.hpp>
 
@@ -10,7 +6,6 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #else
-// NOTE: Also built natively, so its output can be compared with the browser build's word for word.
 #include <chrono>
 #define EMSCRIPTEN_KEEPALIVE
 [[nodiscard]] static double emscripten_get_now() {
@@ -598,8 +593,12 @@ void reading(std::size_t n, const whitaker::Form& form) {
 
 void readable(const Word& word) {
   Html& h = html;
+  if (readingCount(word) == 0 && word.status == whitaker::Status::ok) {
+    h.element("p", "none", "Not in whitakerLib's dictionary.");
+    return;
+  }
   if (readingCount(word) == 0)
-    return noReadings(word, " The Trace view shows the passes the lookup tried.");
+    return noReadings(word, "");
   std::size_t n = 0;
   for (const Block& record : recordsOf(word)) {
     const latin::DictionaryWord& e = head(record).dictionaryWord;
@@ -641,8 +640,6 @@ void readable(const Word& word) {
                       e.numeralValue.value ? "value " + std::to_string(e.numeralValue.value) : ""}));
     h.close("div");
   }
-  if (trimmed(word))
-    h.element("p", "none", "Rarer readings were trimmed by the library (trimmed = 1).");
 }
 
 void traced(const Word& word) {
@@ -740,8 +737,7 @@ void cHead() {
   Html& h = html;
   h.open("p", "bindings");
   for (unsigned b = 0; b < 3; ++b)
-    h.open("button", b == std::to_underlying(apiBinding) ? "on" : "",
-           "data-binding=\"" + std::to_string(b) + "\" title=\"b switches\"")
+    h.open("button", b == std::to_underlying(apiBinding) ? "on" : "", "data-binding=\"" + std::to_string(b) + "\"")
         .add(b == 0   ? "C++"
              : b == 1 ? "C"
                       : "Python")
@@ -793,12 +789,9 @@ struct Measure {
 struct Timings {
   std::vector<Measure> measures;
   std::size_t from = 0, to = 0;
-  std::size_t next = 0;
-  unsigned round = 0, rounds = 0;
   bool valid = false;
 };
 
-Timings sampledTimings;
 Timings onceTimings;
 
 [[nodiscard]] Timings measuresOf(std::size_t from, std::size_t to) {
@@ -1006,33 +999,26 @@ void counts() {
   h.close("table");
 }
 
-[[nodiscard]] bool wholeText() { return selectedFrom == 0 && selectedTo + 1 == loadedText.occurrences.size(); }
-
 void traceCosts() {
-  const bool whole = sampledTimings.valid && wholeText();
   const bool once = onceTimings.valid && onceTimings.from == selectedFrom && onceTimings.to == selectedTo;
-  const Timings fresh = whole || once ? Timings{} : measuresOf(selectedFrom, selectedTo);
+  const Timings fresh = once ? Timings{} : measuresOf(selectedFrom, selectedTo);
   html.element("div", "block-head", "Where the time goes, by lookup path: the passes each word ran");
-  costs(whole ? sampledTimings : once ? onceTimings : fresh);
+  costs(once ? onceTimings : fresh);
 }
 
 void statistics() {
   Html& h = html;
-  const bool whole = sampledTimings.valid && wholeText();
   const bool once = onceTimings.valid && onceTimings.from == selectedFrom && onceTimings.to == selectedTo;
-  const Timings fresh = whole || once ? Timings{} : measuresOf(selectedFrom, selectedTo);
-  const Timings& t = whole ? sampledTimings : once ? onceTimings : fresh;
-  const std::string note =
-      whole ? std::to_string(t.round) + " of " + std::to_string(t.rounds) + " samples, as the text came in"
-            : "timed once";
-  h.open("div", "block-head").add("Speed of the library").element("span", "type", " · " + note).close("div");
+  const Timings fresh = once ? Timings{} : measuresOf(selectedFrom, selectedTo);
+  const Timings& t = once ? onceTimings : fresh;
+  h.open("div", "block-head").add("Speed of the library").element("span", "type", " · timed once").close("div");
   speeds(t);
   h.open("p").add("On screen, from your input to the view drawn: ").element("span", "paint", "…");
   h.element("span", "meta", " (the timing runs after that)").close("p");
   h.element("p", "meta",
             "analyze() for the first word, then append() for each further word, repeated until "
             "enough time has passed: browsers round their clock to about a millisecond. This build also "
-            "records the trace. For many samples, tick × beside the text box before putting a text in.");
+            "records the trace.");
   counts();
   const char* version = whitaker::kVersion;
   h.element("p", "meta",
@@ -1042,7 +1028,8 @@ void statistics() {
             "whitakerLib " + std::string{version} + ", image " +
                 std::string{std::string_view{whitaker::imageChecksum()}.substr(0, 12)} + " (format " +
                 std::to_string(whitaker::imageFormat()) +
-                "). The text is analyzed in this page; nothing is sent or stored.");
+                "). The text is analyzed in this page and nothing is sent; the text and your place in it are "
+                "kept in this browser.");
 }
 
 } // namespace
@@ -1057,7 +1044,6 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_load(const char* words) {
   t.tags.clear();
   t.occurrences.clear();
   t.vocabulary = {"unknown"};
-  sampledTimings = {};
   onceTimings = {};
   std::unordered_map<std::string, std::uint32_t> ids;
   for (const auto part : std::views::split(std::string_view{words}, '\n')) {
@@ -1152,26 +1138,56 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_search(const char* query) 
   return reply.c_str();
 }
 
-extern "C" EMSCRIPTEN_KEEPALIVE void inspector_sample_start(unsigned rounds) {
-  sampledTimings = loadedText.occurrences.empty() ? Timings{} : measuresOf(0, loadedText.occurrences.size() - 1);
-  sampledTimings.rounds = rounds;
-}
+// INFO: For the highlights and the Sentence view (site/highlights.js, site/sentence.js): four hex digits a word in
+//  the text, its flags, from its readings. Which reading is right in its sentence is the page's guess, not this.
+constexpr unsigned kFinite = 1; // some reading is a verb with a person (indicative, subjunctive, imperative)
+constexpr unsigned kInfinitive = 4;
+constexpr unsigned kUnknown = 8;
+constexpr unsigned kParticiple = 16;
+constexpr unsigned kQue = 32; // some reading carries the tackon -que
+constexpr unsigned kAblative = 64;
+constexpr unsigned kNotVerb = 128;        // some reading is another part of speech (a participle counts as one)
+constexpr unsigned kOnlyNominative = 256; // every reading is a nominative: a likely subject
+constexpr unsigned kNominative = 512;     // some reading is
 
-extern "C" EMSCRIPTEN_KEEPALIVE unsigned inspector_sample() {
-  Timings& t = sampledTimings;
-  if (!t.valid || t.round >= t.rounds)
-    return t.round;
-  Measure& m = t.measures[t.next];
-  m.samples.push_back(timed(m.words, std::max(2.0, 20 * clockStep())));
-  if (++t.next == t.measures.size()) {
-    t.next = 0;
-    ++t.round;
+extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_marks() {
+  std::vector<unsigned> marks(loadedText.words.size(), 0);
+  for (std::size_t w = 0; w < loadedText.words.size(); ++w) {
+    unsigned m = 0;
+    std::size_t nominative = 0;
+    std::size_t all = 0;
+    for (const Block& record : recordsOf(loadedText.words[w]))
+      for (std::size_t f = record.first; f < record.first + record.count; ++f) {
+        const whitaker::ReadingDetail& d = loadedText.details[f];
+        const latin::Mood mood = d.form.grammar.mood;
+        const bool isFinite =
+            d.form.grammar.part == latin::Part::verb &&
+            (mood == latin::Mood::indicative || mood == latin::Mood::subjunctive || mood == latin::Mood::imperative);
+        nominative += d.form.grammar.caseOf == latin::Case::nominative;
+        m |= d.form.grammar.caseOf == latin::Case::nominative ? kNominative : 0;
+        ++all;
+        m |= isFinite ? kFinite : 0;
+        m |= mood == latin::Mood::infinitive ? kInfinitive : 0;
+        m |= d.form.grammar.part == latin::Part::participle ? kParticiple : 0;
+        m |= d.form.grammar.caseOf == latin::Case::ablative ? kAblative : 0;
+        m |= d.form.grammar.part != latin::Part::verb ? kNotVerb : 0;
+        for (const whitaker::AddonStep& step : std::span{d.addons, d.addonCount})
+          m |= orEmpty(whitaker::addonSpelling(step.id)) == "que" ? kQue : 0;
+      }
+    m |= all == 0 ? kUnknown : 0;
+    m |= all && nominative == all ? kOnlyNominative : 0;
+    marks[w] = m;
   }
-  return t.round;
+  reply.clear();
+  constexpr std::string_view kHex = "0123456789abcdef";
+  for (const std::uint32_t w : loadedText.occurrences)
+    for (int shift = 12; shift >= 0; shift -= 4)
+      reply += kHex[(marks[w] >> shift) & 15];
+  return reply.c_str();
 }
 
 extern "C" EMSCRIPTEN_KEEPALIVE unsigned inspector_time() {
-  if (loadedText.occurrences.empty() || (sampledTimings.valid && wholeText()) ||
+  if (loadedText.occurrences.empty() ||
       (onceTimings.valid && onceTimings.from == selectedFrom && onceTimings.to == selectedTo))
     return 0;
   onceTimings = measuresOf(selectedFrom, selectedTo);
