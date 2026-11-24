@@ -63,6 +63,12 @@ button {
 }
 a.open { text-decoration: none; color: inherit; }
 
+/* INFO: The one line of the page that is there before any script runs: what the library is, and plain links to its
+   repositories and the Firefox add-on. */
+#about { flex: none; padding: 0.3em 1em; border-top: 1px solid var(--line); color: var(--dim); font-size: 0.8em; }
+#about p { margin: 0; }
+#about a { color: var(--ink); }
+
 #main {
   flex: 1;
   min-height: 0;
