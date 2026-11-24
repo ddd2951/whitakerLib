@@ -24,14 +24,9 @@ target_compile_options(gen_runtime PRIVATE ${GEN_OPTIONS})
 target_include_directories(gen_runtime PUBLIC
     ${WHITAKER_SUBTREE} ${WHITAKER_SUBTREE}/include ${WHITAKER_SUBTREE}/src ${WHITAKER_SUBTREE}/latin)
 
-add_executable(gen_binary
-    src/main.cpp
+add_library(gen_steps OBJECT
     src/error/error.cpp
     src/util/file_load.cpp
-    src/types/latin_test.cpp
-    src/readings/format_test.cpp
-    src/bindings/python_test.cpp
-    src/bindings/c_test.cpp
     src/source/source.cpp
     src/execution_steps/read_dictline.cpp
     src/execution_steps/index_dictline_records.cpp
@@ -105,11 +100,23 @@ add_executable(gen_binary
     src/expand/expand.cpp
     src/expand/common/reading.cpp
     src/emitter/relationship_emitter/string_section.cpp)
+target_include_directories(gen_steps PRIVATE src)
+target_compile_features(gen_steps PRIVATE cxx_std_26)
+target_compile_options(gen_steps PRIVATE -freflection ${GEN_OPTIONS})
+target_link_libraries(gen_steps PRIVATE gen_runtime)
+
+add_executable(gen_binary
+    src/main.cpp
+    src/types/latin_test.cpp
+    src/readings/format_test.cpp
+    src/bindings/python_test.cpp
+    src/bindings/c_test.cpp
+    src/readings/tables_test.cpp)
 set_target_properties(gen_binary PROPERTIES OUTPUT_NAME gen_image)
 target_include_directories(gen_binary PRIVATE src)
 target_compile_features(gen_binary PRIVATE cxx_std_26)
 target_compile_options(gen_binary PRIVATE -freflection ${GEN_OPTIONS})
-target_link_libraries(gen_binary PRIVATE gen_runtime)
+target_link_libraries(gen_binary PRIVATE gen_steps gen_runtime)
 
 add_custom_target(image COMMAND $<TARGET_FILE:gen_binary> WORKING_DIRECTORY ${WHITAKER_SUBTREE}
     DEPENDS gen_binary USES_TERMINAL)
@@ -138,28 +145,23 @@ set_source_files_properties(src/readings/format_main.cpp src/readings/format_tes
 add_custom_target(write_reading_format COMMAND reading_format WORKING_DIRECTORY ${WHITAKER_SUBTREE}
     DEPENDS reading_format USES_TERMINAL)
 
-get_target_property(IMAGE_SOURCES gen_binary SOURCES)
-list(FILTER IMAGE_SOURCES EXCLUDE REGEX "(_test|/main)\\.cpp$")
-add_executable(two_ended src/readings/tables_main.cpp ${IMAGE_SOURCES})
+add_executable(two_ended src/readings/tables_main.cpp)
 target_include_directories(two_ended PRIVATE src)
 target_compile_features(two_ended PRIVATE cxx_std_26)
 target_compile_options(two_ended PRIVATE -freflection ${GEN_OPTIONS})
-target_link_libraries(two_ended PRIVATE gen_runtime)
+target_link_libraries(two_ended PRIVATE gen_steps gen_runtime)
 add_custom_target(write_two_ended COMMAND two_ended --write WORKING_DIRECTORY ${WHITAKER_SUBTREE}
     DEPENDS two_ended USES_TERMINAL)
 add_custom_target(check_two_ended COMMAND two_ended --check WORKING_DIRECTORY ${WHITAKER_SUBTREE}
     DEPENDS two_ended USES_TERMINAL)
 add_dependencies(gen check_two_ended)
-target_sources(gen_binary PRIVATE src/readings/tables_test.cpp)
 
 # INFO: Bounds for the word-local change list, from the same unswept source expansion as the image.
-get_target_property(CAPACITY_SOURCES gen_binary SOURCES)
-list(FILTER CAPACITY_SOURCES EXCLUDE REGEX "(_test|/main)\\.cpp$")
-add_executable(reading_capacity src/readings/capacity_main.cpp ${CAPACITY_SOURCES})
+add_executable(reading_capacity src/readings/capacity_main.cpp)
 target_include_directories(reading_capacity PRIVATE src)
 target_compile_features(reading_capacity PRIVATE cxx_std_26)
 target_compile_options(reading_capacity PRIVATE -freflection ${GEN_OPTIONS})
-target_link_libraries(reading_capacity PRIVATE gen_runtime)
+target_link_libraries(reading_capacity PRIVATE gen_steps gen_runtime)
 add_custom_target(write_reading_capacity COMMAND reading_capacity --write WORKING_DIRECTORY ${WHITAKER_SUBTREE}
     DEPENDS reading_capacity USES_TERMINAL)
 add_custom_target(check_reading_capacity COMMAND reading_capacity --check WORKING_DIRECTORY ${WHITAKER_SUBTREE}

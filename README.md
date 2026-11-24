@@ -4,10 +4,10 @@
 
 A small C++23 library that takes a Latin word and returns every reading William
 Whitaker's WORDS data supports, with its stem, meaning, part of speech and
-inflection, add-ons and Roman numerals included. With a C binding and a Python binding,
+inflection, add-ons and Roman numerals included. Includes C and Python bindings,
 both generated from the C++ header.
 
-- **Under a microsecond a word**, on average over [102 Latin books](data/booklist.md#books).
+- **Under a microsecond per word**, on average over [102 Latin books](data/booklist.md#books).
 - **1,205,496 spellings, 2,374,470 readings** in a 3.8 MB image embedded in
   the library, with no external data file at runtime, no database and no
   initialization.
@@ -15,7 +15,9 @@ both generated from the C++ header.
   reading, record and add-on, in WORDS' order. The [oracle](oracle/README.md)
   explains the comparison.
 - **[Try it in your browser](https://ddd2951.github.io/whitakerLib/)**, in the
-  [inspector](#the-inspector).
+  [inspector](#inside).
+- **[Install the Firefox extension](https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/)**,
+  an offline Latin dictionary.
 
 ## Why?
 
@@ -44,8 +46,9 @@ given in "Why reflection?" in `codegen/README.md`.
   readings, offline. About 1,100 lines of Lua, plus the library.
 - **Firefox**:
   [whitakerLib-firefox](https://github.com/ddd2951/whitakerLib-firefox), an
-  extension. Double-click a Latin word on any page to see its readings,
-  offline. Under 600 lines, plus the library built to WebAssembly.
+  extension, [on addons.mozilla.org](https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/).
+  Double-click a Latin word on any page to see its readings, offline. Under
+  600 lines, plus the library built to WebAssembly.
 
 <img src="docs/kindle.gif" width="270" alt="The KOReader plugin on a Kindle: tapping
 locos in the Aeneid shows its meanings and its forms"> <img src="docs/firefox.gif"
@@ -56,19 +59,11 @@ I made these two to try the library in two quite different places: a desktop
 browser, as WebAssembly, and a Kindle from 2015. If it runs well in both, I
 figure it should work in plenty of other places too.
 
-I'm not planning any other apps myself, but I want to keep updating these two,
-mostly to find where the library is awkward to use or needs too much
-boilerplate. The plan is to move parts of both plugins into the library over
-time, so it does those things itself instead of each plugin working around it.
-The grammar names in 0.4.1 are the first of these.
-
-## The inspector
-
-A page I built to test the library and find its bottlenecks. Paste some Latin
-and move through every reading, with the API output (C++, C or Python) and the
-lookup trace. It's online at
-[ddd2951.github.io/whitakerLib](https://ddd2951.github.io/whitakerLib/), runs
-fully in the page as WebAssembly, and sends nothing.
+I want to keep updating these two, mostly to find where the library is awkward
+to use or needs too much boilerplate. The plan is to move parts of both plugins
+into the library over time, so it does those things itself instead of each
+plugin working around it. The grammar names introduced in 0.4.1 are the first
+example.
 
 ## Arma virumque cano
 
@@ -92,6 +87,69 @@ make getting the readings so fast that a reader, a ranker or a parser can work
 with all of them, and with everything else the library gives. Every reading of
 all 63,398 words in the *Aeneid* takes a Kindle Paperwhite from 2015 about a
 second.
+
+## Inside
+
+From WORDS' files to a reading, in five steps.
+
+1. `codegen` reads WORDS' four files: DICTLINE, INFLECTS, UNIQUES and ADDONS.
+2. It expands every stem with every ending it takes, into the readings WORDS
+   would give.
+3. It packs them into the image, and checks the image's lookup against the
+   expansion on every spelling.
+4. At run time, `analyze()` looks each word up in the image, and runs WORDS'
+   passes (add-ons, syncope, respellings) for what the image alone can't answer.
+5. `detail()` decodes a reading only when you ask for it.
+
+The inspector shows step 4 at work: a page I built to test the library and find
+its bottlenecks. Paste some Latin and move through every reading, with the API
+output (C++, C or Python) and the lookup trace. It's online at
+[ddd2951.github.io/whitakerLib](https://ddd2951.github.io/whitakerLib/), runs
+fully in the page as WebAssembly, and sends nothing.
+
+So to explain it, let me do it through a story: the story of *Simplicissimus*, a
+rather ambitious name, meaning "the simplest" or "most simple".
+
+He arrives at the dictionary, where he is not recognized. Undeterred, he tries
+the next part of the program, which checks whether he might be a Roman numeral.
+No luck. Then come alternative prefixes, shortened verb forms, and attached
+particles. None can make sense of him. Five attempts, and still nothing.
+
+But his journey isn't over. Eventually he arrives at the machinery for prefixes
+and suffixes, and there, at last, somebody recognizes him. The inspector's
+lookup trace records the encounter:
+
+```text
+Dictionary                +0 readings
+RomanNumeral              +0 readings
+PrefixVariants            +0 readings
+Syncope                   +0 readings
+Enclitic                  +0 readings
+DictionaryWithAffixes     +1 readings
+```
+
+The answer is an adjective derived from *simplex*, "simple, plain, unaffected".
+The program has recognized a superlative, formed using the suffix *-issi-*:
+*Simplicissi|mus*, nominative singular masculine, superlative.
+
+What was missing from the ordinary dictionary search was not the underlying
+adjective, but the additional relationship needed to construct its superlative.
+Whitaker's program has an entire collection of these relationships: prefixes,
+suffixes, and other additions that can produce forms beyond the ordinary
+stem-and-ending combinations.
+
+And so our simplest adventurer turns out to have required quite a complicated
+journey. Paste him into the inspector and follow it yourself.
+
+How much to pack into the image and how much to leave to run time has been one
+of the most fun parts of this project. Moving even a small part of the work
+into the image can make it explode in size, so it's a matter of finding a good
+middle ground. In one experiment I tried with every finished spelling in the image,
+enclitics included, it grew to about 93 MB. With prefixes and suffixes added
+it passed 1 GB before it was even a tenth done, so those stay at run time.
+
+`codegen/README.md` describes steps 1 to 3, and `src/whitaker.cpp` is where
+step 4 starts, with WORDS' passes in WORDS' order.
 
 ## API
 
@@ -193,29 +251,6 @@ described in the [oracle README](oracle/README.md#bugs-found-in-words).
 
 Tracking down where the two disagree turned up several bugs in WORDS itself,
 some of which crashed it.
-
-## Inside
-
-From WORDS' files to a reading, in five steps.
-
-1. `codegen` reads WORDS' four files: DICTLINE, INFLECTS, UNIQUES and ADDONS.
-2. It expands every stem with every ending it takes, into the readings WORDS
-   would give.
-3. It packs them into the image, and checks the image's lookup against the
-   expansion on every spelling.
-4. At run time, `analyze()` looks each word up in the image, and runs WORDS'
-   passes (add-ons, syncope, respellings) for what the image alone can't answer.
-5. `detail()` decodes a reading only when you ask for it.
-
-How much to pack into the image and how much to leave to run time has been one
-of the most fun parts of this project. Moving even a small part of the work
-into the image can make it explode in size, so it's a matter of finding a good
-middle ground. In one experiment I tried with every finished spelling in the image,
-enclitics included, it grew to about 93 MB. With prefixes and suffixes added
-it passed 1 GB before it was even a tenth done, so those stay at run time.
-
-`codegen/README.md` describes steps 1 to 3, and `src/whitaker.cpp` is where
-step 4 starts, with WORDS' passes in WORDS' order.
 
 ## Build
 

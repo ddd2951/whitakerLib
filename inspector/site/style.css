@@ -61,6 +61,7 @@ button {
   cursor: pointer;
   white-space: nowrap;
 }
+a.open { text-decoration: none; color: inherit; }
 
 #main {
   flex: 1;
