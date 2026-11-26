@@ -13,6 +13,7 @@ py::object toPython(const whitaker::Row& value);
 py::object toPython(const latin::packed::Reading& value);
 py::object toPython(const whitaker::DictionaryWordStems& value);
 py::object toPython(const whitaker::Stem& value);
+py::object toPython(const whitaker::DictionaryForm& value);
 py::object toPython(const whitaker::SpellingRule& value);
 
 py::object toPython(const whitaker::ReadingDetail& value) {
@@ -122,6 +123,12 @@ py::object toPython(const whitaker::Stem& value) {
   py::dict fields;
   fields["key"] = py::int_(value.key);
   fields["spelling"] = text(value.spelling);
+  return record(fields);
+}
+
+py::object toPython(const whitaker::DictionaryForm& value) {
+  py::dict fields;
+  fields["text"] = text(value.text);
   return record(fields);
 }
 
@@ -379,7 +386,8 @@ void bindGenerated(py::module_& m) {
       .def("trimmed", [](whitaker::Result& self, std::size_t word) { return py::bool_(whitaker::trimmed(self, static_cast<whitaker::WordId>(word))); }, py::arg("word"))
       .def("readingCount", [](whitaker::Result& self, std::size_t word) { return py::int_(whitaker::readingCount(self, static_cast<whitaker::WordId>(word))); }, py::arg("word"))
       .def("detail", [](whitaker::Result& self, std::size_t word, std::size_t readingIndex) { return toPython(whitaker::detail(self, static_cast<whitaker::WordId>(word), readingIndex)); }, py::arg("word"), py::arg("readingIndex"))
-      .def("rows", [](whitaker::Result& self) { return [&] { py::list items; for (auto&& item : whitaker::rows(self)) items.append(toPython(item)); return items; }(); });
+      .def("rows", [](whitaker::Result& self) { return [&] { py::list items; for (auto&& item : whitaker::rows(self)) items.append(toPython(item)); return items; }(); })
+      .def("dictionaryForm", [](whitaker::Result& self, std::size_t word, std::size_t readingIndex) { return toPython(whitaker::dictionaryForm(self, static_cast<whitaker::WordId>(word), readingIndex)); }, py::arg("word"), py::arg("readingIndex"));
 
   m.def("addonSpelling", [](std::uint16_t id) { return text(whitaker::addonSpelling(id)); }, py::arg("id"));
   m.def("addonMeaning", [](std::uint16_t id) { return text(whitaker::addonMeaning(id)); }, py::arg("id"));

@@ -12,17 +12,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(${WHITAKER_SUBTREE}/warnings.cmake)
 
 # -Wno-shadow: every `template for` expansion trips -Wshadow (GCC 16.2.1).
+# NOTE: Gen keeps runtime assertions enabled for image checks. Release library builds compile them out.
 set(GEN_OPTIONS -fno-exceptions -fno-rtti -UNDEBUG -Werror
     ${WHITAKER_WARNINGS} ${WHITAKER_WARNINGS_CXX}
     ${WHITAKER_WARNINGS_GNU} ${WHITAKER_WARNINGS_GNU_CXX} -Wno-shadow)
 
 add_library(gen_runtime STATIC
+    ${WHITAKER_SUBTREE}/src/search/dictionary_form.cpp
     ${WHITAKER_SUBTREE}/src/search/relationship_image.cpp
     ${WHITAKER_SUBTREE}/src/search/image_loader.cpp)
 target_compile_features(gen_runtime PRIVATE cxx_std_23)
 target_compile_options(gen_runtime PRIVATE ${GEN_OPTIONS})
 target_include_directories(gen_runtime PUBLIC
     ${WHITAKER_SUBTREE} ${WHITAKER_SUBTREE}/include ${WHITAKER_SUBTREE}/src ${WHITAKER_SUBTREE}/latin)
+
+# INFO: The oracle's port of WORDS supplies gen's dictionary form reference.
+add_library(dictionary_form_reference STATIC ${WHITAKER_SUBTREE}/oracle/src/dictionary.cpp)
+target_compile_features(dictionary_form_reference PRIVATE cxx_std_23)
 
 add_library(gen_steps OBJECT
     src/error/error.cpp
@@ -63,6 +69,7 @@ add_library(gen_steps OBJECT
     src/execution_steps/check_image_readings.cpp
     src/execution_steps/check_dictionary_words.cpp
     src/execution_steps/check_dictionary_word_stems.cpp
+    src/execution_steps/check_dictionary_forms.cpp
     src/execution_steps/check_addon_tables.cpp
     src/execution_steps/publish_image.cpp
     src/execution_steps/encode_image.cpp
@@ -103,7 +110,7 @@ add_library(gen_steps OBJECT
 target_include_directories(gen_steps PRIVATE src)
 target_compile_features(gen_steps PRIVATE cxx_std_26)
 target_compile_options(gen_steps PRIVATE -freflection ${GEN_OPTIONS})
-target_link_libraries(gen_steps PRIVATE gen_runtime)
+target_link_libraries(gen_steps PRIVATE gen_runtime dictionary_form_reference)
 
 add_executable(gen_binary
     src/main.cpp

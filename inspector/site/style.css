@@ -1,243 +1,372 @@
-/* INFO: Top input, left text, right inspector. The page fills the window; each pane scrolls on its own. Dark only. */
+/* INFO: The page as a terminal document: a tmux-like status line, heavy pane borders, one column that scrolls.
+   Colours by role; two themes fill them: night, the author's Eldritch (eldritch.nvim, MIT),
+   and day, the Firefox add-on's paper (its popup.css). Settings picks one, or follows the system (theme.js). */
 :root {
   color-scheme: dark;
-  --ink: #d9d7d2;
-  --dim: #8b8b92;
-  --line: #34363c;
-  --paper: #16171a;
-  --panel: #1f2125;
-  --pick: #e0a800;
-  --pick-ink: #16171a;
-  --pick-edge: #ffd24a;
-  --range: rgba(224, 168, 0, 0.18);
-  --match: rgba(90, 160, 255, 0.35);
-  --unknown: #e06a6a;
-  --call: #8fb4ff;
-  --name: #84c98a;
-  --note-bg: #2a2416;
-  --note-edge: #6a5520;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  scrollbar-color: var(--line) var(--paper);
+  --bg: #212337;
+  --panel: #171928;
+  --fg: #d0d8e4;
+  --soft: #6473b7;
+  --rule: #3b4261;
+  --accent: #a48cf2;
+  --on-accent: #212337;
+  --link: #04d1f9;
+  --good: #37f499;
+  --mark: #f1fc79;
+  --part: #f7c67f;
+  --unknown: #f16c75;
+  --select: #76639e;
+  --select-fg: #ebfafa;
+  scrollbar-color: var(--rule) var(--bg);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="night"]) {
+    color-scheme: light;
+    --bg: #f7f2e7;
+    --panel: #fffdf8;
+    --fg: #222;
+    --soft: #6b6458;
+    --rule: #ddd6c8;
+    --accent: #7a4e24;
+    --on-accent: #fffdf8;
+    --link: #1d5c86;
+    --good: #2f6b3c;
+    --mark: #8a6a00;
+    --part: #7a4e24;
+    --unknown: #b3261e;
+    --select: #e8dcc2;
+    --select-fg: #222;
+  }
+}
+:root[data-theme="day"] {
+  color-scheme: light;
+  --bg: #f7f2e7;
+  --panel: #fffdf8;
+  --fg: #222;
+  --soft: #6b6458;
+  --rule: #ddd6c8;
+  --accent: #7a4e24;
+  --on-accent: #fffdf8;
+  --link: #1d5c86;
+  --good: #2f6b3c;
+  --mark: #8a6a00;
+  --part: #7a4e24;
+  --unknown: #b3261e;
+  --select: #e8dcc2;
+  --select-fg: #222;
 }
 
 * { box-sizing: border-box; }
-
-html, body { height: 100%; margin: 0; }
-
+html { background: var(--bg); }
 body {
-  display: flex;
-  flex-direction: column;
-  font: 16px/1.5 system-ui, -apple-system, sans-serif;
-  color: var(--ink);
-  background: var(--paper);
+  margin: 0 auto;
+  max-width: 120ch;
+  padding: 0 8px 8px;
+  color: var(--fg);
+  background: var(--bg);
+  font: 15.5px/1.5 "JetBrains Mono", ui-monospace, monospace;
 }
-
-button, input, textarea { font: inherit; color: inherit; background: var(--panel); }
-
-button {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.25em 0.7em;
+::selection { background: var(--select); color: var(--select-fg); }
+a { color: var(--link); }
+/* NOTE: A licence's name reads as one: CC BY-SA 4.0 never splits across lines. */
+a[href^="https://creativecommons.org/"] { white-space: nowrap; }
+p { margin: 0 0 0.8em; }
+.dim { color: var(--soft); }
+.num { color: var(--soft); text-align: right; }
+button, select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--soft);
+  border-radius: 0;
+  padding: 0 0.6ch;
   cursor: pointer;
-  touch-action: manipulation;
-  white-space: nowrap;
+}
+button:hover, select:hover { border-color: var(--accent); }
+button:disabled { color: var(--soft); border-color: var(--rule); cursor: default; }
+select { max-width: 100%; }
+input[type="radio"] { accent-color: var(--accent); }
+label { margin-right: 1.5ch; cursor: pointer; white-space: nowrap; }
+
+/* INFO: Two rows: tmux's status line (the windows, the library and the input, then the utilities), and vim's (the
+   word you are on, its place, and the clock). On a touch screen the first row goes to the bottom. */
+#status {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 4px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+#status .row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2em 1ch; }
+#status a { color: var(--fg); text-decoration: none; padding: 0 0.5ch; white-space: nowrap; }
+#status .line { min-height: 1.5em; }
+#status a:hover { background: var(--rule); }
+#status a.win.on { background: var(--accent); color: var(--on-accent); }
+#clock { margin-left: auto; }
+#status #current { color: var(--accent); }
+/* INFO: The optional windows, their links and their help only with their setting on (head.js): trace and stats with the
+   trace build (html[data-trace-build]), the sentence with developer options (html[data-experiments]). */
+html:not([data-trace-build]) :is(#status .win:is([data-win="trace"], [data-win="stats"]), .needs-trace),
+html:not([data-experiments]) #status .win[data-win="sentence"] {
+  display: none;
+}
+input[type="checkbox"] { accent-color: var(--accent); }
+#status .utilities { display: flex; align-items: baseline; gap: 1ch; margin-left: auto; white-space: nowrap; }
+#current .about { color: var(--soft); }
+
+/* NOTE: On a touch screen the page never scrolls, only the box of windows (#scroll, dom.js): a page that scrolls
+   makes the browser's bars come and go and move the status line. */
+html[data-touch], html[data-touch] body { height: 100%; overflow: hidden; }
+html[data-touch] body { display: flex; flex-direction: column; height: 100dvh; padding-bottom: 0; }
+html[data-touch] #status { display: contents; }
+html[data-touch] .keyboard { display: none; }
+html[data-touch] #status .line { order: 0; padding: 4px 0; border-bottom: 1px solid var(--rule); }
+html[data-touch] #scroll { order: 1; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+html[data-touch] #status .keys {
+  order: 2;
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+}
+#scroll { position: relative; }
+
+
+/* INFO: One window on screen at a time, the one <html data-window> names (head.js, page.js). Without the scripts every
+   window shows, one under the other. */
+html[data-window] .window { display: none; }
+html[data-window="text"] #text,
+html[data-window="input"] #input, html[data-window="trace"] #trace, html[data-window="stats"] #stats,
+html[data-window="sentence"] #sentence, html[data-window="api"] #api,
+html[data-window="settings"] #settings { display: block; }
+textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 0.3em 1ch;
+}
+textarea:focus { border-color: var(--accent); outline: none; }
+#theme { border: none; padding: 0 0.5ch; color: var(--fg); background: none; }
+#theme:hover { background: var(--rule); }
+
+/* INFO: The credit under every window, outside them, so it shows whichever one is open. */
+#credit { margin: 2em 0 1em; padding-top: 0.5em; border-top: 1px solid var(--rule); color: var(--soft); }
+
+/* INFO: A heavy pane border with its name in the top line, in tmux's pane colours: dim, purple when active. */
+fieldset { margin: 0 0 1em; padding: 0.3em 1.5ch 0.6em; border: 3px solid var(--soft); min-width: 0; }
+fieldset:focus-within, fieldset:hover { border-color: var(--accent); }
+legend { padding: 0 1ch; color: var(--accent); }
+h1 { display: inline; font-size: 1em; font-weight: normal; }
+/* INFO: What the site is, in one quiet line above the windows: its heading, for whoever reads the page first. */
+#site-title { display: block; margin: 0.4em 0 0.6em; color: var(--soft); }
+.overlay {
+  width: min(68ch, calc(100% - 24px));
+  /* NOTE: The screen as it is now (dvh): on a phone, 100% is measured under the browser's own bar, so a long
+     dialog ran off the bottom. */
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 0;
+  border: 3px solid var(--rule);
+  background: var(--bg);
+  color: var(--fg);
+  overscroll-behavior: contain;
+}
+.overlay::backdrop { background: rgb(0 0 0 / 55%); }
+html:has(.overlay:modal) { overflow: hidden; }
+.overlay-content { padding: 0 1.5ch 0.6em; }
+.overlay header { position: sticky; top: 0; display: flex; align-items: baseline; gap: 1ch; padding: 0.5em 0;
+  background: var(--bg); }
+.overlay header > :first-child { margin: 0 auto 0 0; }
+.overlay h1, .overlay h2, .overlay h3 { color: var(--accent); font-size: 1em; font-weight: normal; }
+.overlay h3 { margin: 0.6em 0 0.3em; }
+html:not([data-window]) .overlay { display: block; position: static; margin: 0 auto 1em; }
+html:not([data-window]) .overlay header button { display: none; }
+html:not([data-window]) #reading-library { display: none; }
+#library-search { display: block; width: 100%; margin-bottom: 0.6em; }
+#library-results { list-style: none; padding: 0; margin: 0; max-height: min(55dvh, 24em); overflow: auto; }
+#library-results li { display: flex; gap: 1ch; margin: 0.2em 0; }
+#library-results .library-open { flex: 1; min-width: 0; text-align: left; overflow-wrap: anywhere; }
+#library-results .chosen .library-open {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+#library-results .library-delete { font-size: 0.9em; color: var(--soft); }
+fieldset { scroll-margin-top: 4.5em; }
+.w { scroll-margin: 5em 0 3em; }
+
+summary { cursor: pointer; color: var(--soft); }
+#text-details > summary { margin: 0.2em 0; }
+
+/* INFO: The text's numbers, btop-like. */
+.proof { color: var(--good); margin-bottom: 0; }
+.timing { color: var(--soft); }
+.block { margin: 0 0 0.3em; }
+.block[open] { margin-bottom: 1em; }
+.block summary { color: var(--fg); }
+.block .head { color: var(--accent); }
+.block .head::after { content: ': '; color: var(--soft); }
+.block .gist { color: var(--soft); }
+.block p { margin: 0.3em 0 0; }
+.bar-row { display: grid; grid-template-columns: 19ch minmax(0, 1fr) 9ch; gap: 0 1ch; }
+.bar { color: var(--link); white-space: nowrap; overflow: hidden; }
+.cols { columns: 18ch; column-gap: 2ch; }
+.cols span.find { display: block; cursor: pointer; }
+.cols span.find:hover { color: var(--link); }
+.cols .n { color: var(--soft); }
+
+#passage { white-space: pre-wrap; overflow-wrap: anywhere; border-top: 1px solid var(--rule); padding-top: 0.6em; }
+.line { min-height: 1.5em; }
+/* NOTE: A chunk of 64 lines (text.js): laid out only near the screen; until then it counts as its last known height, or
+   as 64 lines. */
+.chunk { content-visibility: auto; contain-intrinsic-size: auto 96em; }
+/* NOTE: A chunk with its spans (near the screen once, or jumped to) stays laid out, so going back to it moves
+   nothing. */
+.chunk.built { content-visibility: visible; }
+.w { cursor: pointer; }
+.w:hover { color: var(--link); }
+.w.unknown { color: var(--unknown); }
+.w.on { background: var(--accent); color: var(--on-accent); }
+
+/* INFO: The extension's popup (its popup.css), in the page's look. */
+/* NOTE: The popup's place on the page is #wlib-popup's; its look is .wlib-popup's, which Explain this answer's
+   example shares. */
+#wlib-popup {
+  position: absolute;
+  z-index: 2;
+  max-width: min(60ch, calc(100vw - 8px));
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.wlib-popup {
+  padding: 0.3em 1.5ch 0.5em;
+  background: var(--panel);
+  color: var(--fg);
+  border: 3px solid var(--accent);
+  font: 14px/1.4 "JetBrains Mono", ui-monospace, monospace;
+}
+.wlib-popup .wlib-word { color: var(--accent); }
+.wlib-popup .wlib-explain { display: block; margin-top: 0.4em; }
+#explain-example .wlib-popup { margin: 0.6em 0; }
+.explained dt { margin-top: 0.6em; color: var(--accent); }
+.explained dd { margin: 0.1em 0 0 2ch; }
+/* NOTE: The popup's colours (.wlib-popup above), so the guide's headings look like the lines they explain. */
+.explained dt.c-meaning, .explained dt:not([class]) { color: var(--fg); }
+:is(.explained, p) .c-word { color: var(--accent); }
+:is(.explained, p) .c-path { color: var(--good); }
+:is(.explained, p) .c-part { color: var(--part); }
+:is(.explained, p) .c-form { color: var(--link); }
+:is(.explained, p) .c-soft { color: var(--soft); }
+.explained dt b { color: var(--fg); font-weight: normal; }
+.wlib-popup .wlib-count { float: right; margin-left: 2ch; color: var(--soft); }
+.wlib-popup .wlib-section { margin-top: 0.4em; padding-top: 0.4em; border-top: 1px solid var(--rule); }
+.wlib-popup .wlib-part { color: var(--part); }
+.wlib-popup .wlib-meaning { margin-top: 0.2em; }
+.wlib-popup .wlib-form { padding-left: 2ch; }
+.wlib-popup .wlib-spelling { color: var(--link); }
+.wlib-popup .wlib-grammar { margin-left: 1.5ch; color: var(--soft); }
+.wlib-popup .wlib-stems { padding-left: 4ch; color: var(--soft); }
+.wlib-popup .wlib-stems b { font-weight: normal; color: var(--fg); }
+.wlib-popup .wlib-note { padding-left: 2ch; color: var(--soft); font-style: italic; }
+/* INFO: A group of readings found the same way: its path on top, in the colour of what was found. */
+.wlib-popup .wlib-group + .wlib-group { margin-top: 0.6em; }
+.wlib-popup .wlib-path { margin-top: 0.4em; color: var(--good); }
+.wlib-popup .wlib-cases { padding-left: 2ch; }
+.wlib-popup .wlib-agreement { color: var(--soft); }
+
+@media (max-width: 600px) {
+  body { font-size: 14px; }
+  /* INFO: As tmux shortens its status line: no session name; the utilities follow the windows from the left, so a
+     row that wraps lines up with the one above it. */
+  #status .session { display: none; }
+  #status .utilities { margin-left: 0; }
+  .bar-row { grid-template-columns: 12ch minmax(0, 1fr) 7ch; }
 }
 
-#entry { display: flex; gap: 0.5em; align-items: center; padding: 0.6em 0.8em; border-bottom: 1px solid var(--line); }
-#source {
-  flex: 1;
-  min-width: 0;
-  resize: none;
-  font-family: Georgia, serif;
-  padding: 0.3em 0.6em;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+/* INFO: The trace and stats windows: the inspector's views (its style.css, in the page's roles). */
+.debug-view .block-head { margin: 0.8em 0 0.2em; color: var(--accent); }
+.debug-view .block-head.sub { margin-left: 2ch; }
+.debug-view .block-head.call, .debug-view .call-line { color: var(--link); }
+.debug-view .call-line { margin: 0.1em 0 0 2ch; }
+.debug-view pre.call-line { margin: 0.4em 0; font: inherit; white-space: pre-wrap; }
+.debug-view .api-call table.rows { margin-left: 4ch; }
+/* INFO: On a narrow screen a field's value goes under its name: side by side, the long names left the values a
+   column a few letters wide. */
+@media (max-width: 600px) {
+  .debug-view .api-call table.rows { margin-left: 2ch; }
+  .debug-view .api-call :is(table.rows, tr, td) { display: block; }
+  .debug-view .api-call td.value { padding: 0 0 0.2em 2ch; }
 }
-.open {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.25em 0.7em;
+#api-choices button.on { border-color: var(--accent); color: var(--accent); }
+.debug-view table.rows { border-collapse: collapse; }
+.debug-view table.rows td { padding: 0 2ch 0 0; vertical-align: top; }
+.debug-view table.rows td.path { white-space: nowrap; color: var(--soft); }
+.debug-view table.rows td.value { overflow-wrap: anywhere; }
+.debug-view table.rows .name { color: var(--good); }
+.debug-view table.rows tr.dim td { color: var(--soft); }
+.debug-view table.rows td.bar { color: var(--link); }
+.debug-view table.rows td.path-line { color: var(--soft); padding-bottom: 0.5em; }
+.debug-view .meta { color: var(--soft); }
+.debug-view .record { margin: 0.3em 0 0.6em; }
+.debug-view .reading { display: grid; grid-template-columns: 3ch 14ch minmax(0, 1fr); gap: 0 1ch; }
+.debug-view .reading .n { color: var(--soft); }
+.debug-view .split { color: var(--link); }
+input[type="search"] {
+  font: inherit;
+  color: var(--fg);
   background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 0 0.6ch;
+}
+.debug-view { overflow-x: auto; }
+.debug-view button.more { margin-top: 0.5em; }
+.debug-view table.counts td.value { line-height: 1.8; }
+.debug-view span.value { display: inline-block; padding: 0 1.5ch 0 0; }
+.debug-view span.value .meta { color: var(--soft); }
+@media (max-width: 600px) {
+  .debug-view table.rows td { padding-right: 1ch; }
+  .debug-view table.rows td:last-child { padding-right: 0; }
+  #trace-view table.rows td:not(.path-line) { white-space: nowrap; }
+  #stats-view span.value { max-width: 100%; overflow-wrap: anywhere; }
+}
+
+/* INFO: The sentence window: the old inspector's sentence view (its style.css, in the page's roles). */
+.sentence-view .s-warning {
+  margin: 0 0 0.6em;
+  padding: 0.3em 1ch;
+  border-left: 3px solid var(--mark);
+  background: var(--panel);
+}
+.sentence-view .s-place { color: var(--soft); }
+.sentence-view .s-pieces { margin: 0.6em 0 0.4em; }
+.sentence-view .s-piece {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 2ch;
+  padding: 0.35em 0;
+}
+.sentence-view .s-piece + .s-piece { border-top: 1px dotted var(--rule); }
+.sentence-view .s-piece-text { line-height: 1.7; }
+.sentence-view button.s-word {
+  font: inherit;
+  color: var(--fg);
+  border: none;
+  background: none;
+  padding: 0 1px;
   cursor: pointer;
-  white-space: nowrap;
 }
-a.open { text-decoration: none; color: inherit; }
-
-/* INFO: The one line of the page that is there before any script runs: what the library is, and plain links to its
-   repositories and the Firefox add-on. */
-#about { flex: none; padding: 0.3em 1em; border-top: 1px solid var(--line); color: var(--dim); font-size: 0.8em; }
-#about p { margin: 0; }
-#about a { color: var(--ink); }
-
-#main {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-}
-
-#text-pane {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-right: 1px solid var(--line);
-}
-
-#passage {
-  flex: 1;
-  overflow: auto;
-  padding: 1em 1.2em;
-  font: 1.15em/1.9 Georgia, serif;
-  white-space: pre-wrap;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.w { cursor: pointer; border-radius: 3px; padding: 0 1px; }
-.w.inrange { background: var(--range); }
-#passage.all { background: var(--range); }
-/* NOTE: The Sentence view's sentence in the text: a soft tint, its right edge carried over the space after each word
-   so the sentence reads as one band. Before the rules below, which win where they meet it. */
-#passage .w.in-sentence { background: rgba(143, 180, 255, 0.13); box-shadow: 0.3em 0 0 rgba(143, 180, 255, 0.13); }
-#passage .w.in-sentence.inrange { background: var(--range); box-shadow: 0.3em 0 0 var(--range); }
-#passage .w.match { background: var(--match); }
-/* NOTE: After matches, so the selected word stays readable inside one. An inset shadow, not an outline: in Firefox
-   an outline made a long text lay out again, 110 ms for a book. */
-#passage .w.selected { background: var(--pick); color: var(--pick-ink); box-shadow: inset 0 0 0 2px var(--pick-edge); }
-
-#search-bar {
-  display: flex;
-  gap: 0.4em;
-  align-items: center;
-  padding: 0.5em 0.8em;
-  border-top: 1px solid var(--line);
-}
-#search { flex: 1; min-width: 0; padding: 0.3em 0.5em; border: 1px solid var(--line); border-radius: 6px; }
-#search-count { color: var(--dim); font-size: 0.85em; white-space: nowrap; }
-
-#inspector { display: flex; flex-direction: column; min-height: 0; }
-
-#word { margin: 0; padding: 0.5em 1em 0; font: 1.5em Georgia, serif; min-height: 1.5em; }
-
-#views { display: flex; gap: 0.3em; align-items: center; padding: 0.5em 1em; border-top: 1px solid var(--line); }
-#views button.on, .bindings button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-
-#view { flex: 1; overflow: hidden auto; touch-action: pan-y; overflow-wrap: anywhere; padding: 0.8em 1em 2em; }
-
-.record {
-  border: 1px solid var(--line); border-radius: 8px; padding: 0.6em 0.8em; margin-bottom: 0.8em;
-  background: var(--panel);
-}
-.meaning { font-weight: 600; }
-.meta { color: var(--dim); font-size: 0.88em; }
-.entry { margin-top: 0.4em; }
-.reading { display: grid; grid-template-columns: 1.6em 8em 1fr; gap: 0.5em; margin-top: 0.5em; }
-.reading .n { color: var(--dim); text-align: right; }
-.split { font-family: var(--mono); }
-.none { color: var(--dim); }
-.internal {
-  background: var(--note-bg); border: 1px solid var(--note-edge); border-radius: 6px; padding: 0.4em 0.7em;
-  font-size: 0.9em;
-}
-
-.group-head { font: 1.2em Georgia, serif; margin: 1.2em 0 0.4em; border-bottom: 1px solid var(--line); }
-.group-head .count { color: var(--dim); font-size: 0.8em; }
-.more { color: var(--dim); padding: 1em 0; }
-.instances { line-height: 1.7; }
-
-.block-head { font-family: var(--mono); font-size: 0.9em; margin: 1em 0 0.2em; font-weight: 600; }
-.block-head.sub { margin-left: 1.2em; }
-.block-head.call { color: var(--call); }
-.call-line { font: 0.85em/1.5 var(--mono); margin: 0.2em 0 0 1.4em; color: var(--call); }
-.block-head .type, .block-head .n { color: var(--dim); font-weight: normal; }
-
-table.rows {
-  border-collapse: collapse; font: 0.85em/1.5 var(--mono); margin-left: 1.2em; max-width: calc(100% - 1.2em);
-}
-table.rows td { padding: 0 1em 0 0; white-space: nowrap; vertical-align: top; }
-table.rows td.value { white-space: normal; }
-table.rows .type { color: var(--dim); }
-table.rows .name { color: var(--name); }
-table.rows.api { width: min(90ch, calc(100% - 1.2em)); }
-table.rows.api td.value { white-space: normal; overflow-wrap: anywhere; }
-
-table.rows tr.dim td { color: var(--dim); }
-table.rows td.bar { color: var(--pick); letter-spacing: -1px; }
-table.rows td.path-line { overflow-wrap: normal; color: var(--dim); padding-bottom: 0.5em; }
-table.counts td.value { white-space: normal; max-width: none; line-height: 1.9; }
-button.value { font: inherit; padding: 0 0.4em; margin: 0 0.2em 0.2em 0; border-radius: 4px; }
-
-@media (max-width: 700px) {
-  #main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 2fr) minmax(0, 3fr); }
-  #text-pane { border-right: none; border-bottom: 1px solid var(--line); }
-}
-
-/* INFO: Highlights (highlights.js): one row of toggles under the text, wrapping as needed; each kind of word its own
-   mark, so several can be on at once. Underlines and text weight, not backgrounds, where they can: the selection and
-   search matches are backgrounds. */
-#highlights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4em;
-  align-items: center;
-  padding: 0.5em 0.8em;
-  border-top: 1px solid var(--line);
-}
-#highlights button { padding: 0.35em 0.7em; }
-#highlights .count { color: var(--dim); font-size: 0.85em; }
-#highlights button.on { border-color: var(--ink); background: var(--line); }
-
-/* NOTE: The underline is spelled out property by property: Safari (every browser on an iPad) drops a text-decoration
-   shorthand that has a thickness in it, and with it the whole mark. */
-#passage .w { text-underline-offset: 4px; }
-#passage.show-verb .w.k-verb, #passage.show-main .w.k-main, #passage.show-inf .w.k-inf,
-#passage.show-part .w.k-part { text-decoration-line: underline; text-decoration-style: solid; }
-#passage.show-verb .w.k-verb { text-decoration-color: var(--call); text-decoration-thickness: 2px; }
-#passage.show-main .w.k-main { font-weight: bold; text-decoration-color: var(--call); text-decoration-thickness: 3px; }
-#passage.show-inf .w.k-inf { text-decoration-style: dotted; text-decoration-color: var(--name);
-  text-decoration-thickness: 2px; }
-#passage.show-part .w.k-part { text-decoration-style: wavy; text-decoration-color: #c9a0ff;
-  text-decoration-thickness: 1px; }
-#passage.show-unknown .w.k-unknown:not(.selected) { background: rgba(224, 106, 106, 0.22); }
-#passage.show-once .w.k-once:not(.selected) { background: rgba(132, 201, 138, 0.2); }
-#passage.show-que .w.k-que { color: #ffb86b; }
-
-#ask { margin-left: auto; }
-#views { flex-wrap: wrap; }
-pre.asked { white-space: pre-wrap; user-select: text; -webkit-user-select: text; font: 0.9em/1.5 var(--mono); }
-
-/* NOTE: For reading: the WORDS codes under each form and the dictionary word's number stay out of sight (the form in
-   words says it). */
-.reading .meta, .meta.entry { display: none; }
-
-/* INFO: The Sentence view (sentence.js): the sentence, then a row a part (main verb, subject, clauses, unknown words).
-   Its words are buttons that look like words. */
-.s-warning { margin: 0 0 0.6em; padding: 0.4em 0.6em; border-left: 3px solid var(--note-edge);
-  background: var(--note-bg); font-size: 0.9em; }
-.s-place { color: var(--dim); font-size: 0.9em; }
-.s-pieces { margin: 0.6em 0 0.4em; }
-.s-piece { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.8em; padding: 0.35em 0; }
-.s-piece + .s-piece { border-top: 1px dotted var(--line); }
-.s-piece-text { font: 1.05em/1.7 Georgia, serif; }
-button.s-word { font: inherit; border: none; background: none; padding: 0 1px; border-radius: 3px; cursor: pointer; }
-.s-main { font-weight: bold; text-decoration: underline solid var(--call) 3px; text-underline-offset: 4px; }
-.s-verb { text-decoration: underline solid var(--call) 2px; text-underline-offset: 4px; }
-.s-opener { color: var(--name); }
-.s-subject { text-decoration: underline double var(--pick) 1px; text-underline-offset: 4px; }
-.s-here { box-shadow: inset 0 0 0 1px var(--pick-edge); }
-.s-row {
-  display: grid;
-  grid-template-columns: 7em 1fr;
-  gap: 0.6em;
-  padding: 0.45em 0;
-  border-top: 1px solid var(--line);
-}
-.s-title { color: var(--dim); }
-.s-line { line-height: 1.8; }
-.s-meaning { color: var(--ink); }
-.s-form, .s-note, .s-none { color: var(--dim); font-size: 0.9em; }
-.s-ask { margin-top: 0.8em; }
-
-/* NOTE: On a narrow screen a piece's notes go under its words. */
-@media (max-width: 700px) { .s-piece { grid-template-columns: 1fr; gap: 0.1em; } }
+.sentence-view button.s-word:hover { color: var(--link); }
+.sentence-view .s-main { text-decoration: underline solid var(--link) 3px; text-underline-offset: 4px; }
+.sentence-view .s-verb { text-decoration: underline solid var(--link) 1px; text-underline-offset: 4px; }
+.sentence-view .s-opener { color: var(--good); }
+.sentence-view .s-subject { text-decoration: underline double var(--accent) 1px; text-underline-offset: 4px; }
+.sentence-view .s-here { outline: 1px solid var(--accent); }
+.sentence-view .s-row { margin: 0.5em 0; }
+.sentence-view .s-title { color: var(--accent); }
+.sentence-view .s-line { line-height: 1.8; }
+.sentence-view .s-meaning { color: var(--fg); }
+.sentence-view .s-form, .sentence-view .s-note, .sentence-view .s-none { color: var(--soft); }
+.sentence-view .s-ask { margin-top: 0.8em; }
+.sentence-view pre.asked { white-space: pre-wrap; }
+@media (max-width: 700px) { .sentence-view .s-piece { grid-template-columns: 1fr; } }

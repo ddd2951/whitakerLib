@@ -171,7 +171,11 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   thread_local whitaker::Result result;
   if (const auto s = whitaker::analyze(result, word); s != whitaker::Status::ok) {
     status = s == whitaker::Status::inputTooLong ? "InputTooLong" : std::format("status {}", +std::to_underlying(s));
-    return {};
+    if (s != whitaker::Status::inputTooLong)
+      return {};
+    Line l;
+    l.kind = Kind::Unknown, l.stem = word, l.text = word + " ======== UNKNOWN", l.tooLong = true;
+    return {l};
   }
   const whitaker::WordId analyzed{0};
   const auto readings = whitaker::readings(result, analyzed);
@@ -187,6 +191,8 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
   std::vector<whitaker::ReadingDetail> details(readings.size());
   std::vector<WhitakerRecord> records;
   std::vector<WhitakerForm> forms;
+  // INFO: Each form's stem key, beside the forms: WORDS' Put_Parse_Details compares it, --probe does not change it.
+  std::vector<std::uint8_t> keys;
   std::vector<std::vector<WhitakerAddonStep>> steps;
   for (std::size_t i = 0; i < readings.size(); ++i) {
     auto& d = details[i];
@@ -215,6 +221,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
       steps.back().push_back({});
     }
     ++records.back().form_count;
+    keys.push_back(d.stemKey);
     forms.push_back({f.stemSpelling,
                      f.ending,
                      {std::to_underlying(g.part), g.which.value, g.variant.value, std::to_underlying(g.caseOf),
@@ -312,6 +319,7 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
       Line l;
       l.kind = Kind::Inflection;
       l.stem = form.orth ? form.orth : "";
+      l.stemKey = f < keys.size() ? keys[f] : 0;
       l.ending = form.ending ? form.ending : "";
       l.pos = m.pos ? m.pos : "";
       l.qual = qualifier(described.data());
@@ -497,12 +505,13 @@ std::vector<Line> libraryLines(const std::string& word, std::string& status, con
         l.text = collapsed(why), out.push_back(l), explained = true;
       previousReadings = nullptr, previousForm.clear(), first = false;
     }
-    // INFO: WORDS skips readings matching the previous entry, including labels, folding case, j and v.
+    // INFO: WORDS skips readings matching the previous entry, including labels and the stem key (Put_Parse_Details'
+    //  Sra /= Osra: basa's bas.a is stem 1 of bas, stem 2 of basis, so it prints again), folding case, j and v.
     const auto same = [](const std::vector<Line>& a, const std::vector<Line>& b) {
       return std::ranges::equal(a, b, [](const Line& x, const Line& y) {
         return tester::folded(x.stem) == tester::folded(y.stem) &&
                tester::folded(x.ending) == tester::folded(y.ending) && x.qual == y.qual && x.labels == y.labels &&
-               x.pos == y.pos;
+               x.pos == y.pos && x.stemKey == y.stemKey;
       });
     };
     if (!previousReadings || !same(e.readings, *previousReadings))

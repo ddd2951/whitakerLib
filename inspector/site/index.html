@@ -2,67 +2,271 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="google-site-verification" content="mwW0t8Fin87UO8lgWMw-o3o-J2uY7tJmjcDx9BCPxG8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self';
-               img-src 'self' data:; base-uri 'none'; form-action 'none'">
-<title>whitakerLib inspector: Latin readings, API and lookup trace</title>
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self';
+               connect-src 'self' https://raw.githubusercontent.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>whitakerLib — An offline Latin dictionary and reader</title>
 <meta name="description"
-      content="Latin morphological analysis in C++23, from Whitaker's WORDS: paste Latin and inspect every reading, the C++, C and Python API output, and the lookup trace.">
+      content="Latin words with their meanings and forms, from William Whitaker’s WORDS. Fast enough to read the whole Aeneid in a second, offline in your browser. Built on a C++ library with native C and Python bindings.">
 <link rel="canonical" href="https://ddd2951.github.io/whitakerLib/">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="whitakerLib">
 <meta property="og:url" content="https://ddd2951.github.io/whitakerLib/">
-<meta property="og:title" content="whitakerLib inspector: Latin readings, API and lookup trace">
-<meta property="og:description" content="Latin morphological analysis in C++23, from Whitaker's WORDS: paste Latin and inspect every reading, the C++, C and Python API output, and the lookup trace.">
-<link rel="stylesheet" href="style.css">
+<meta property="og:title" content="whitakerLib — An offline Latin dictionary and reader">
+<meta property="og:description"
+      content="Latin words with their meanings and forms, from William Whitaker’s WORDS. Fast enough to read the whole Aeneid in a second, offline in your browser. Built on a C++ library with native C and Python bindings.">
+<script src="head.js"></script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main id="main">
-  <section id="text-pane">
-    <div id="entry">
-      <textarea id="source" rows="1" spellcheck="false" disabled
-                placeholder="Loading the dictionary …"></textarea>
-    </div>
-    <div id="passage"></div>
-    <div id="highlights"></div>
-    <div id="search-bar">
-      <input id="search" type="search" spellcheck="false" autocomplete="off"
-             placeholder="search">
-      <span id="search-count"></span>
-      <button id="search-prev">↑</button>
-      <button id="search-next">↓</button>
-      <button id="select-all">Select all</button>
-      <label class="open">Open .txt<input type="file"
-             id="open-file" accept=".txt,text/plain" multiple hidden></label>
-    </div>
-  </section>
+<nav id="status">
+  <div class="row keys">
+    <span class="session">[whitakerLib]</span>
+    <a class="win" data-win="text" href="#text">Text</a>
+    <a class="win" data-win="trace" href="#trace">Trace</a>
+    <a class="win" data-win="stats" href="#stats">Stats</a>
+    <a class="win" data-win="api" href="#api">API</a>
+    <a class="win" data-win="sentence" href="#sentence">Sentence</a>
+    <a id="open-library" data-overlay="reading-library" href="#reading-library" aria-haspopup="dialog">Your Library</a>
+    <a class="win" data-win="input" href="#input">Add Text</a>
+    <span class="utilities">
+      <a id="open-info" data-overlay="intro" href="#intro" aria-haspopup="dialog">Info</a>
+      <a id="open-help" data-overlay="help" href="#help" aria-haspopup="dialog">Help</a>
+      <a class="win" data-win="settings" href="#settings">Settings</a>
+      <button id="theme" type="button"></button>
+    </span>
+  </div>
+  <div class="row line">
+    <a id="current" href="#text" hidden></a>
+    <span id="clock">Loading dictionary …</span>
+  </div>
+</nav>
 
-  <section id="inspector">
-    <h2 id="word"></h2>
-    <div id="view"></div>
-    <nav id="views">
-      <button data-view="readable">Readings</button>
-      <button data-view="sentence">Sentence (experimental)</button>
-      <button data-view="api">API</button>
-      <button data-view="trace">Trace</button>
-      <button data-view="statistics">Statistics</button>
-      <button id="ask">Copy word for Google help</button>
-      <a class="open" href="https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/" target="_blank" rel="noopener">Get the Firefox extension</a>
-    </nav>
-  </section>
-</main>
-<footer id="about">
-  <p><strong>whitakerLib</strong>: Latin morphological analysis in C++23, from William Whitaker's WORDS. Generated C
-  and Python bindings, a C++26 reflection-based generator, under a microsecond per word on a desktop. The same code
-  runs here in the browser and on a 2015 Kindle.
-  <a href="https://github.com/ddd2951/whitakerLib">Source on GitHub</a> ·
-  <a href="https://github.com/ddd2951/whitakerLib-kindle">Kindle plugin</a> ·
-  <a href="https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/">Firefox add-on</a> ·
-  <a href="https://github.com/ddd2951/whitakerLib-firefox">Firefox add-on source</a></p>
-</footer>
+<dialog id="intro" class="overlay" aria-labelledby="info-title">
+  <div class="overlay-content">
+    <header><h2 id="info-title">whitakerLib</h2><button type="button" data-close autofocus>Start
+    reading</button></header>
+    <p>A place to read Latin. Click a word to see what it could mean and what forms it could take. Once the
+    dictionary has loaded, you can keep reading offline in this tab.</p>
+    <p><a id="open-text" class="win" data-win="text" href="#text">Start with the opening</a> of Caesar’s
+    <i>Gallic War</i>, <a class="win" data-win="input" href="#input">bring your own Latin</a>, or pick one of 102
+    books.
+    Your texts and reading positions are remembered, so you can return to where you left off. What you
+    read and look up stays in your browser: only a book you fetch comes from Perseus.</p>
+    <p>The same dictionary runs on a Kindle from 2015. With the
+    <a href="https://github.com/ddd2951/whitakerLib-kindle">KOReader plugin</a>, you can take it with you and read
+    Latin offline. With the <a href="https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/">Firefox
+    extension</a>, you can look up words on other websites without leaving the page, even if you’ve gone offline!</p>
+    <p>Underneath all three is a small C++ library built from William Whitaker’s WORDS. Its
+    <a href="https://github.com/ddd2951/whitakerLib#c-and-python">C and Python bindings</a> are generated from the
+    C++ interface
+    <a href="https://github.com/ddd2951/whitakerLib/blob/main/codegen/README.md#why-reflection">using reflection</a>,
+    so all three are easy to keep in sync. They’re there if you’d like to build something of your own.</p>
+    <p>It took 102 Latin books and 4.66 million word lookups to match WORDS,
+    <a href="https://github.com/ddd2951/whitakers-words/tree/combined_fixes">with my fixes to it</a>: every remaining
+    difference is a guess left outside the library or one of three cases where WORDS lost its answer. Now I can start
+    looking at where the readings themselves could be better.
+    <a href="https://github.com/ddd2951/whitakerLib/blob/main/oracle/README.md#where-it-is-now">See the
+    comparison</a>.</p>
+    <p>It lists the readings WORDS’ dictionary gives a word, without choosing one for the sentence. That dictionary
+    has gaps of its own: some words, names especially, are missing or incomplete there, so they are here too.
+    The popup shows dictionary forms such as <i>amo, amare, amavi, amatus</i>.</p>
+    <p class="dim keyboard">Keys: <kbd>x</kbd> Text · <kbd>p</kbd> API<span class="needs-trace"> ·
+    <kbd>r</kbd> Trace · <kbd>t</kbd> Stats</span> · <kbd>Space</kbd> Your Library · <kbd>i</kbd> Add Text ·
+    <kbd>n</kbd> Info · <kbd>?</kbd> Help · <kbd>g</kbd> Settings · the arrows to move between words.</p>
+    <p class="dim">This site and the library live in one repository:
+    <a href="https://github.com/ddd2951/whitakerLib">whitakerLib on GitHub</a>.</p>
+  </div>
+</dialog>
 
-<script type="module" src="app.js"></script>
+<dialog id="help" class="overlay" aria-labelledby="help-title">
+  <div class="overlay-content">
+    <header><h2 id="help-title">Help</h2><button id="help-all" type="button">All help</button>
+    <button type="button" data-close autofocus>Close</button></header>
+    <section data-help="text">
+      <h3>Reading the text</h3>
+      <p>Click or tap a word to see its possible readings. Close the popup by tapping the word again, clicking
+      outside it or pressing <kbd>Esc</kbd>. <a href="#explain" data-overlay="explain">Explain this answer</a>, at
+      the bottom of every popup, says what each line means.</p>
+      <p>Use the left and right arrow keys to move between words, and the up and down arrow keys to move between
+      lines.</p>
+    </section>
+    <section data-help="input">
+      <h3>Adding text</h3>
+      <p>Type or paste Latin in <a class="win" data-win="input" href="#input">Add Text</a> and select “Read it” or
+      press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. You can also paste Latin anywhere on the reading page to open it
+      straight away.</p>
+      <p>To read a book, choose one from the list and select “Fetch”. Your browser downloads it from Perseus, so a
+      new book requires an internet connection; once it is open, you can keep reading it offline in this tab.</p>
+      <p>Every text remembers its own reading position. You can build your own little library of Latin books and
+      passages.</p>
+    </section>
+    <section data-help="about">
+      <h3>How it works</h3>
+      <p>Rather than storing every form a Latin word can take, the dictionary stores its parts and the relationships
+      between them.</p>
+      <p>Two tries walk the word from opposite ends, one looking for stems and the other for endings. Where they meet,
+      the library knows which combinations Latin allows according to its dictionary data.</p>
+      <p>From 3.8 MB, it can produce over a million spellings and more than two million readings.</p>
+    </section>
+    <section data-help="trace" class="needs-trace">
+      <h3>Following a lookup</h3>
+      <p>Enter a word to follow the steps the library takes to read it. See what it tried, what it found, and how each
+      reading came to be.</p>
+      <p>Choose “the whole text” to see where the library spends its time.</p>
+    </section>
+    <section data-help="stats" class="needs-trace">
+      <h3>Looking at a whole text</h3>
+      <p>How many words in the <i>Aeneid</i> could be verbs? How many could be nouns? How long does it take to find
+      out?</p>
+      <p>Statistics looks at every reading the library returns for every word in your text, and measures how long
+      the library takes to find them.</p>
+      <p>A word can count as both a noun and a verb. These are possibilities, not decisions about what the author
+      meant.</p>
+    </section>
+    <section data-help="api">
+      <h3>Using the library</h3>
+      <p>See a word go through the library’s API: the calls you would make in C++, C or Python, and what each one
+      returns. Choose the language and which functions to show.</p>
+    </section>
+    <section data-help="settings">
+      <h3>Settings</h3>
+      <p>Choose a theme or follow your system settings.</p>
+      <p>Developer options contain things I’m testing to see how they might fit into the reader. They may be
+      incomplete, wrong, or disappear altogether.</p>
+    </section>
+    <section data-help="all" class="keyboard">
+      <h3>Moving around</h3>
+      <p>Press <kbd>Space</kbd> to open Your Library. Use the arrow keys to select a book or passage and
+      <kbd>Enter</kbd> to pick up where you left off.</p>
+      <p>Press <kbd>x</kbd> for the text, <kbd>p</kbd> for API<span class="needs-trace">,
+      <kbd>r</kbd> for Trace, <kbd>t</kbd> for Statistics</span>, <kbd>i</kbd> to add text, <kbd>n</kbd> for Info,
+      <kbd>g</kbd> for Settings and <kbd>?</kbd> for Help.</p>
+    </section>
+  </div>
+</dialog>
+
+<dialog id="explain" class="overlay" aria-labelledby="explain-title">
+  <div class="overlay-content">
+    <header><h2 id="explain-title">Reading a popup</h2><button type="button" data-close
+    autofocus>Close</button></header>
+    <p id="explain-divisa">In <i>Gallia est omnis divisa</i>, <i>divisa</i> agrees with <i>Gallia</i>, feminine
+    singular nominative: “all Gaul is divided”. The popup lists the other five readings as well, because the word
+    alone allows them.</p>
+    <p>Here is the popup for <i id="explain-word">divisa</i>, line by line:</p>
+    <div id="explain-example"></div>
+    <p class="dim">The colours: <span class="c-path">green</span> is how the word was found,
+    <span class="c-part">orange</span> the part of speech, <span class="c-form">blue</span> the form, and grey what
+    the form is.</p>
+    <dl id="explain-lines" class="explained"></dl>
+  </div>
+</dialog>
+
+<dialog id="reading-library" class="overlay" aria-labelledby="library-title">
+  <div class="overlay-content">
+    <header><h2 id="library-title">Your Library</h2><button type="button" data-close>Close</button></header>
+    <input id="library-search" type="search" aria-label="Find a book or passage" aria-controls="library-results"
+           placeholder="Find a book or passage"
+           autocomplete="off" spellcheck="false" autofocus>
+    <p id="library-storage" class="dim" role="status" hidden>Some texts or reading positions could not be saved
+    permanently.</p>
+    <p id="library-empty" class="dim" role="status" hidden>No matching texts.</p>
+    <ul id="library-results"></ul>
+  </div>
+</dialog>
+
+<div id="scroll">
+<h1 id="site-title">whitakerLib: a Latin dictionary and reader, built on William Whitaker’s WORDS</h1>
+<fieldset id="input" class="window">
+  <legend>Add Text</legend>
+  <p><label for="paste">Type or paste Latin</label></p>
+  <p><textarea id="paste" rows="5" spellcheck="false" placeholder="A word, a phrase, or a passage"></textarea></p>
+  <p><button id="read-paste" title="Ctrl+Enter" disabled>Read it</button></p>
+  <p><label for="book">Or choose a book</label> <select id="book"></select>
+  <button id="fetch" title="f" disabled>Fetch</button></p>
+  <p class="dim">Your books and passages are saved in this browser, each with its own reading position.</p>
+  <p class="dim">The books aren’t part of whitakerLib. When you fetch one, your browser downloads it straight from
+  the <a href="https://www.perseus.tufts.edu/">Perseus Digital Library</a>
+  (<a href="https://github.com/PerseusDL/canonical-latinLit">canonical-latinLit</a>,
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) and keeps
+  it only in this browser. They’re also the books whitakerLib is tested against.</p>
+</fieldset>
+
+<fieldset id="text" class="window">
+  <legend id="text-name">Julius Caesar: Gallic War 1.1</legend>
+  <details id="text-details" open>
+    <summary>Details</summary>
+    <p id="text-source" class="dim" hidden></p>
+    <section id="numbers"></section>
+  </details>
+  <main id="passage">Gallia est omnis divisa in partes tres, quarum unam incolunt Belgae, aliam Aquitani, tertiam qui ipsorum lingua Celtae, nostra Galli appellantur.</main>
+</fieldset>
+
+<fieldset id="trace" class="window">
+  <legend>Trace</legend>
+  <p>Follow a word through the dictionary. See which paths it takes, what each finds, and where the library spends
+  its time.
+  <label>word: <input id="trace-word" type="search" spellcheck="false" autocomplete="off" placeholder="divisa"></label>
+  <button id="trace-all" type="button" disabled>the whole text</button>
+  <a id="trace-back" href="#text" hidden></a></p>
+  <p class="dim">If you don’t know where to start, try <a id="trace-example"
+  href="#trace"><i>simplicissimus</i></a>. He has a
+  <a href="https://github.com/ddd2951/whitakerLib#inside">story of his own</a> in the README.</p>
+  <div id="trace-view" class="debug-view"></div>
+</fieldset>
+
+<fieldset id="stats" class="window">
+  <legend>Stats</legend>
+  <p>Every reading the library returns for every word in your text, counted by its grammar and how it was found.
+  Alongside them, the time it took the library to find them.</p>
+  <div id="stats-view" class="debug-view"><p class="dim">No text yet. Press <kbd>i</kbd> to
+  <a class="win" data-win="input" href="#input">add text</a>.</p></div>
+</fieldset>
+
+<fieldset id="api" class="window">
+  <legend>API</legend>
+  <p>One word through the library, as you would call it from your own code.
+  <label>word: <input id="api-word" type="search" spellcheck="false" autocomplete="off"
+  placeholder="divisa"></label></p>
+  <div id="api-choices"></div>
+  <div id="api-view" class="debug-view"></div>
+</fieldset>
+
+<fieldset id="sentence" class="window">
+  <legend>Sentence</legend>
+  <p>The word you are on, its sentence taken apart as a reader learning Latin would by hand: the pieces, the main verb,
+  the likely subject. A test of how much the words alone show. <button id="ask-word" type="button">copy word for
+  Google help</button></p>
+  <div id="sentence-view" class="debug-view sentence-view"></div>
+</fieldset>
+
+<fieldset id="settings" class="window">
+  <legend>Settings</legend>
+  <p>Theme:
+  <label><input type="radio" name="theme" value="system"> System</label>
+  <label><input type="radio" name="theme" value="day"> Day</label>
+  <label><input type="radio" name="theme" value="night"> Night</label></p>
+  <p>Navigation keys:
+  <label><input type="radio" name="keys" value="arrows"> Arrows</label>
+  <label><input type="radio" name="keys" value="vim"> Vim</label>
+  <label><input type="radio" name="keys" value="wasd"> WASD</label></p>
+  <p class="dim">Arrow keys work with every layout.</p>
+  <p><label><input type="checkbox" id="trace-build"> Enable trace build</label></p>
+  <p class="dim">Loads a separate build of the library with tracing enabled (4 MB). Makes Trace and Statistics
+  available.</p>
+  <p><label><input type="checkbox" id="experiments"> Developer options</label></p>
+  <p class="dim">Things I’m testing to see how they might fit into the reader. They may be incomplete, wrong, or
+  disappear altogether.</p>
+  <p class="dim">Settings and texts are saved in this browser.</p>
+  <p><button id="clear-library" type="button" disabled>Clear Your Library</button></p>
+  <p id="library-settings-status" class="dim" role="status"></p>
+</fieldset>
+
+<footer id="credit">whitakerLib uses the data from Colonel William Whitaker’s WORDS.</footer>
+</div>
+
+<script type="module" src="page.js"></script>
 </body>
 </html>

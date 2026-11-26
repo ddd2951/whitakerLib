@@ -17,7 +17,7 @@ namespace expand::internal {
 inline constexpr latin::StemKey kNoColumn{0};
 
 [[nodiscard]] constexpr bool firstTwoEqual(const word::DictlineEntry& e) {
-  return e.stem1 && !e.stem1->empty() && e.stem1 == e.stem2;
+  return e.stem1 && !e.stem1->empty() && e.stem1 != word::kMissingStem && e.stem1 == e.stem2;
 }
 
 [[nodiscard]] constexpr latin::StemKey column(const latin::Noun&, const word::DictlineEntry& e,
@@ -113,13 +113,18 @@ inline constexpr latin::StemKey kNoColumn{0};
 
 namespace expand {
 
-[[nodiscard]] constexpr word::Stem stemAt(const word::DictlineEntry& entry, const latin::StemKey column) {
+[[nodiscard]] constexpr word::Stem sourceStemAt(const word::DictlineEntry& entry, const latin::StemKey column) {
   constexpr std::array stems{&word::DictlineEntry::stem1, &word::DictlineEntry::stem2, &word::DictlineEntry::stem3,
                              &word::DictlineEntry::stem4};
   const std::size_t at = column.value;
   if (at < 1 || at > stems.size())
     return std::nullopt;
   return entry.*stems[at - 1];
+}
+
+[[nodiscard]] constexpr word::Stem stemAt(const word::DictlineEntry& entry, const latin::StemKey column) {
+  const auto text = sourceStemAt(entry, column);
+  return text == word::kMissingStem ? std::nullopt : text;
 }
 
 } // namespace expand

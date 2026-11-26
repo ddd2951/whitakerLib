@@ -56,6 +56,8 @@ static_assert(offsetof(WhitakerStem, spelling) == offsetof(whitaker::Stem, spell
 static_assert(sizeof(WhitakerDictionaryWordStems) == sizeof(whitaker::DictionaryWordStems) && alignof(WhitakerDictionaryWordStems) == alignof(whitaker::DictionaryWordStems));
 static_assert(offsetof(WhitakerDictionaryWordStems, stems) == offsetof(whitaker::DictionaryWordStems, stems));
 static_assert(offsetof(WhitakerDictionaryWordStems, count) == offsetof(whitaker::DictionaryWordStems, count));
+static_assert(sizeof(WhitakerDictionaryForm) == sizeof(whitaker::DictionaryForm) && alignof(WhitakerDictionaryForm) == alignof(whitaker::DictionaryForm));
+static_assert(offsetof(WhitakerDictionaryForm, text) == offsetof(whitaker::DictionaryForm, text));
 static_assert(sizeof(WhitakerSpellingRule) == sizeof(whitaker::SpellingRule) && alignof(WhitakerSpellingRule) == alignof(whitaker::SpellingRule));
 static_assert(offsetof(WhitakerSpellingRule, first) == offsetof(whitaker::SpellingRule, first));
 static_assert(offsetof(WhitakerSpellingRule, second) == offsetof(whitaker::SpellingRule, second));
@@ -106,6 +108,10 @@ extern "C" const char* whitaker_addon_meaning(uint16_t id) {
 
 extern "C" WhitakerDictionaryWordStems whitaker_stems(uint16_t id) {
   return std::bit_cast<WhitakerDictionaryWordStems>(whitaker::stems(static_cast<whitaker::DictionaryWordId>(id)));
+}
+
+extern "C" WhitakerDictionaryForm whitaker_dictionary_form(const WhitakerResult* result, size_t word, size_t readingIndex) {
+  return std::bit_cast<WhitakerDictionaryForm>(whitaker::dictionaryForm(*reinterpret_cast<const whitaker::Result*>(result), static_cast<whitaker::WordId>(word), readingIndex));
 }
 
 extern "C" WhitakerSpellingRule whitaker_spelling_rule(uint8_t rule) {

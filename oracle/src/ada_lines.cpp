@@ -93,6 +93,9 @@ std::vector<Line> adaLines(const std::string_view response) {
       case LineKind::Unknown:
         l.kind = Kind::Unknown;
         l.stem = std::string(tester::wordsOf(raw)[0]);
+        // INFO: WORDS puts a word too long for its column on a line of its own, "======== UNKNOWN" under it.
+        if (l.stem == "========" && !out.empty() && out.back().kind == Kind::Meaning)
+          l.stem = out.back().qual, out.pop_back();
         break;
       case LineKind::RouteMarker:
       case LineKind::Explanation:

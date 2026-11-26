@@ -58,19 +58,21 @@ if(EMSCRIPTEN)
 else()
     set(WHITAKER_LIBRARY_TYPE SHARED)
 endif()
-add_library(whitaker ${WHITAKER_LIBRARY_TYPE}
+set(WHITAKER_SOURCES
     src/parse/adverb.cpp
     src/parse/find_readings.cpp
     src/parse/result.cpp
     src/parse/respellings.cpp
     src/parse/word_readings.cpp
     src/search/addon_readings.cpp
+    src/search/dictionary_form.cpp
     src/search/embedded_image.cpp
     src/search/relationship_image.cpp
     src/search/syncope_lookup.cpp
     src/whitaker.cpp
     bindings/c/whitaker_c.cpp
 )
+add_library(whitaker ${WHITAKER_LIBRARY_TYPE} ${WHITAKER_SOURCES})
 add_library(Whitaker::whitaker ALIAS whitaker)
 
 # INFO: The embedded image's section places are link-time constants (gen loads its image at run time instead).
@@ -190,6 +192,14 @@ endif()
 whitaker_sanitize(whitaker)
 
 if(EMSCRIPTEN)
+    # NOTE: The traced build is a second library from the same sources and image: WHITAKER_TRACE changes the
+    #  readings' layout, so the plain one can't serve both.
+    add_library(whitaker_traced STATIC ${WHITAKER_SOURCES})
+    target_link_libraries(whitaker_traced PRIVATE whitaker_warnings whitaker_internals)
+    target_compile_definitions(whitaker_traced PRIVATE
+        WHITAKER_BUILDING WHITAKER_EMBEDDED_FRAME WHITAKER_TRACE)
+    target_include_directories(whitaker_traced PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/bindings/c)
     add_subdirectory(inspector)
 endif()
 
@@ -225,6 +235,7 @@ write_basic_package_version_file(
 install(TARGETS whitaker EXPORT WhitakerTargets)
 install(FILES
     include/whitaker.hpp
+    include/dictionary_form_capacity.hpp
     bindings/c/whitaker.h
     include/latin_types.hpp
     include/latin_generated.hpp

@@ -18,6 +18,7 @@
 //    while one of them analyzes, appends or clears it. The dictionary is read-only and shared; each thread's lookup
 //    scratch is its own.
 
+#include <dictionary_form_capacity.hpp>
 #include <latin_generated.hpp>
 
 #include <algorithm>
@@ -96,6 +97,12 @@ struct DictionaryWordStems {
   std::uint8_t count{};
 };
 static_assert(std::is_trivially_copyable_v<DictionaryWordStems>);
+
+// INFO: WORDS' dictionary form, including its grammar labels, NUL-terminated.
+struct DictionaryForm {
+  char text[kMaxDictionaryFormLength + 1]{};
+};
+static_assert(std::is_trivially_copyable_v<DictionaryForm>);
 
 // INFO: How a reading was reached besides the dictionary: a restored syncope, an adverb made from an adjective.
 struct Derivation {
@@ -294,6 +301,10 @@ WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) const char* addonSpelling(std
 WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) const char* addonMeaning(std::uint16_t id) noexcept;
 
 WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) DictionaryWordStems stems(DictionaryWordId id) noexcept;
+
+// INFO: The reading's dictionary form, empty for a Roman numeral or when WORDS gives none.
+WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) DictionaryForm dictionaryForm(const Result& result, WordId word,
+                                                                                std::size_t readingIndex) noexcept;
 
 // INFO: Zeroed for rule 0, which is none.
 WHITAKER_TAG(bind) [[nodiscard]] WHITAKER_TAG(api) SpellingRule spellingRule(std::uint8_t rule) noexcept;

@@ -1,8 +1,8 @@
 #pragma once
 
-// INFO: The text of inspector/api_view.inc: what the inspector's API view shows of the C++ API and of the C and
-//  Python bindings generated from it. Every field of a ReadingDetail, by the name all three give it, and every tagged
-//  call as each binding spells it. The page draws all three from the one C++ result.
+// INFO: The text of inspector/api_view.inc: what the site's api window shows of the C++ API and of the C and Python
+//  bindings generated from it (inspector/page.cpp). Every field of a ReadingDetail, by the name all three give it,
+//  and every tagged call as each binding spells it. The page draws all three from the one C++ result.
 #include "bindings/reflect.hpp"
 #include "bindings/schemes/c.hpp"
 #include "bindings/schemes/python.hpp"

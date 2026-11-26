@@ -50,8 +50,6 @@ word::Stem stem(const std::string_view slice, const std::string_view where) {
   const std::string_view unpad = trimmed(slice, scheme::kFieldSeparator);
   if (unpad.empty())
     return std::string_view{};
-  if (unpad == "zzz")
-    return std::nullopt;
   if (unpad.contains(scheme::kFieldSeparator))
     error::invalid("stem with a space", where);
   return unpad;

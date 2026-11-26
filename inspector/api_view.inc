@@ -731,6 +731,7 @@ inline constexpr const char* kCalls[][3] = {
   {"whitaker::addonSpelling(id)", "whitaker_addon_spelling(id)", "whitaker.addonSpelling(id)"},
   {"whitaker::addonMeaning(id)", "whitaker_addon_meaning(id)", "whitaker.addonMeaning(id)"},
   {"whitaker::stems(id)", "whitaker_stems(id)", "whitaker.stems(id)"},
+  {"whitaker::dictionaryForm(result, word, readingIndex)", "whitaker_dictionary_form(result, word, readingIndex)", "result.dictionaryForm(word, readingIndex)"},
   {"whitaker::spellingRule(rule)", "whitaker_spelling_rule(rule)", "whitaker.spellingRule(rule)"},
   {"latin::label(Part value)", "whitaker_part_label(value)", "Part.label"},
   {"latin::label(Case value)", "whitaker_case_label(value)", "Case.label"},

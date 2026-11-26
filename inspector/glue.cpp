@@ -249,10 +249,6 @@ void append(std::string& out, std::string_view word) {
   return digits;
 }
 
-[[nodiscard]] std::string plural(std::size_t n, std::string_view word) {
-  return count(n) + " " + std::string{word} + (n == 1 ? "" : "s");
-}
-
 [[nodiscard]] std::string fixed(double value, int decimals) {
   char text[32];
   std::snprintf(text, sizeof text, "%.*f", decimals, value);
@@ -301,7 +297,6 @@ private:
   std::string out;
 };
 
-using Tokens = std::unordered_set<std::string>;
 constexpr std::size_t kNoWord = SIZE_MAX;
 
 struct Word {
@@ -311,8 +306,6 @@ struct Word {
   std::size_t firstBlock{}, blockCount{};
   std::vector<trace::Step> steps;
   std::string path;
-  std::vector<Tokens> readings;
-  Tokens own;
 };
 
 struct Block {
@@ -326,8 +319,6 @@ struct Text {
   std::vector<Word> words;
   std::vector<trace::Tags> tags;
   std::vector<std::uint32_t> occurrences;
-  Tokens vocabulary;
-  double loadMs = 0;
 };
 
 Text loadedText;
@@ -476,57 +467,6 @@ void readingValues(const Block& record, std::size_t f, std::vector<Value>& out) 
                                  std::string{orEmpty(whitaker::addonSpelling(step.id))}});
 }
 
-[[nodiscard]] std::string term(std::string_view field, std::string_view value) {
-  std::string out = lower(std::string{field} + ":" + std::string{value});
-  std::ranges::replace(out, ' ', '_');
-  return out;
-}
-
-void addWords(Tokens& out, std::string_view text) {
-  std::string word;
-  for (const char c : text) {
-    if (c == ' ' || c == '\t' || c == '\n' || c == ',' || c == ';' || c == '(' || c == ')') {
-      if (!word.empty())
-        out.insert(std::exchange(word, {}));
-    } else {
-      word += lower({&c, 1});
-    }
-  }
-  if (!word.empty())
-    out.insert(word);
-}
-
-[[nodiscard]] Tokens readingTokens(const Block& record, std::size_t f) {
-  const whitaker::Form& form = loadedText.details[f].form;
-  const std::uint8_t stem = loadedText.details[f].stemKey;
-  Tokens tokens;
-  addWords(tokens, grammarOf(form));
-  addWords(tokens, formInWords(form.grammar));
-  addWords(tokens, formInWords(form.grammar, true));
-  if (stem != 0)
-    addWords(tokens, stemInWords(head(record).dictionaryWord.part, stem));
-  addWords(tokens, orEmpty(head(record).partName));
-  addWords(tokens, classInWords(head(record).dictionaryWord));
-  addWords(tokens, routeOf(record));
-  addWords(tokens, orEmpty(nameOf<latin::Part>(head(record).dictionaryWord.part)));
-  addWords(tokens, orEmpty(kindName(head(record).dictionaryWord.part, head(record).dictionaryWord.kind.value)));
-  if (head(record).form.spellingRuleId)
-    tokens.insert("respelled");
-  const whitaker::DictionaryWordStems stems = whitaker::stems(head(record).dictionaryWordId);
-  for (const whitaker::Stem& s : std::span{stems.stems, stems.count})
-    tokens.insert(term("stem", s.spelling));
-  for (const whitaker::AddonStep& step : std::span{head(record).addons, head(record).addonCount}) {
-    tokens.insert(std::string{orEmpty(spokenName("addon", byte(step.kind)))});
-    tokens.insert(lower(orEmpty(whitaker::addonSpelling(step.id))));
-  }
-  std::vector<Value> values;
-  readingValues(record, f, values);
-  for (const Value& v : values)
-    tokens.insert(term(v.field, v.value));
-  tokens.erase("");
-  return tokens;
-}
-
 void lookUp(const std::string& spelling) {
   Text& t = loadedText;
   Word word;
@@ -564,15 +504,6 @@ void lookUp(const std::string& spelling) {
   } else {
     word.path = orEmpty(spokenName("status", byte(word.status)));
   }
-  for (const Block& record : recordsOf(word))
-    for (std::size_t f = record.first; f < record.first + record.count; ++f)
-      word.readings.push_back(readingTokens(record, f));
-  word.own = {term("spelling", spelling), term("readings", std::to_string(readingCount(word)))};
-  if (word.readings.empty())
-    word.own.insert("unknown");
-  for (const Tokens& tokens : word.readings)
-    t.vocabulary.insert(tokens.begin(), tokens.end());
-  t.vocabulary.insert(word.own.begin(), word.own.end());
   t.words.push_back(std::move(word));
 }
 
@@ -645,11 +576,11 @@ void readable(const Word& word) {
 void traced(const Word& word) {
   Html& h = html;
   if (word.status == whitaker::Status::ok) {
-    h.element("div", "block-head", "Passes, in the order the lookup runs them").open("table", "rows");
+    h.element("div", "block-head", "Lookup passes, in order").open("table", "rows");
     for (const PassRun& run : passesOf(word))
       h.open("tr", run.ran ? "" : "dim")
           .element("td", "path", run.pass)
-          .element("td", "value", run.ran ? "ran" : "not run")
+          .element("td", "value", run.ran ? "Ran" : "Not run")
           .element("td", "name", run.ran ? "+" + std::to_string(run.added) + " readings" : "")
           .close("tr");
     h.close("table");
@@ -684,100 +615,6 @@ void traced(const Word& word) {
                     trimmed(word) ? "trimmed yes" : "trimmed no"}));
 }
 
-void apiRow(std::string_view field, std::string_view value) {
-  html.open("tr").element("td", "path", field).element("td", "value", value).close("tr");
-}
-enum class Binding : unsigned char {
-  cpp,
-  c,
-  python,
-};
-Binding apiBinding = Binding::cpp;
-
-struct ApiRows {
-  void number(std::string_view path, unsigned long long value) { apiRow(path, std::to_string(value)); }
-  void flag(std::string_view path, bool value) {
-    apiRow(path, apiBinding == Binding::python ? (value ? "True" : "False") : (value ? "true" : "false"));
-  }
-  void text(std::string_view path, const char* value) {
-    if (value == nullptr)
-      return apiRow(path, apiBinding == Binding::python ? "None" : apiBinding == Binding::c ? "NULL" : "nullptr");
-    const std::string quote = apiBinding == Binding::python ? "'" : "\"";
-    apiRow(path, quote + value + quote);
-  }
-  void enumerated(std::string_view path, std::string_view type, const char* cName, const char* value,
-                  const char* label = nullptr) {
-    const std::string name = value ? value : "?";
-    const std::string comment = label == nullptr                ? ""
-                                : apiBinding == Binding::python ? std::string{"  # "} + label
-                                                                : std::string{"  // "} + label;
-    switch (apiBinding) {
-      case Binding::cpp:
-        return apiRow(path, "latin::" + std::string{type} + "::" + name + comment);
-      case Binding::c:
-        return apiRow(path, cName + comment);
-      case Binding::python:
-        return apiRow(path, std::string{type} + "." + name + comment);
-    }
-  }
-};
-
-#include "api_view.inc"
-
-[[nodiscard]] std::string_view callOf(std::string_view function) {
-  for (const auto& call : kCalls)
-    if (std::string_view{call[0]}.starts_with("whitaker::" + std::string{function} + "("))
-      return call[std::to_underlying(apiBinding)];
-  return {};
-}
-
-void cHead() {
-  static constexpr const char* kTitles[] = {"C++: include/whitaker.hpp", "C: bindings/c/whitaker.h",
-                                            "Python: bindings/python"};
-  Html& h = html;
-  h.open("p", "bindings");
-  for (unsigned b = 0; b < 3; ++b)
-    h.open("button", b == std::to_underlying(apiBinding) ? "on" : "", "data-binding=\"" + std::to_string(b) + "\"")
-        .add(b == 0   ? "C++"
-             : b == 1 ? "C"
-                      : "Python")
-        .close("button");
-  h.close("p");
-  h.element("div", "block-head", kTitles[std::to_underlying(apiBinding)]);
-  if (apiBinding != Binding::cpp)
-    h.element("p", "meta",
-              "Generated from the C++ declarations, with the same fields by the same names. The page draws all three "
-              "from the one C++ result: this is how the data reads in this binding.");
-  for (const auto& call : kCalls)
-    h.element("p", "call-line", call[std::to_underlying(apiBinding)]);
-}
-
-void cWord(std::uint32_t index) {
-  const Word& word = loadedText.words[index];
-  const std::string_view comment = apiBinding == Binding::python ? "  # " : "  // ";
-  html.element("div", "block-head call",
-               std::string{callOf(index == 0 ? "analyze" : "append")} + std::string{comment} + "word \"" +
-                   word.spelling + "\"");
-  if (word.index == kNoWord) {
-    noReadings(word, "");
-    return;
-  }
-  const whitaker::WordId w{word.index};
-  ApiRows rows;
-  html.open("table", "rows api");
-  rows.text(std::string{callOf("spelling")}, std::string{whitaker::spelling(loadedText.result, w)}.c_str());
-  rows.flag(callOf("trimmed"), trimmed(word));
-  rows.number(callOf("readingCount"), whitaker::readingCount(loadedText.result, w));
-  html.close("table");
-  for (std::size_t r = 0; r < whitaker::readingCount(loadedText.result, w); ++r) {
-    html.element("div", "block-head sub call",
-                 std::string{callOf("detail")} + std::string{comment} + "reading " + std::to_string(r));
-    html.open("table", "rows api");
-    detailRows(rows, whitaker::detail(loadedText.result, w, r));
-    html.close("table");
-  }
-}
-
 struct Measure {
   std::string name;
   std::string path;
@@ -801,14 +638,14 @@ Timings onceTimings;
   t.valid = true;
   const std::vector<Group> groups = groupsOf(from, to);
   Measure every;
-  every.name = "every occurrence";
+  every.name = "Every occurrence";
   for (std::size_t i = from; i <= to && i < loadedText.occurrences.size(); ++i)
     every.words.push_back(loadedText.words[loadedText.occurrences[i]].spelling.c_str());
   const std::size_t occurrences = every.words.size();
   t.measures.push_back(std::move(every));
   if (groups.size() != occurrences) {
     Measure distinct;
-    distinct.name = "distinct only";
+    distinct.name = "Distinct as written";
     for (const Group& g : groups)
       distinct.words.push_back(loadedText.words[g.word].spelling.c_str());
     t.measures.push_back(std::move(distinct));
@@ -867,15 +704,6 @@ Timings onceTimings;
   return list[list.size() / 2];
 }
 
-[[nodiscard]] std::string middle(std::vector<double> list) {
-  if (list.size() < 3)
-    return "";
-  std::ranges::sort(list);
-  const auto n = static_cast<double>(list.size());
-  return duration(list[static_cast<std::size_t>(n * 0.1)]) + "–" +
-         duration(list[static_cast<std::size_t>(std::ceil(n * 0.9)) - 1]);
-}
-
 void headRow(std::initializer_list<std::string_view> names) {
   html.open("tr", "dim");
   for (const std::string_view name : names)
@@ -886,14 +714,14 @@ void headRow(std::initializer_list<std::string_view> names) {
 void speeds(const Timings& t) {
   Html& h = html;
   h.open("table", "rows");
-  headRow({"", "calls", "per word", "middle 80%", "total"});
+  headRow({"", "Calls", "Per word", "Total"});
   for (const Measure& m : t.measures) {
     if (!m.path.empty())
       continue;
     const bool timedYet = !m.samples.empty();
     const double per = timedYet ? median(m.samples) : 0;
     h.open("tr").element("td", "", m.name).element("td", "", count(m.words.size()));
-    h.element("td", "", timedYet ? duration(per) : "…").element("td", "", middle(m.samples));
+    h.element("td", "", timedYet ? duration(per) : "…");
     h.element("td", "", timedYet ? duration(per * static_cast<double>(m.words.size())) : "").close("tr");
   }
   h.close("table");
@@ -917,7 +745,7 @@ void costs(const Timings& t) {
     total = 1;
   std::ranges::stable_sort(rows, std::ranges::greater{}, &Row::time);
   h.open("table", "rows");
-  headRow({"share", "", "per word", "middle 80%", "words", "distinct"});
+  headRow({"Share", "", "Per word", "Words", "Distinct"});
   for (const Row& r : rows) {
     const bool timedYet = !r.m->samples.empty();
     std::string bar;
@@ -925,9 +753,9 @@ void costs(const Timings& t) {
       bar += "▇";
     h.open("tr").element("td", "", timedYet ? fixed(100 * r.time / total, 1) + "%" : "…");
     h.element("td", "bar", bar).element("td", "", timedYet ? duration(r.per) : "");
-    h.element("td", "", middle(r.m->samples)).element("td", "", count(r.m->occurrences));
+    h.element("td", "", count(r.m->occurrences));
     h.element("td", "", count(r.m->words.size())).close("tr");
-    h.open("tr").element("td", "", "").open("td", "value path-line", "colspan=\"5\"").add(r.m->path);
+    h.open("tr").element("td", "", "").open("td", "value path-line", "colspan=\"4\"").add(r.m->path);
     h.close("td").close("tr");
   }
   h.close("table");
@@ -970,9 +798,13 @@ void counts() {
       ++tally.distinct;
     }
   }
+  // NOTE: Spellings as the text's numbers count them (page.js, case folded), and as written, as each is looked up.
+  std::unordered_set<std::string> folded;
+  for (const Group& g : selectedGroups)
+    folded.insert(lower(loadedText.words[g.word].spelling));
   h.element("div", "block-head",
-            "Counts: " + count(occurrences) + " words, " + count(selectedGroups.size()) +
-                " distinct; click a value to find it");
+            "Counts: " + count(occurrences) + " words, " + count(folded.size()) + " spellings (" +
+                count(selectedGroups.size()) + " as written)");
   h.open("table", "rows counts");
   for (std::size_t field = 0; field < std::size(kFields); ++field) {
     std::vector<Tally>& list = tallies[field];
@@ -985,12 +817,10 @@ void counts() {
     const std::size_t shown = kFields[field] == "spelling" ? std::min<std::size_t>(40, list.size()) : list.size();
     h.open("tr").element("td", "path", kFields[field]).open("td", "value");
     for (const Tally& t : std::span{list}.first(shown)) {
-      std::string find = "data-find=\"";
-      escape(find, term(kFields[field], t.value));
-      h.open("button", "value", find + "\"").add(t.value + " " + count(t.occurrences));
+      h.open("span", "value").add(t.value + " " + count(t.occurrences));
       if (t.distinct != t.occurrences)
         h.element("span", "meta", " (" + count(t.distinct) + ")");
-      h.close("button");
+      h.close("span");
     }
     if (list.size() > shown)
       h.add(" and " + count(list.size() - shown) + " more");
@@ -1002,7 +832,7 @@ void counts() {
 void traceCosts() {
   const bool once = onceTimings.valid && onceTimings.from == selectedFrom && onceTimings.to == selectedTo;
   const Timings fresh = once ? Timings{} : measuresOf(selectedFrom, selectedTo);
-  html.element("div", "block-head", "Where the time goes, by lookup path: the passes each word ran");
+  html.element("div", "block-head", "Where the time goes");
   costs(once ? onceTimings : fresh);
 }
 
@@ -1011,31 +841,21 @@ void statistics() {
   const bool once = onceTimings.valid && onceTimings.from == selectedFrom && onceTimings.to == selectedTo;
   const Timings fresh = once ? Timings{} : measuresOf(selectedFrom, selectedTo);
   const Timings& t = once ? onceTimings : fresh;
-  h.open("div", "block-head").add("Speed of the library").element("span", "type", " · timed once").close("div");
+  h.element("div", "block-head", "Measuring the lookup");
   speeds(t);
-  h.open("p").add("On screen, from your input to the view drawn: ").element("span", "paint", "…");
-  h.element("span", "meta", " (the timing runs after that)").close("p");
   h.element("p", "meta",
-            "analyze() for the first word, then append() for each further word, repeated until "
-            "enough time has passed: browsers round their clock to about a millisecond. This build also "
-            "records the trace.");
+            "The measurement starts with analyze() for the first word and uses append() for each subsequent word. "
+            "The test is repeated until enough time has passed to measure it reliably, since browsers limit the "
+            "precision of their clocks.");
+  h.element("p", "meta",
+            "Tracing is enabled during these measurements. The time spent fetching the text and drawing "
+            "the page is not included.");
   counts();
-  const char* version = whitaker::kVersion;
-  h.element("p", "meta",
-            "Whole text: " + plural(loadedText.occurrences.size(), "word") + ", " + count(loadedText.words.size()) +
-                " distinct, analyzed in " + fixed(loadedText.loadMs, 0) + " ms when it was loaded.");
-  h.element("p", "meta",
-            "whitakerLib " + std::string{version} + ", image " +
-                std::string{std::string_view{whitaker::imageChecksum()}.substr(0, 12)} + " (format " +
-                std::to_string(whitaker::imageFormat()) +
-                "). The text is analyzed in this page and nothing is sent; the text and your place in it are "
-                "kept in this browser.");
 }
 
 } // namespace
 
 extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_load(const char* words) {
-  const double start = emscripten_get_now();
   Text& t = loadedText;
   whitaker::clear(t.result);
   t.details.clear();
@@ -1043,7 +863,6 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_load(const char* words) {
   t.words.clear();
   t.tags.clear();
   t.occurrences.clear();
-  t.vocabulary = {"unknown"};
   onceTimings = {};
   std::unordered_map<std::string, std::uint32_t> ids;
   for (const auto part : std::views::split(std::string_view{words}, '\n')) {
@@ -1055,7 +874,6 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_load(const char* words) {
       lookUp(spelling);
     t.occurrences.push_back(at->second);
   }
-  t.loadMs = emscripten_get_now() - start;
   reply.clear();
   for (const std::uint32_t w : t.occurrences)
     reply += readingCount(t.words[w]) ? '1' : '0';
@@ -1082,8 +900,6 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_view(unsigned view, unsign
   }
   if (view == 2 && first == 0)
     traceCosts();
-  if (view == 1 && first == 0)
-    cHead();
   const std::size_t end = std::min<std::size_t>(selectedGroups.size(), std::size_t{first} + count);
   for (std::size_t i = first; i < end; ++i) {
     const Group& g = selectedGroups[i];
@@ -1095,50 +911,13 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_view(unsigned view, unsign
           .close("div");
     if (view == 0)
       readable(word);
-    else if (view == 1)
-      cWord(g.word);
     else
       traced(word);
   }
   return h.text();
 }
 
-extern "C" EMSCRIPTEN_KEEPALIVE void inspector_binding(unsigned binding) {
-  if (binding <= std::to_underlying(Binding::python))
-    apiBinding = static_cast<Binding>(binding);
-}
-
-extern "C" EMSCRIPTEN_KEEPALIVE const char* inspector_search(const char* query) {
-  Tokens split;
-  addWords(split, query);
-  const std::vector<std::string> terms{split.begin(), split.end()};
-  std::vector<char> matches(loadedText.words.size(), '0');
-  if (!terms.empty())
-    for (std::size_t w = 0; w < loadedText.words.size(); ++w) {
-      const Word& word = loadedText.words[w];
-      const std::string spelling = lower(word.spelling);
-      std::vector<const std::string*> named;
-      bool ok = true;
-      for (const std::string& t : terms) {
-        if (word.own.contains(t))
-          continue;
-        if (loadedText.vocabulary.contains(t))
-          named.push_back(&t);
-        else
-          ok = ok && spelling.find(t) != std::string::npos;
-      }
-      ok = ok && (named.empty() || std::ranges::any_of(word.readings, [&](const Tokens& tokens) {
-                    return std::ranges::all_of(named, [&](const std::string* t) { return tokens.contains(*t); });
-                  }));
-      matches[w] = ok ? '1' : '0';
-    }
-  reply.clear();
-  for (const std::uint32_t w : loadedText.occurrences)
-    reply += matches[w];
-  return reply.c_str();
-}
-
-// INFO: For the highlights and the Sentence view (site/highlights.js, site/sentence.js): four hex digits a word in
+// INFO: For the sentence window's guesses (site/sentence/highlights.js, sentence.js): four hex digits a word in
 //  the text, its flags, from its readings. Which reading is right in its sentence is the page's guess, not this.
 constexpr unsigned kFinite = 1; // some reading is a verb with a person (indicative, subjunctive, imperative)
 constexpr unsigned kInfinitive = 4;

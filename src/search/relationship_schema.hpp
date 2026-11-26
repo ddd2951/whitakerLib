@@ -63,6 +63,7 @@ inline constexpr std::size_t kGrammarBytes = 4;
 inline constexpr std::size_t kEntryBytes = 6;
 
 inline constexpr unsigned kStemLengthBits = 5;
+inline constexpr std::uint16_t kMissingStemCode = 1u << kStemLengthBits;
 
 inline constexpr std::uint16_t kRuleAbbreviation = 1u << 0;
 inline constexpr std::uint16_t kRuleInterjOrConj = 1u << 1;
@@ -665,7 +666,7 @@ struct HeaderRecord {
 static_assert(std::is_trivially_copyable_v<HeaderRecord>);
 
 struct DictionaryRecord {
-  // INFO: Each column's printed stem: `pattern << 5 | length`.
+  // INFO: Each column's printed stem: `pattern << 5 | length`, with kMissingStemCode for DICTLINE's zzz.
   std::array<std::uint16_t, facts::kStemColumnCount> stems{};
   std::uint32_t meaning{};
   latin::Age age{};

@@ -2,6 +2,7 @@
 
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
 #include "error/error.hpp"
+#include "expand/common/stem_column.hpp"
 #include "expand/expand.hpp"
 #include "facts.hpp"
 #include "helpers/description_id.hpp"
@@ -129,7 +130,10 @@ using StemPatternIds = std::map<std::string, std::uint16_t>;
     image.stemPatterns.push_back(image.strings.intern(marks));
   if (orth.size() >= 1u << rel::kStemLengthBits || found->second >= 1u << (16 - rel::kStemLengthBits))
     error::fatal(std::format("image: printed stem \"{}\" does not fit its 16 bits\n{}", orth, resultReport(index)));
-  return static_cast<std::uint16_t>(std::size_t{found->second} << rel::kStemLengthBits | orth.size());
+  const auto code = static_cast<std::uint16_t>(std::size_t{found->second} << rel::kStemLengthBits | orth.size());
+  if (code == rel::kMissingStemCode)
+    error::fatal(std::format("image: printed stem uses the reserved zzz code\n{}", resultReport(index)));
+  return code;
 }
 
 [[nodiscard]] FormAddress checkedAddress(const ImageData& image, const std::size_t index) {
@@ -251,6 +255,18 @@ using StemPatternIds = std::map<std::string, std::uint16_t>;
                                                                 .description = key.first,
                                                                 .age = value.first,
                                                                 .frequency = value.second});
+  // INFO: A column DICTLINE writes as zzz has no stem and no reading; WORDS prints it as "-" in the dictionary form.
+  for (std::uint32_t index = 0; index < word::kDictlineWords; ++index) {
+    const auto& entry = word::entry(word::DictlineRow{index});
+    for (unsigned char column = 1; column <= facts::kStemColumnCount; ++column) {
+      if (expand::sourceStemAt(entry, latin::StemKey{column}) != word::kMissingStem)
+        continue;
+      const std::size_t slot = std::size_t{column} - 1;
+      if (orthFirst[index][slot])
+        error::fatal(std::format("image: dictionary word {} column {} has a reading for zzz", index, unsigned{column}));
+      image.dictionaries[index].stems[slot] = rel::kMissingStemCode;
+    }
+  }
   return source;
 }
 

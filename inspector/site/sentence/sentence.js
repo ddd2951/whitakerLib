@@ -5,14 +5,14 @@
 //  word.
 //
 // NOTE: The page answers the view's buttons by their data: data-word selects a word, data-action="ask-sentence"
-//  copies the sentence for Google help (app.js).
+//  copies the sentence for Google help (page.js).
 
 import { placeOf, rankOf, recordsOf, sentenceRange } from './ask.js';
 import { capitalizedInside } from './text.js';
 import { flagsOf, INFINITIVE, isVerb, NOMINATIVE, NOT_VERB, ONLY_NOMINATIVE, PARTICIPLE, RELATIVES, structureNow,
   UNKNOWN } from './highlights.js';
 
-// What the word that opens a clause usually means; a relative pronoun (qui, quae, quod, cuius …) is 'who, which'.
+// INFO: What the word that opens a clause usually means; a relative pronoun (qui, quae, quod, cuius …) is 'who, which'.
 const GLOSSES = new Map(Object.entries({
   cum: 'when, since, although', ut: 'that, so that, as, when', uti: 'that, so that, as', ne: 'that … not, so as not to',
   si: 'if', nisi: 'unless, if not', quia: 'because', quoniam: 'since, because',
@@ -30,7 +30,7 @@ const QUALIS = new Set('qualis quale qualem quales qualium qualibus'.split(' '))
 const IMPERSONAL = new Set(`accidit accidebat acciderat fit fiebat factum contigit evenit evenerat placet placuit licet
   licuit oportet oportuit constat constabat apparet convenit`.split(/\s+/));
 const CLAUSE_SUBJECT = new Set(['ut', 'uti', 'ne', 'quod']);
-// The subject a verb's person stands for, when no word in the sentence is it.
+// INFO: The subject a verb's person stands for, when no word in the sentence is it.
 const PRONOUNS = new Map([['1st person singular', 'I'], ['2nd person singular', 'you'], ['3rd person singular',
   'he/she/it'], ['1st person plural', 'we'], ['2nd person plural', 'you (all)'], ['3rd person plural', 'they']]);
 // NOTE: A name's case is not known, but these endings are almost never a nominative (Cimonis, Lemnum, Atheniensium).
@@ -69,7 +69,7 @@ function verbReadings(html) {
            impersonal: records.some(r => r.impersonal) };
 }
 
-// The case a preposition takes: its next word's reading is that one (ab urbe: ablative; in takes either).
+// INFO: The case a preposition takes: its next word's reading is that one (ab urbe: ablative; in takes either).
 const TAKES = new Map([
   ...'a ab abs cum de e ex sine pro prae'.split(' ').map(p => [p, /^ablative/]),
   ...'ad ante apud circum contra erga inter ob per post praeter propter trans'.split(' ').map(p => [p, /^accusative/]),
@@ -79,7 +79,7 @@ const TAKES = new Map([
 //  it, else the commonest reading, and not a verb's if the sentence doesn't take it for one (loca: locus, not loco).
 //  The dictionary words are tried most common first (an impersonal verb's impersonal one first); the first with a
 //  form that fits wins.
-export function expectedOf({ words, i, a, readingsHtmlOf }) {
+function expectedOf({ words, i, a, readingsHtmlOf }) {
   const records = recordsOf(readingsHtmlOf(i)).sort((x, y) => rankOf(x) - rankOf(y))
     .sort((x, y) => (a.impersonal === i) * (y.impersonal - x.impersonal));
   const pick = (fits, why) => {
@@ -93,7 +93,7 @@ export function expectedOf({ words, i, a, readingsHtmlOf }) {
   };
   const before = i > 0 ? words[i - 1].text.toLowerCase() : '';
   const topHas = form => !!records[0]?.forms.some(f => f.words.includes(form));
-  // The number of verb k (singular or plural), from its first form with a person; null if it has none.
+  // INFO: The number of verb k (singular or plural), from its first form with a person; null if it has none.
   const numberOf = k => k === undefined ? null : recordsOf(readingsHtmlOf(k)).flatMap(r => r.forms)
     .map(f => f.words.match(/person (singular|plural)/)?.[1]).find(Boolean) ?? null;
   const clause = a.here.find(c => c.verbs.includes(i));
@@ -132,8 +132,8 @@ function section(title, ...content) {
   return row;
 }
 
-// A verb's meaning, short: the most common dictionary word's (the impersonal one's, for an impersonal verb), up to
-//  its first ';'.
+// INFO: A verb's meaning, short: the most common dictionary word's (the impersonal one's, for an impersonal verb), up
+//  to its first ';'.
 function meaningOf(html, impersonal = false) {
   const records = recordsOf(html).sort((a, b) => rankOf(a) - rankOf(b));
   const record = (impersonal ? records.find(r => r.impersonal) : undefined) ??
@@ -214,11 +214,11 @@ function piecesOf({ text, words, from, to, mains, compound, here, classOf, readi
 
 // NOTE: The sentence holding word i, taken apart: what the view shows, as data, apart from drawing it. Words are
 //  their places in the text.
-export function analyse({ text, words, i, readingsHtmlOf }) {
+function analyse({ text, words, i, readingsHtmlOf }) {
   const [from, to] = sentenceRange(text, words, i);
   const { main, clauses, compound } = structureNow();
   const mains = main.filter(j => j >= from && j <= to);
-  // A main verb as its words: a form of sum with its participle (ausi … sunt), or the verb alone.
+  // INFO: A main verb as its words: a form of sum with its participle (ausi … sunt), or the verb alone.
   const mainWords = mains.map(j => compound.has(j) ? [compound.get(j), j].sort((x, y) => x - y) : [j]);
   const here = clauses.filter(c => c.opener >= from && c.opener <= to);
   const inClause = j => here.some(c => j >= c.opener && j <= (c.verbs.at(-1) ?? to));
@@ -254,7 +254,7 @@ export function analyse({ text, words, i, readingsHtmlOf }) {
   subjects.splice(0, subjects.length, ...subjects.filter(agrees));
   subjects.sort((a, b) => a[0] - b[0]);
   const verbs = new Map(mains.map(j => [j, verbReadings(readingsHtmlOf(j))]));
-  // The clause that is the subject of an impersonal main verb (accidit ut …), if there is one.
+  // INFO: The clause that is the subject of an impersonal main verb (accidit ut …), if there is one.
   const clauseSubject = mains.flatMap(j => {
     if (!IMPERSONAL.has(words[j].text.toLowerCase()) && !verbs.get(j)?.impersonal) return [];
     const c = here.find(c => c.opener > j && CLAUSE_SUBJECT.has(words[c.opener].text.toLowerCase()));

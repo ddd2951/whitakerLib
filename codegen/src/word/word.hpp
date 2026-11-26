@@ -14,6 +14,7 @@
 namespace word {
 
 using Stem = std::optional<std::string_view>;
+inline constexpr std::string_view kMissingStem{"zzz"};
 
 template <std::meta::info file> struct Row {
   std::uint32_t value{};

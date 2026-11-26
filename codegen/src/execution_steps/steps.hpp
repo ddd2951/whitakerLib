@@ -165,7 +165,8 @@ namespace image_data {
   = tag::Reads{^^storage::packons}, = tag::Writes{^^storage::classGrammars}, = tag::Writes{^^storage::image}
 ]] void buildDictionaryClasses();
 [[
-  = tag::Reads{^^storage::kept}, = tag::Reads{^^storage::starts}, = tag::Reads{^^storage::total},
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::kept}, = tag::Reads{^^storage::starts},
+  = tag::Reads{^^storage::total},
   = tag::Reads{^^storage::lines<^^source::scheme::dictline>},
   = tag::Reads{^^storage::lines<^^source::scheme::inflects>}, = tag::Reads{^^storage::lines<^^source::scheme::uniques>},
   = tag::Reads{^^storage::records<^^source::scheme::dictline>},
@@ -320,11 +321,16 @@ namespace image_file {
   = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
   = tag::Reads{^^whitaker::relationship::sImage}
 ]] void checkDictionaryWordStems();
+[[
+  = tag::Reads{^^storage::dictline}, = tag::Reads{^^storage::uniques}, = tag::Reads{^^storage::loadedImage},
+  = tag::Reads{^^whitaker::relationship::sImage}
+]] void checkDictionaryForms();
 [[ = tag::Reads{^^storage::loadedImage}, = tag::Reads{^^whitaker::relationship::sImage} ]] void checkAddonTables();
 // INFO: publishImage replaces the old image, so it waits for every check by name.
 [[
   = tag::Gate{^^image_file::checkImageReadings}, = tag::Gate{^^image_file::checkDictionaryWords},
   = tag::Gate{^^image_file::checkDictionaryWordStems}, = tag::Gate{^^image_file::checkAddonTables},
+  = tag::Gate{^^image_file::checkDictionaryForms},
   = tag::Reads{^^storage::destination}, = tag::Reads{^^storage::temporaryImage}
 ]] void publishImage();
 } // namespace image_file

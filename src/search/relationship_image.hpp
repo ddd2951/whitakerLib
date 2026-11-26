@@ -12,6 +12,7 @@
 #include <type_traits>
 
 namespace whitaker {
+struct DictionaryForm;
 struct DictionaryWordStems;
 }
 
@@ -87,6 +88,7 @@ void nextReading(std::uint32_t& cursor, std::uint16_t& lexeme, latin::packed::Re
 [[nodiscard]] StemRecord stemRecord(std::uint32_t index);
 [[nodiscard]] Run stemRange(std::string_view text);
 [[nodiscard]] DictionaryWordStems stems(std::uint16_t dictionary);
+[[nodiscard]] DictionaryForm dictionaryForm(std::uint16_t dictionary, latin::Case governedCase);
 [[nodiscard]] StemEntry stemEntry(std::uint32_t index);
 [[nodiscard]] Run endingRun(std::string_view text);
 [[nodiscard]] std::pair<latin::Age, latin::Frequency> readingLabels(std::uint16_t description,

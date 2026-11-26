@@ -2,6 +2,7 @@
 
 #include <whitaker.hpp>
 
+#include "dictionary_form.hpp"
 #include "facts.hpp"
 #include "image.hpp"
 #include "two_ended.hpp"
@@ -144,9 +145,31 @@ InflectionRecord inflection(const std::uint16_t index) { return read<InflectionR
 StemRecord stemRecord(const std::uint32_t index) { return read<StemRecord>(Section::Stems, index); }
 
 static_assert(kMaxWordLength == facts::kMaxWordCharacters);
+namespace {
+void eachDictionaryStem(const std::uint16_t dictionary, const auto& visit) {
+  if (dictionary + 1u >= section(Section::DictionaryStemRuns).count)
+    return;
+  const auto runs = std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::FrontRuns).count));
+  const auto first = read16(at(Section::DictionaryStemRuns, dictionary));
+  const auto end = read16(at(Section::DictionaryStemRuns, dictionary + 1u));
+  for (std::uint32_t member = first; member < end; ++member) {
+    const std::uint32_t row = read16(at(Section::DictionaryStems, member));
+    const auto record = stemRecord(row);
+    assert(relationship::dictionary(record.dictionary).stems[column(record)] != kMissingStemCode);
+    // INFO: A stem row's spelling is the last whose run starts at or before it.
+    const auto spelling = *std::ranges::prev(std::ranges::upper_bound(
+        runs, row, {}, [](const std::uint32_t i) { return std::uint32_t{read16(at(Section::FrontRuns, i))}; }));
+    whitaker::Stem stem{};
+    const std::span<char, facts::kMaxWordCharacters> letters{stem.spelling, facts::kMaxWordCharacters};
+    two_ended::walkFront(spelling, letters);
+    two_ended::unfold(letters, read16(at(Section::StemLetters, row)));
+    visit(record, stem);
+  }
+}
+} // namespace
+
 DictionaryWordStems stems(const std::uint16_t dictionary) {
   DictionaryWordStems out{};
-  const auto runs = std::views::iota(std::uint32_t{0}, static_cast<std::uint32_t>(section(Section::FrontRuns).count));
   const auto push = [&out](const std::uint8_t key, const whitaker::Stem& stem) {
     assert(out.count < std::size(out.stems));
     auto at = out.count++;
@@ -155,20 +178,7 @@ DictionaryWordStems stems(const std::uint16_t dictionary) {
     out.stems[at] = stem;
     out.stems[at].key = key;
   };
-  if (dictionary + 1u >= section(Section::DictionaryStemRuns).count)
-    return out;
-  const auto first = read16(at(Section::DictionaryStemRuns, dictionary));
-  const auto end = read16(at(Section::DictionaryStemRuns, dictionary + 1u));
-  for (std::uint32_t member = first; member < end; ++member) {
-    const std::uint32_t row = read16(at(Section::DictionaryStems, member));
-    const auto record = stemRecord(row);
-    // INFO: A stem row's spelling is the last whose run starts at or before it.
-    const auto spelling = *std::ranges::prev(std::ranges::upper_bound(
-        runs, row, {}, [](const std::uint32_t i) { return std::uint32_t{read16(at(Section::FrontRuns, i))}; }));
-    whitaker::Stem stem{};
-    const std::span<char, facts::kMaxWordCharacters> letters{stem.spelling, facts::kMaxWordCharacters};
-    two_ended::walkFront(spelling, letters);
-    two_ended::unfold(letters, read16(at(Section::StemLetters, row)));
+  eachDictionaryStem(dictionary, [&](const StemRecord record, const whitaker::Stem& stem) {
     // INFO: Key 0 is the first and second stems spelled alike. 255 is a row the affix tables never key: a unique's,
     //  which has no key, or esse's empty second stem, whose key is its column.
     if (record.stemKey == 0) {
@@ -178,8 +188,23 @@ DictionaryWordStems stems(const std::uint16_t dictionary) {
       push(record.stemKey, stem);
     else
       push(dictionary >= std::to_underlying(kFirstUnique) ? 0 : static_cast<std::uint8_t>(column(record) + 1), stem);
-  }
+  });
   return out;
+}
+
+DictionaryStemColumns dictionaryStemColumns(const std::uint16_t id) {
+  const auto word = dictionary(id);
+  DictionaryStemColumns columns{};
+  eachDictionaryStem(id, [&](const StemRecord record, const whitaker::Stem& stem) {
+    std::ranges::copy(stem.spelling, columns[column(record)].begin());
+    // INFO: The two equal stems share one row in the first column.
+    if (record.stemKey == 0)
+      std::ranges::copy(stem.spelling, columns[1].begin());
+  });
+  for (std::size_t i = 0; i < columns.size(); ++i)
+    if (word.stems[i] == kMissingStemCode)
+      std::ranges::copy(kMissingStem, columns[i].begin());
+  return columns;
 }
 
 Run stemRange(const std::string_view text) {

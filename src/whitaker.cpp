@@ -187,5 +187,13 @@ const char* imageChecksum() noexcept { return WHITAKER_IMAGE_SHA256; }
 const char* addonSpelling(const std::uint16_t id) noexcept { return rel::addon(id).fix.data(); }
 const char* addonMeaning(const std::uint16_t id) noexcept { return rel::addon(id).meaning; }
 DictionaryWordStems stems(const DictionaryWordId id) noexcept { return rel::stems(std::to_underlying(id)); }
+DictionaryForm dictionaryForm(const Result& result, const WordId word, const std::size_t readingIndex) noexcept {
+  const auto all = readings(result, word);
+  if (readingIndex >= all.size())
+    return {};
+  const auto& r = all[readingIndex];
+  const auto governedCase = r.part == latin::Part::preposition ? parse::grammar(r).caseOf : latin::Case{};
+  return rel::dictionaryForm(r.entry, governedCase);
+}
 SpellingRule spellingRule(const std::uint8_t rule) noexcept { return parse::spellingRule(rule); }
 } // namespace whitaker

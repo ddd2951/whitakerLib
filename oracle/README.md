@@ -146,23 +146,18 @@ It is excluded from the comparison build and remains under investigation.
 
 ## Where it is now
 
-These are the results for 0.4.0. The pinned collection contains 102 Latin books, with 4,662,505 word occurrences.
+The latest comparison against patched WORDS `5dd8ca5` covers 102 pinned Perseus books, with 4,663,396 word occurrences.
 
 | Result | Tokens | Percentage |
 | --- | ---: | ---: |
-| Exact agreement | 4,642,934 | 99.58% |
-| Differences | 19,571 | 0.42% |
-| ↳ WORDS' guesses | 19,559 | |
-| ↳ Other explained differences | 12 | |
+| Exact agreement | 4,643,728 | 99.58% |
+| Differences | 19,668 | 0.42% |
+| ↳ WORDS' guesses | 19,665 | |
+| ↳ WORDS parse-array overflow | 3 | |
 
-Every word is counted, including WORDS' guesses, which whitakerLib doesn't currently implement.
-
-Of the remaining 12 word occurrences:
-| Words | Occurrences | Cause |
-| --- | ---: | --- |
-| Seven run-together words over 24 letters (eosdemiuvencosetquattuoriugerum, ...) | 7 | The library's input limit. WORDS answers UNKNOWN. |
-| pilula, seconda | 3 | A WORDS bug: the answer overflows WORDS' fixed parse arrays and is dropped silently, so WORDS says UNKNOWN. My first fix caused a crash on another word in the books, so I am still looking at it. |
-| basa, basin | 2 | WORDS prints a reading again for a second dictionary record that shares the stem. This grouping rule is not ported. |
+The total includes WORDS' word-split and bad Roman numeral guesses. The other three differences are two occurrences
+of *pilula* and one of *seconda*. WORDS fills its fixed parse arrays and drops the answer, giving `UNKNOWN`.
+whitakerLib returns the readings for both spellings.
 
 ## Reports
 

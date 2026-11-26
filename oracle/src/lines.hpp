@@ -100,6 +100,7 @@ enum class Rule : std::uint8_t {
   MeaningWidth,
   PersonZero,
   DeponentVoice,
+  InputTooLong,
   Count,
 };
 struct RuleInfo {
@@ -120,6 +121,8 @@ inline constexpr std::array<RuleInfo, std::to_underlying(Rule::Count)> kRules{{
      "WORDS prints a verb's person 0 (INF 0 X), whitaker_describe leaves it out"},
     {Rule::DeponentVoice, "deponent-voice", "reading",
      "WORDS blanks a deponent's voice field, whatever it holds: not shown, not compared"},
+    {Rule::InputTooLong, "input-too-long", "reading",
+     "a word over the library's 24 letters: WORDS says UNKNOWN, the library InputTooLong, both no reading"},
 }};
 static_assert(std::ranges::all_of(std::views::iota(0uz, kRules.size()),
                                   [](const std::size_t i) { return std::to_underlying(kRules[i].rule) == i; }));
@@ -141,6 +144,8 @@ struct Line {
   std::string pos;
   std::string printedForm;
   bool numeral = false;
+  bool tooLong = false;
+  std::uint8_t stemKey = 0;
   std::string raw;
 };
 

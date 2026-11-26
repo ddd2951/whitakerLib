@@ -2,22 +2,31 @@
 
 [![CI](https://github.com/ddd2951/whitakerLib/actions/workflows/ci.yml/badge.svg)](https://github.com/ddd2951/whitakerLib/actions/workflows/ci.yml)
 
-A small C++23 library that takes a Latin word and returns every reading William
-Whitaker's WORDS data supports, with its stem, meaning, part of speech and
+A small C++23 library that takes a Latin word and returns the readings William
+Whitaker's WORDS gives it, with its stem, meaning, part of speech and
 inflection, add-ons and Roman numerals included. Includes C and Python bindings,
 both generated from the C++ header.
 
-- **Under a microsecond per word**, on average over [102 Latin books](data/booklist.md#books).
+- **Matches WORDS within what it implements.** I compared 4.66 million lookups
+  across [102 Latin books](data/booklist.md#books) against [my patched build](https://github.com/ddd2951/whitakers-words/tree/combined_fixes)
+  of William Whitaker's Ada WORDS, down to the grammar of each reading and the
+  order it came back in. Every difference was either a guess I've intentionally
+  left out of the core library or one of three occurrences where WORDS dropped
+  its answer and whitakerLib returned readings.
+  [See the comparison](oracle/README.md#where-it-is-now).
+- **Under a microsecond per word**, on average over the same books.
 - **1,205,496 spellings, 2,374,470 readings** in a 3.8 MB image embedded in
   the library, with no external data file at runtime, no database and no
-  initialization.
-- **99.58% of words answered exactly as the Ada WORDS answers them**, every
-  reading, record and add-on, in WORDS' order. The [oracle](oracle/README.md)
-  explains the comparison.
+  dictionary to load.
 - **[Try it in your browser](https://ddd2951.github.io/whitakerLib/)**, in the
   [inspector](#inside).
 - **[Install the Firefox extension](https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/)**,
   an offline Latin dictionary.
+
+I started by trying to read Latin the way Whitaker did. Now I want to find the
+places where the readings can be better. If a word looks wrong or a reading is
+missing, open an issue or a pull request. Tell me which word it is. A link to
+the passage or a photo of the page is enough.
 
 ## Why?
 
@@ -34,21 +43,29 @@ built something that really works. The more I've worked with WORDS, the more
 I've come to appreciate how he approached Latin, and his data is genuinely nice
 to work with.
 
+While building whitakerLib, I found and fixed 19 bugs in Ada WORDS. I sent some
+of those fixes upstream, and several were merged. My comparison uses
+[my own build with all 19 fixes](https://github.com/ddd2951/whitakers-words/tree/combined_fixes). They change edge cases: readings WORDS
+lost, repeated or got wrong, and two crashes, on *unietvicensimae* in Tacitus
+and *decimestres* in Ammianus, that stopped it before the end of those books.
+[See the fixes](oracle/WORDS_FIXES.md).
+
+I have a much longer list to work through. I wanted to finish matching WORDS'
+readings first so I'd have a baseline for the changes I want to make.
+[Bugs found in WORDS](oracle/README.md#bugs-found-in-words).
+
+I've left macron handling and WORDS' guesses, including guesses at malformed
+Roman numerals, out of the core library. I'd like to add separate helpers for
+them over time.
+
 Most Latin tools won't need lookups this quick and the generator could have been
 written without reflection, but both were fun to build. The reasons why are
 given in "Why reflection?" in `codegen/README.md`.
 
 ## Built with whitakerLib
 
-- **Kindle and other e-readers**:
-  [whitakerLib-kindle](https://github.com/ddd2951/whitakerLib-kindle), a
-  KOReader plugin. Tap a word in the sentence you're reading to see its
-  readings, offline. About 1,100 lines of Lua, plus the library.
-- **Firefox**:
-  [whitakerLib-firefox](https://github.com/ddd2951/whitakerLib-firefox), an
-  extension, [on addons.mozilla.org](https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/).
-  Double-click a Latin word on any page to see its readings, offline. Under
-  600 lines, plus the library built to WebAssembly.
+- **Kindle and other e-readers**: [whitakerLib-kindle](https://github.com/ddd2951/whitakerLib-kindle), a KOReader plugin: tap a word in your book to see its readings, offline.
+- **Firefox**: [whitakerLib-firefox](https://github.com/ddd2951/whitakerLib-firefox), an extension [on addons.mozilla.org](https://addons.mozilla.org/firefox/addon/offline-latin-dictionary/): double-click a Latin word on a page to see its readings, offline.
 
 <img src="docs/kindle.gif" width="270" alt="The KOReader plugin on a Kindle: tapping
 locos in the Aeneid shows its meanings and its forms"> <img src="docs/firefox.gif"
@@ -80,13 +97,11 @@ The first three words of the *Aeneid*. This is how the library reads them.
 
 So as far as single words go, Virgil might be singing of arms and the man, or
 telling you to arm the man for the wicker basket. Or for old age. Or for the
-white one. *cano* won't say which. The library gives you every reading.
+white one. *cano* won't say which. The library gives you all of them.
 
 Choosing between them is left to whatever sits on top. My approach has been to
 make getting the readings so fast that a reader, a ranker or a parser can work
-with all of them, and with everything else the library gives. Every reading of
-all 63,398 words in the *Aeneid* takes a Kindle Paperwhite from 2015 about a
-second.
+with all of them, and with everything else the library gives.
 
 ## Inside
 
@@ -101,11 +116,10 @@ From WORDS' files to a reading, in five steps.
    passes (add-ons, syncope, respellings) for what the image alone can't answer.
 5. `detail()` decodes a reading only when you ask for it.
 
-The inspector shows step 4 at work: a page I built to test the library and find
-its bottlenecks. Paste some Latin and move through every reading, with the API
-output (C++, C or Python) and the lookup trace. It's online at
-[ddd2951.github.io/whitakerLib](https://ddd2951.github.io/whitakerLib/), runs
-fully in the page as WebAssembly, and sends nothing.
+The browser reader shows step 4 at work. Paste some Latin or fetch a book, then
+click a word to see its readings. Open Trace to see the lookup passes in order
+and what each found. The reader runs as WebAssembly on the page. Fetching a
+new book needs an internet connection. [Open the browser reader](https://ddd2951.github.io/whitakerLib/).
 
 So to explain it, let me do it through a story: the story of *Simplicissimus*, a
 rather ambitious name, meaning "the simplest" or "most simple".
@@ -139,7 +153,7 @@ suffixes, and other additions that can produce forms beyond the ordinary
 stem-and-ending combinations.
 
 And so our simplest adventurer turns out to have required quite a complicated
-journey. Paste him into the inspector and follow it yourself.
+journey. Enter *simplicissimus* in Trace and follow it yourself.
 
 How much to pack into the image and how much to leave to run time has been one
 of the most fun parts of this project. Moving even a small part of the work
@@ -185,11 +199,16 @@ owner, holding a batch's words and readings, and everything else reads it.
   when you ask, into a `ReadingDetail` (160 bytes today): its `dictionaryWord`
   (what the dictionary says of the word, which no ending changes), its `form`
   (stem, ending and grammar), and its meaning and add-ons.
-- `rows(result)` is the whole batch as a table, one row per reading, a standard
-  view over the result.
+- `stems()` gives the dictionary word's stems, and `dictionaryForm()` gives its
+  dictionary form as WORDS prints it (`amo, amare, amavi, amatus  V (1st)`), or
+  an empty one where WORDS gives none (a Roman numeral, *qui*).
+- `rows(result)` is the whole batch as a table, one row per reading, and one
+  for a word with none, a standard view over the result.
 - What a call lends goes stale on the next `analyze`, `append` or `clear`, and
   strings returned as `const char*` belong to the library. Different results run on
-  different threads in parallel.
+  different threads in parallel. A thread's first lookup sets aside about 120 KB
+  for its own use, and if that can't be allocated the program currently stops,
+  as it would if the C++ runtime couldn't start the thread.
 
 Grammar values are named in the reader's words (`Case::nominative`), and
 `label()` gives one as text ("future perfect"). The generated
@@ -200,12 +219,12 @@ reading carries.
 ### C and Python
 
 Both are generated from the C++ header's `WHITAKER_TAG(bind)` tags by `codegen`,
-with the same fields by the same names, and the build refuses to run while
-either is out of date with the header. For now, the inspector is the place to
-see them. Its API view shows every call and every field of a reading as C++, C
-or Python. Unlike the C++ API, the bindings may still change before 0.5.0. There
-is no WebAssembly binding yet, since the inspector builds the library to
-WebAssembly for itself.
+with the same fields by the same names, and gen's build stops while either is
+out of date with the header. For now, the inspector is the place to see them.
+Its API view shows every call and every field of a reading as C++, C or Python.
+Unlike the C++ API, the bindings may still change before 0.5.0. There is no
+WebAssembly binding yet, since the inspector builds the library to WebAssembly
+for itself.
 
 ## Limitations
 
@@ -213,16 +232,13 @@ WebAssembly for itself.
 - ASCII only. Case-insensitive, and `j` folds with `i` and `v` with `u`, except
   in Roman numerals and, as in WORDS, in the syncope pass. Long marks and
   ligatures are left to the caller.
-- No headword yet. Each reading names its dictionary word, and `stems()` gives
-  that word's stems, but the citation form (*amo, amare, amavi, amatus*) isn't
-  built. `form.stemSpelling` is the matched stem and `form.ending` the ending
-  after it (`am` + `o`).
 - WORDS' word-split and bad Roman numeral guesses are not implemented.
 
 ## Speed and accuracy
 
-Both were measured over the same [102 Latin books](data/booklist.md#books),
-totaling 4,662,505 word occurrences.
+Both were measured over the same [102 Latin books](data/booklist.md#books).
+The speed run used an earlier copy of the texts, 4,662,505 word occurrences;
+the comparison uses the current one, 4,663,396.
 
 **Speed.** On one thread, the C++ example (`examples/cpp`) analyzes the
 4,662,505 words, then decodes and describes every one of their 17,460,251
@@ -243,11 +259,16 @@ there (see [Built with whitakerLib](#built-with-whitakerlib)).
 program, built using the same data, down to each reading with its stem, each
 dictionary record and meaning, the add-ons, and the order of all of them.
 
-**99.58%** of the words (97.35% of the distinct spellings) get exactly WORDS'
-answer. The [book list](data/booklist.md#books) gives the per-book results, and
-the [oracle README](oracle/README.md#where-we-are-now) explains the remaining
-differences. That comparison uses the patched WORDS revision `5dd8ca5`,
-described in the [oracle README](oracle/README.md#bugs-found-in-words).
+Across 102 books, every difference from [my patched Ada WORDS](https://github.com/ddd2951/whitakers-words/tree/combined_fixes) is
+explained. The raw comparison gives **99.58% exact
+agreement** across all 4,663,396 word occurrences. The differences are 19,665
+guesses that whitakerLib leaves out of the core library and three occurrences
+of *pilula* and *seconda*, where WORDS drops its answer when its parse arrays
+fill and whitakerLib returns readings.
+
+The [oracle report](oracle/README.md#where-it-is-now) breaks down the comparison
+against patched WORDS revision `5dd8ca5`. The [book list](data/booklist.md#books)
+has the per-book results from 0.4.0.
 
 Tracking down where the two disagree turned up several bugs in WORDS itself,
 some of which crashed it.
@@ -282,9 +303,9 @@ reading of the words given.
 
 ## Contributing
 
-**Words.** If the library reads a word from a book differently than WORDS
-does, open an issue or a pull request. A link to the book, or a picture of the
-page with the word on it, is enough.
+**Words.** If a reading looks wrong or a reading is missing, open an issue or
+a pull request. Tell me which word it is. A link to the passage or a photo of
+the page is enough.
 
 **Code.** Anything that makes it faster or smaller is welcome, as long as I
 can understand it. I'm not strict on style either. If you know a cool trick,

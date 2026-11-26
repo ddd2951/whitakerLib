@@ -9,7 +9,7 @@ const KEY = '(The readings come from whitakerLib, a version of William Whitaker\
   'ends and the ending begins. "stems" are the stems the dictionary gives for the word, as in a dictionary ' +
   'entry. Text in [ ] in a meaning is a set phrase.)';
 
-// The words of the sentence holding word i: from after the last . ! ? before it to the next one.
+// INFO: The words of the sentence holding word i: from after the last . ! ? before it to the next one.
 export function sentenceRange(text, words, i) {
   let from = i;
   while (from > 0 && !endsAfter(text, words, from - 1)) --from;
@@ -34,8 +34,8 @@ export function placeOf(text, at) {
   return [heading?.[1].trim(), inHeading ? `chapter ${chapter[1]}` : null].filter(Boolean).join(', ');
 }
 
-// The Readings view's HTML as data: each dictionary word (its kind and stems, its meaning) with its forms (stem|ending,
-//  the form in words). Nothing of the view's own notes: a reader asks about the Latin, not the lookup.
+// INFO: The Readings view's HTML as data: each dictionary word (its kind and stems, its meaning) with its forms
+//  (stem|ending, the form in words). Nothing of the view's own notes: a reader asks about the Latin, not the lookup.
 export function recordsOf(html) {
   const view = document.createElement('template');
   view.innerHTML = html;
@@ -94,7 +94,7 @@ function aboutWord(word, html, ask, short = false) {
 
 const where = (text, words, i, book) => `Where: ${[book, placeOf(text, words[i].start)].filter(Boolean).join(', ')}`;
 
-// The selected word: what it means and which of its forms is meant.
+// INFO: The selected word: what it means and which of its forms is meant.
 export function question({ text, words, i, book, readingsHtml }) {
   const word = words[i].text;
   return [

@@ -125,6 +125,8 @@ std::vector<Field> compareFields(const Line& a, const Line& l, Rules& rules) {
     }
     // INFO: Do_Qvae_Kludge: WORDS echoes an unknown qv word as qu (noviqvie).
     case Kind::Unknown:
+      if (l.tooLong)
+        rules.insert(Rule::InputTooLong);
       spelled("unknown", a.stem, l.stem);
       break;
     case Kind::Route:

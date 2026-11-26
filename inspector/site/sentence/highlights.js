@@ -1,15 +1,8 @@
+// INFO: Guesses the main verbs, clauses and compound verbs from the inspector's flags for each word.
 import { capitalizedInside, endsAfter } from './text.js';
 
-// INFO: Highlights: a row of toggles under the text, each one a kind of word with its count in the text. Turned on,
-//  its words are marked in the passage. The flags come from the library (inspector_marks, glue.cpp); which verb is the
-//  main one is a guess made here (structureOf), and the Sentence view (sentence.js) shows the same guess.
-//
-// NOTE: Each word gets its kinds as classes once, when the passage is drawn (k-verb k-main); a toggle is one class on
-//  the passage (show-verb), and the style does the rest. Marking the words on each toggle was seven passes over a
-//  book's every word.
-
-export const FINITE = 1, INFINITIVE = 4, UNKNOWN = 8, PARTICIPLE = 16, QUE = 32, ABLATIVE = 64, NOT_VERB = 128,
-  ONLY_NOMINATIVE = 256, NOMINATIVE = 512;
+const FINITE = 1, QUE = 32, ABLATIVE = 64;
+export const INFINITIVE = 4, UNKNOWN = 8, PARTICIPLE = 16, NOT_VERB = 128, ONLY_NOMINATIVE = 256, NOMINATIVE = 512;
 
 // NOTE: A verb with a person, and nothing else: many common words have a rare verb reading as well (eo 'him' and
 //  'I go', duce 'leader' and 'lead!'), and an infinitive reading usually wins (sperare).
@@ -34,19 +27,8 @@ const SUM = new Set(`est sunt erat erant fuit fuerunt esset essent sit sint fuer
   fuisse`.split(/\s+/));
 const BOUNDARY = /[.;:!?]/;
 
-const HIGHLIGHTS = [
-  { key: 'verb', label: 'Verbs', has: verb },
-  { key: 'main', label: 'Main verb', has: null },
-  { key: 'inf', label: 'Infinitives', has: m => m & INFINITIVE },
-  { key: 'part', label: 'Participles', has: m => m & PARTICIPLE },
-  { key: 'unknown', label: 'Unknown', has: m => m & UNKNOWN },
-  { key: 'once', label: 'Used once', has: null },
-  { key: 'que', label: '-que', has: m => m & QUE },
-];
-
 let marks = [];
 let verbs = [];
-let found = {};
 let structure = { main: [], clauses: [], compound: new Map() };
 
 // NOTE: A clause opener waits for the next verb with a person: that verb is its clause's (the innermost clause open
@@ -127,11 +109,11 @@ function structureOf(text, words) {
   return { main, clauses, compound };
 }
 
-// Whether word i is a verb with a person, as the Verbs highlight has it.
+// INFO: Whether word i is a verb with a person.
 export const isVerb = i => !!verbs[i];
 export const flagsOf = i => marks[i] ?? 0;
-// Whether word i goes with a sentence's verbs: a verb with a person, a participle, or an infinitive and nothing else
-//  (sperare, mittere; not sui, which reads as suo 'sew' too).
+// INFO: Whether word i goes with a sentence's verbs: a verb with a person, a participle, or an infinitive and nothing
+//  else (sperare, mittere; not sui, which reads as suo 'sew' too).
 export const isVerbal = i => isVerb(i) || !!(flagsOf(i) & PARTICIPLE) ||
   !!(flagsOf(i) & INFINITIVE) && !(flagsOf(i) & NOT_VERB);
 export const structureNow = () => structure;
@@ -141,37 +123,4 @@ export function load(text, words, flags) {
   // NOTE: Not a capitalised word inside a sentence: Cares (a people) reads as careo, 'lack'.
   verbs = marks.map((m, i) => verb(m) && !capitalizedInside(text, words, i));
   structure = structureOf(text, words);
-  const counts = new Map();
-  for (const o of words) counts.set(o.spelling.toLowerCase(), (counts.get(o.spelling.toLowerCase()) ?? 0) + 1);
-  found = {};
-  for (const h of HIGHLIGHTS)
-    found[h.key] = h.key === 'main' ? structure.main
-                 : h.key === 'verb' ? verbs.flatMap((v, i) => v ? [i] : [])
-                 : h.key === 'once' ? words.flatMap((o, i) => counts.get(o.spelling.toLowerCase()) === 1 ? [i] : [])
-                 : marks.flatMap((m, i) => h.has(m) ? [i] : []);
-}
-
-// Each word's kinds, as the classes the passage gives it (k-verb k-main), by its place in the text.
-export function kinds(count) {
-  const out = Array(count).fill('');
-  for (const h of HIGHLIGHTS) for (const i of found[h.key] ?? []) out[i] += ` k-${h.key}`;
-  return out;
-}
-
-export function setup(container, passage) {
-  container.replaceChildren(...HIGHLIGHTS.map(h => {
-    const b = document.createElement('button');
-    b.dataset.h = h.key;
-    b.innerHTML = '<span class="label"></span> <span class="count"></span>';
-    b.querySelector('.label').textContent = h.label;
-    b.addEventListener('click', () => {
-      b.classList.toggle('on', passage.classList.toggle(`show-${h.key}`));
-    });
-    return b;
-  }));
-}
-
-export function counts(container) {
-  for (const b of container.querySelectorAll('[data-h]'))
-    b.querySelector('.count').textContent = (found[b.dataset.h]?.length ?? 0).toLocaleString('en');
 }

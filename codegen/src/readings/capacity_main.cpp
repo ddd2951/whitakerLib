@@ -3,6 +3,7 @@
 #include "emitter/relationship_emitter/rendered_analysis.hpp"
 #include "expand/expand.hpp"
 #include "expand/common/stem_column.hpp"
+#include "readings/dictionary_form.hpp"
 #include "source/source.hpp"
 #include "storage/image.hpp"
 #include "word/word.hpp"
@@ -31,6 +32,20 @@ static unsigned suffixBound(const Endings& endings) {
     maximum = std::max(maximum, sum);
   }
   return maximum;
+}
+
+static bool capacityFile(const char* path, const std::string& generated, const bool write) {
+  if (write) {
+    std::ofstream file(path);
+    file << generated;
+    return bool(file);
+  }
+  std::ifstream file(path);
+  const std::string written{std::istreambuf_iterator<char>(file), {}};
+  if (written == generated)
+    return true;
+  std::cerr << path << " is stale: build write_reading_capacity\n";
+  return false;
 }
 
 int main(const int argc, char** const argv) {
@@ -128,21 +143,17 @@ int main(const int argc, char** const argv) {
          "  kSuffixChanges, kPrefixChanges, kWordChanges + kDictionaryChanges});\n"
          "static_assert(kMaximumChanges + 1 <= 255, \"word-local change index no longer fits\");\n"
          "} // namespace whitaker::parse\n";
-  const auto generated = out.str();
-  constexpr const char* path = "src/parse/change_capacity.hpp";
-  if (std::string_view(argv[1]) == "--write") {
-    std::ofstream file(path);
-    file << generated;
-    if (!file)
-      return 2;
-  } else {
-    std::ifstream file(path);
-    const std::string written{std::istreambuf_iterator<char>(file), {}};
-    if (written != generated) {
-      std::cerr << path << " is stale: build write_reading_capacity\n";
-      return 1;
-    }
-  }
+  const auto maximum = readings::dictionaryFormMaximum();
+  std::ostringstream form{};
+  form << "// Generated from WORDS' dictionary forms; do not edit.\n#pragma once\n#include <cstddef>\n"
+          "namespace whitaker {\n"
+       << "inline constexpr std::size_t kMaxDictionaryFormLength = " << maximum << ";\n"
+       << "} // namespace whitaker\n";
+  const bool write = std::string_view(argv[1]) == "--write";
+  if (!capacityFile("src/parse/change_capacity.hpp", out.str(), write) ||
+      !capacityFile("include/dictionary_form_capacity.hpp", form.str(), write))
+    return write ? 2 : 1;
   std::cout << "change bounds: dictionary " << plain << ", packon " << p << ", suffix " << s << ", prefix " << q
             << '\n';
+  std::cout << "dictionary form bound: " << maximum << " bytes\n";
 }

@@ -64,7 +64,7 @@ cmake --build build-codegen --target image                   # data/whitaker.dat
 
 ## Pipeline
 
-Gen is 68 steps, each a function declared in one file,
+Gen is 69 steps, each a function declared in one file,
 `src/execution_steps/steps.hpp`, in 12 phases. They read and parse WORDS' four
 files, expand every stem and ending into WORDS' readings, then build, encode,
 check and publish the image. `main()` is one line.
@@ -166,6 +166,8 @@ and the oracle's probe use it.
   grammar.
 - **Entries.** All 39,415 stored entries match the parsed DICTLINE and UNIQUES
   words.
+- **Dictionary forms.** All 39,415 dictionary forms match the oracle's version
+  of WORDS' formatter, byte for byte.
 - **Addon search.** The records only the addon search reads stay inside their
   tables, and the endings and stems are sorted. Which rows they hold is checked
   by the oracle, against WORDS' own readings, not here.
